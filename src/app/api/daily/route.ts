@@ -3,11 +3,11 @@ import { randomBytes } from 'node:crypto';
 import { serviceClient } from '@/lib/supabase/server';
 import { SESSION_COOKIE, SESSION_COOKIE_OPTIONS, ensureSession } from '@/lib/session';
 import { authClient } from '@/lib/supabase/auth-server';
-import { REVEAL_BARS } from '@/core/config';
-import { fromPgHex, toBase64 } from '@/core/pack';
+import { RANKED_TIER, affordances, tierByCode } from '@/core/tiers';
+import { roundPayload } from '@/lib/round-payload';
 import { DAILY_CHARTS, dailyNumber, isDailyOpen } from '@/lib/daily';
 import { shareCard } from '@/lib/share';
-import type { DailyPayload, RoundPayload } from '@/lib/api-types';
+import type { DailyPayload } from '@/lib/api-types';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -88,11 +88,19 @@ export async function POST(request: Request) {
   }
 
   const nonce = randomBytes(16).toString('hex');
+  // §10.1 fixes the daily at Naked. The clock and the candle count come from the tier table so
+  // there is one place the ruleset is defined rather than two that can drift.
+  const tier = tierByCode(RANKED_TIER)!;
+  const granted = affordances(tier);
+
   const { data, error } = await supabase.rpc('issue_daily', {
     p_session: sessionId,
     p_user: userId,
     p_day: day,
     p_nonce: nonce,
+    p_tier: tier.code,
+    p_candles: granted.candles,
+    p_clock_seconds: granted.clockSeconds,
   });
 
   if (error) {
@@ -105,17 +113,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'No chart available for this daily.' }, { status: 503 });
   }
 
-  const round: RoundPayload = {
-    roundId: row.round_id,
-    bars: row.lead_in_bars,
-    atr: row.atr14,
-    tickSize: row.tick_size,
-    entry: row.entry_price,
-    revealBarCount: REVEAL_BARS,
-    startDayOfWeek: row.start_dow,
-    startHourUtc: row.start_hour,
-    detail: row.lead_in_detail ? toBase64(fromPgHex(row.lead_in_detail)) : '',
-  };
+  const round = roundPayload(row, tier);
 
   const payload: DailyPayload = {
     day,

@@ -13,7 +13,7 @@
  * a dense 1-minute view of six days. Every charting tool a trader has used works this way.
  */
 
-export interface Tier {
+export interface Timeframe {
   /** Minutes per candle. */
   minutes: number;
   label: string;
@@ -24,10 +24,10 @@ export interface Tier {
  *
  * 4h and 1d do not divide an hour, so they are aligned against the clock rather than against
  * the window: a daily candle runs midnight to midnight, not from whatever hour the window
- * happens to open on. That makes the first candle of those tiers partial, which is correct and
+ * happens to open on. That makes the first candle of those timeframes partial, which is correct and
  * is what a real chart shows.
  */
-export const TIERS: Tier[] = [
+export const TIMEFRAMES: Timeframe[] = [
   { minutes: 1, label: '1m' },
   { minutes: 15, label: '15m' },
   { minutes: 30, label: '30m' },
@@ -47,42 +47,42 @@ export const TIERS: Tier[] = [
  *
  * Changing the selected timeframe changes none of that. It changes what is drawn.
  */
-export const DISPLAY_TIER = 60;
+export const DECISION_TF = 60;
 
-export const TIER_MINUTES = TIERS.map((tier) => tier.minutes);
+export const TIMEFRAME_MINUTES = TIMEFRAMES.map((tf) => tf.minutes);
 
-export function tierLabel(minutes: number): string {
-  return TIERS.find((tier) => tier.minutes === minutes)?.label ?? `${minutes}m`;
+export function timeframeLabel(minutes: number): string {
+  return TIMEFRAMES.find((tf) => tf.minutes === minutes)?.label ?? `${minutes}m`;
 }
 
 /**
- * How a tier is built.
+ * How a timeframe is built.
  *
  * Below an hour the source is the stored one-minute detail. At an hour and above it is the
  * display candles themselves, which are full precision and authoritative — re-deriving them
  * from the Float32 detail would introduce a hair of drift at the timeframe the entry and the
  * ATR are taken from, for no gain.
  */
-export interface TierPlan {
+export interface TimeframePlan {
   /** Minutes per source bar: 1 for the detail path, 60 for the display candles. */
   unitMinutes: number;
   /** Source bars per rendered candle. */
   group: number;
 }
 
-export function tierPlan(tierMinutes: number): TierPlan {
-  const unitMinutes = tierMinutes < DISPLAY_TIER ? 1 : DISPLAY_TIER;
-  return { unitMinutes, group: tierMinutes / unitMinutes };
+export function timeframePlan(minutes: number): TimeframePlan {
+  const unitMinutes = minutes < DECISION_TF ? 1 : DECISION_TF;
+  return { unitMinutes, group: minutes / unitMinutes };
 }
 
 /**
  * Where the window's first bar sits inside its own candle, in source-bar units.
  *
- * Zero for every tier that divides an hour, because a window always opens on the hour. Non-zero
+ * Zero for every timeframe that divides an hour, because a window always opens on the hour. Non-zero
  * for 4h and 1d, where the window opens partway through a candle that began before it.
  */
-export function tierPhase(tierMinutes: number, originSeconds: number): number {
-  const { unitMinutes, group } = tierPlan(tierMinutes);
+export function timeframePhase(minutes: number, originSeconds: number): number {
+  const { unitMinutes, group } = timeframePlan(minutes);
   const units = Math.round(originSeconds / 60 / unitMinutes);
   return ((units % group) + group) % group;
 }

@@ -21,6 +21,8 @@ export function PlacementBar({
   onResetView,
   onPass,
   onCommit,
+  mayPass = true,
+  passesLeft,
 }: {
   isLong: boolean;
   stopAtr: number;
@@ -29,6 +31,10 @@ export function PlacementBar({
   onResetView: () => void;
   onPass: () => void;
   onCommit: () => void;
+  /** False under the Iron mod, or once a ranked session has spent its quota. */
+  mayPass?: boolean;
+  /** Ranked only. Shown so the quota is a visible resource rather than a trap sprung at the end. */
+  passesLeft?: number | null;
 }) {
   return (
     <div className="bg-surface-2 border-line shadow-panel animate-rise flex items-center gap-3 rounded-lg border p-3">
@@ -41,8 +47,24 @@ export function PlacementBar({
         </Button>
         {/* §4.4 makes passing a first-class scored action, not an escape hatch, so it gets a real
             button beside Commit rather than a link underneath it. */}
-        <Button variant="secondary" size="lg" onClick={onPass} disabled={busy} kbd="P">
+        <Button
+          variant="secondary"
+          size="lg"
+          onClick={onPass}
+          disabled={busy || !mayPass}
+          kbd={mayPass ? 'P' : undefined}
+          title={
+            mayPass
+              ? undefined
+              : passesLeft === 0
+                ? '§4.4 allows two passes in a five-chart ranked session, and both are spent'
+                : 'The Iron mod removes the pass'
+          }
+        >
           Pass
+          {passesLeft !== null && passesLeft !== undefined && (
+            <span className="text-ink-faint text-micro font-mono">{passesLeft}</span>
+          )}
         </Button>
         <Button variant="primary" size="lg" onClick={onCommit} loading={busy} kbd={busy ? undefined : '⏎'}>
           {busy ? 'Committing…' : 'Commit'}
