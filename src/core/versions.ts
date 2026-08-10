@@ -38,3 +38,22 @@ export const SELECTION_VERSION = 'selection-1';
  * version of it. Charts record the version they were enumerated under.
  */
 export const ACHIEVABLE_VERSION = 'achievable-1';
+
+/**
+ * The percentile-to-score map, and the ranked compression built on it.
+ *
+ * Separate from ACHIEVABLE_VERSION because it invalidates a different thing. The grid decides what
+ * was achievable; this decides what a place in it is worth. Move the pass anchor or the knee and
+ * every rating ever computed means something else — and §8.3's retirement verdicts, which are
+ * correlations against achieved percentile, stop being comparable to new ones. A retirement is
+ * stored with the version that produced it so a bump can invalidate rather than inherit.
+ */
+export const SCORE_MAP_VERSION = 'score-map-1';
+
+/**
+ * The rating system: Glicko-2's constants, the information weight, and the pending policy.
+ *
+ * Bumping this does not invalidate percentiles — it invalidates *ratings*, which is why it is not
+ * the same constant as the one above.
+ */
+export const RATING_VERSION = 'rating-1';

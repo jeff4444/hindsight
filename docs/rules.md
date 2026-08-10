@@ -610,6 +610,43 @@ An ambiguous fill — that is unfairness, not inaccuracy. A retired chart. The S
 clock expired. And a repeat attempt at a chart already played at that tier, because it has seen the
 reveal.
 
+### 12.7 Coming back to this when there is data
+
+The rating system spends its first long stretch doing almost nothing visible, entirely correctly.
+Charts sit pending because §8.2 will not graduate one before fifty plays. Nothing retires because
+§8.3's equivalence test needs four hundred attempts on a single chart. No tier is validated because
+§3.5 needs the same players on the same charts at two tiers.
+
+All three are indistinguishable from "the code is broken" if the only thing visible is that no
+numbers move — which is exactly how an un-called `exitsPending` hid for a whole phase, leaving every
+chart pending and therefore every attempt unrated while each individual test passed.
+
+So there is one command that prints the **distance to each gate** rather than the state at it:
+
+```
+npm run ladder
+```
+
+It reports the corpus, per-tier play counts, how close the most-played chart is to graduating, the
+deepest chart-and-tier pair against the retirement threshold, how many player-and-chart pairs exist
+at two tiers, and how many ranks are displayable. Read-only and safe against production. It also
+says when a gate has opened and what to run next.
+
+The two jobs behind it:
+
+| Command | What it does | Today |
+| --- | --- | --- |
+| `npm run retire` | §8.3's equivalence test over every chart-and-tier pair. **Dry by default** — `-- --apply` writes the flags | Reports nothing to assess |
+| `npm run fairness` | §3.5's test against simulated players of known skill | Recovers 3/3 known answers |
+| `npm run fairness -- --live NT NTZ` | The same test against real attempts, with the attenuation correction | Reports how far short the data is |
+
+`retire` is dry by default because retiring a chart destroys content permanently, and it is a job
+that will eventually run unattended against a corpus nobody is watching. Removing a thousand charts
+should not be one mistyped command away. Every verdict it writes is stored with the score-map and
+achievable versions that produced it, because §12.4 makes population statistics incomparable across
+a change of rule — a retirement decided under one score map has to be re-derivable, and thrown away
+rather than inherited if the map moves.
+
 ## 13. What is not built yet
 
 Recorded so nothing here is mistaken for the finished product.
