@@ -1,5 +1,5 @@
-import { Play } from '@/components/Play';
+import { PlaySurface } from '@/components/play/PlaySurface';
 
 export default function Home() {
-  return <Play />;
+  return <PlaySurface />;
 }
