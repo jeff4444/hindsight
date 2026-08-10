@@ -32,7 +32,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { mulberry32 } from '../src/core/random';
-import { compareTiers, correctAttenuation, rSquared, type Observation } from '../src/core/fairness';
+import { compareTiers, correctAttenuation, type Observation } from '../src/core/fairness';
 import { isTierCode } from '../src/core/tiers';
 
 const LIVE = process.argv.includes('--live');
