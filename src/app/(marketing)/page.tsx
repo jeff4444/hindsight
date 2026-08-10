@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { currentViewer } from '@/lib/viewer';
-import { Button, Chip, Eyebrow } from '@/components/ui';
+import { Button, Eyebrow } from '@/components/ui';
 import { MarketSignature } from '@/components/ui/MarketSignature';
 
 export const dynamic = 'force-dynamic';
@@ -53,25 +53,22 @@ export default async function Landing() {
         {/* ------------------------------------------------------------ hero */}
         <section className="grid items-center gap-10 py-12 lg:grid-cols-[1.05fr_1fr] lg:py-20">
           <div data-stagger>
-            <div style={{ '--i': 0 } as React.CSSProperties}>
-              <Chip tone="info">GeoGuessr, for reading price</Chip>
-            </div>
             <h1
-              className="text-ink-max mt-5 text-3xl font-semibold text-balance xl:text-4xl"
-              style={{ '--i': 1 } as React.CSSProperties}
+              className="text-ink-max text-3xl font-semibold text-balance xl:text-4xl"
+              style={{ '--i': 0 } as React.CSSProperties}
             >
               You cannot learn to trade from a chart you can scroll.
             </h1>
             <p
               className="text-ink-lo mt-5 max-w-prose text-base"
-              style={{ '--i': 2 } as React.CSSProperties}
+              style={{ '--i': 1 } as React.CSSProperties}
             >
               You get eighty candles, no ticker and no date. Place a stop and a target, and watch
               the next sixty play out. Then — and this is the part nobody else does — you are
               scored against <em className="text-ink-hi not-italic">every bracket that was
               placeable on that exact path</em>, not against whether you happened to profit.
             </p>
-            <div className="mt-7 flex flex-wrap items-center gap-2.5" style={{ '--i': 3 } as React.CSSProperties}>
+            <div className="mt-7 flex flex-wrap items-center gap-2.5" style={{ '--i': 2 } as React.CSSProperties}>
               <Button as="a" href="/play" variant="primary" size="lg">
                 Play today&rsquo;s daily
               </Button>
@@ -79,7 +76,7 @@ export default async function Landing() {
                 Browse tapes
               </Button>
             </div>
-            <p className="text-ink-faint text-mini mt-4 font-mono" style={{ '--i': 4 } as React.CSSProperties}>
+            <p className="text-ink-faint text-mini mt-4 font-mono" style={{ '--i': 3 } as React.CSSProperties}>
               1,000 charts · 98 outcomes scored per chart · no future data on the client · no account needed
             </p>
           </div>
