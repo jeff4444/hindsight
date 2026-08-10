@@ -12,6 +12,7 @@ import { useReducedMotion } from '@/lib/useTween';
 import type {
   ChartProvenance,
   DailyPayload,
+  RankedPayload,
   RevealPayload,
   RoundPayload,
   RoundResult,
@@ -29,6 +30,7 @@ import { DailySummary } from './DailySummary';
 import { OrderReadout, PlacementBar } from './PlacementBar';
 import { RevealTransport } from './RevealTransport';
 import { DailyPips } from './DailyPips';
+import { RankedSummary } from './RankedSummary';
 import { DEFAULT_SPEED, useRevealLoop } from './useRevealLoop';
 
 export type Phase =
@@ -39,7 +41,7 @@ export type Phase =
   | 'done'
   | 'summary'
   | 'error';
-export type Mode = 'daily' | 'tape';
+export type Mode = 'daily' | 'tape' | 'ranked';
 
 /** Vertical headroom kept reachable for the rails, in ATR. */
 const RAIL_HEADROOM_ATR = 3.5;
@@ -52,7 +54,16 @@ const RAIL_HEADROOM_ATR = 3.5;
  * receive props, which is the whole point of the split — the loop is the part that is delicate,
  * and it is now the only part that is.
  */
-export function PlaySurface({ mode, tape = 'open' }: { mode: Mode; tape?: string }) {
+export function PlaySurface({
+  mode,
+  tape = 'open',
+  fresh = false,
+}: {
+  mode: Mode;
+  tape?: string;
+  /** Ranked only: start a new session rather than resuming the last one. */
+  fresh?: boolean;
+}) {
   const chart = useRef<ChartHandle>(null);
   const issued = useRef(false);
 
@@ -65,6 +76,7 @@ export function PlaySurface({ mode, tape = 'open' }: { mode: Mode; tape?: string
   const [provenance, setProvenance] = useState<ChartProvenance | null>(null);
   const [score, setScore] = useState<ScorePayload | null>(null);
   const [daily, setDaily] = useState<DailyPayload | null>(null);
+  const [ranked, setRanked] = useState<RankedPayload | null>(null);
   const [revealed, setRevealed] = useState(0);
   const [revealTotal, setRevealTotal] = useState(0);
   const [speed, setSpeed] = useState(DEFAULT_SPEED);
@@ -87,6 +99,8 @@ export function PlaySurface({ mode, tape = 'open' }: { mode: Mode; tape?: string
   const timeframeRef = useRef(DECISION_TF);
   const modeRef = useRef<Mode>(mode);
   const tapeRef = useRef(tape);
+  /** Set once from the URL: a fresh ranked session is asked for, not assumed. */
+  const freshRef = useRef(false);
   const frame = useRef<number | null>(null);
   const tauRef = useRef(CAMERA_TAU_MS);
   // The clock's expiry callback is created once and must not be rebuilt every render, or the
@@ -118,7 +132,8 @@ export function PlaySurface({ mode, tape = 'open' }: { mode: Mode; tape?: string
   useEffect(() => {
     modeRef.current = mode;
     tapeRef.current = tape;
-  }, [mode, tape]);
+    freshRef.current = fresh;
+  }, [mode, tape, fresh]);
 
   useEffect(() => {
     phaseRef.current = phase;
@@ -168,12 +183,13 @@ export function PlaySurface({ mode, tape = 'open' }: { mode: Mode; tape?: string
     chart.current?.setPrice(null);
 
     // The daily is a five-chart session (§10.1 plus §4.4's card); free play is unlimited.
-    const response = await fetch(
+    const endpoint =
       modeRef.current === 'daily'
         ? '/api/daily'
-        : `/api/round?tape=${encodeURIComponent(tapeRef.current)}`,
-      { method: 'POST' },
-    );
+        : modeRef.current === 'ranked'
+          ? '/api/ranked'
+          : `/api/round?tape=${encodeURIComponent(tapeRef.current)}`;
+    const response = await fetch(endpoint, { method: 'POST' });
     if (!response.ok) {
       const body = await response.json().catch(() => ({ error: 'Could not reach the server.' }));
       setError(body.error ?? 'Could not issue a round.');
@@ -182,7 +198,16 @@ export function PlaySurface({ mode, tape = 'open' }: { mode: Mode; tape?: string
     }
 
     let payload: RoundPayload;
-    if (modeRef.current === 'daily') {
+    if (modeRef.current === 'ranked') {
+      const session: RankedPayload = await response.json();
+      setRanked(session);
+      setDaily(null);
+      if (session.complete || !session.round) {
+        setPhase('summary');
+        return;
+      }
+      payload = session.round;
+    } else if (modeRef.current === 'daily') {
       const session: DailyPayload = await response.json();
       setDaily(session);
       if (session.complete || !session.round) {
@@ -192,8 +217,10 @@ export function PlaySurface({ mode, tape = 'open' }: { mode: Mode; tape?: string
       payload = session.round;
     } else {
       setDaily(null);
+      setRanked(null);
       payload = await response.json();
     }
+    freshRef.current = false;
     setRound(payload);
 
     const openStop = toTick(payload.entry - payload.atr);
@@ -371,7 +398,9 @@ export function PlaySurface({ mode, tape = 'open' }: { mode: Mode; tape?: string
         if (phase === 'done') void load();
       },
       p: () => {
-        if (phase === 'placing') void submit({ pass: true });
+        if (phase !== 'placing') return;
+        const allowed = (round?.mayPass ?? true) && (ranked ? ranked.mayPass : true);
+        if (allowed) void submit({ pass: true });
       },
       r: () => {
         if (phase === 'placing') resetView();
@@ -419,14 +448,16 @@ export function PlaySurface({ mode, tape = 'open' }: { mode: Mode; tape?: string
           {/* The way out. During a round the chart owns the screen, so this is the only
               navigation on it — §3.1's clock is running and a nav rail is a distraction. */}
           <Link
-            href={mode === 'daily' ? '/home' : '/tapes'}
+            href={mode === 'tape' ? '/tapes' : '/home'}
             className="text-ink-dim hover:text-ink-hi press flex h-8 items-center gap-1.5 rounded-md px-2 text-mini font-medium transition-colors"
           >
             <span aria-hidden>←</span>
-            {mode === 'daily' ? 'Today' : 'Tapes'}
+            {mode === 'tape' ? 'Tapes' : 'Home'}
           </Link>
           <span className="text-ink-hi tracking-wordmark text-sm font-semibold">HINDSIGHT</span>
-          {mode === 'daily' && daily ? (
+          {mode === 'ranked' && ranked ? (
+            <DailyPips played={ranked.played} total={ranked.total} label="RANKED" />
+          ) : mode === 'daily' && daily ? (
             <DailyPips played={daily.played} total={daily.total} day={daily.day} />
           ) : (
             <Chip tone="neutral" className="hidden sm:inline-flex">
@@ -482,6 +513,8 @@ export function PlaySurface({ mode, tape = 'open' }: { mode: Mode; tape?: string
             busy={phase === 'committing'}
             onResetView={resetView}
             onPass={() => void submit({ pass: true })}
+            mayPass={round.mayPass && (ranked ? ranked.mayPass : true)}
+            passesLeft={ranked ? ranked.passesLeft : null}
             onCommit={() => void submit({ stop, target })}
           />
         </>
@@ -500,6 +533,7 @@ export function PlaySurface({ mode, tape = 'open' }: { mode: Mode; tape?: string
       )}
 
       {phase === 'summary' && daily && <DailySummary daily={daily} />}
+      {phase === 'summary' && ranked && <RankedSummary ranked={ranked} />}
 
       {phase === 'done' && result && (
         <ResultCard

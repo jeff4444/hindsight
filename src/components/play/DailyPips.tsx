@@ -9,10 +9,21 @@ import { cx } from '../ui';
  * because §10.1's daily is a session rather than a score, and the thing a player wants to know
  * mid-round is how much is left, not what they have accumulated.
  */
-export function DailyPips({ played, total, day }: { played: number; total: number; day: number }) {
+export function DailyPips({
+  played,
+  total,
+  day,
+  label,
+}: {
+  played: number;
+  total: number;
+  day?: number;
+  /** Shown instead of the daily number — ranked sessions have no day. */
+  label?: string;
+}) {
   return (
-    <div className="flex items-center gap-2" title={`Daily #${day}`}>
-      <span className="text-ink-dim text-mini font-mono">#{day}</span>
+    <div className="flex items-center gap-2" title={label ?? `Daily #${day}`}>
+      <span className="text-ink-dim text-mini font-mono">{label ?? `#${day}`}</span>
       <div className="flex gap-1">
         {Array.from({ length: total }, (_, i) => (
           <span

@@ -171,3 +171,31 @@ export interface DailyPayload {
   card: string | null;
   round: RoundPayload | null;
 }
+
+/**
+ * A ranked session in flight, or its result.
+ *
+ * §4.4's quota is carried as `passesLeft` and `mayPass` rather than left for the client to derive:
+ * the rule is the server's, and a client that computed it could disagree with the one that will
+ * actually be enforced.
+ */
+export interface RankedPayload {
+  sessionId: string;
+  played: number;
+  total: number;
+  passes: number;
+  passesLeft: number;
+  mayPass: boolean;
+  complete: boolean;
+  round: RoundPayload | null;
+  result: {
+    /** Per-chart compressed score, in session order. */
+    imps: number[];
+    total: number;
+    entries: number;
+    passes: number;
+    forfeits: number;
+    /** §4.4's three-entry minimum. */
+    quotaMet: boolean;
+  } | null;
+}
