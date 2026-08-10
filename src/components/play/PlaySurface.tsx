@@ -3,23 +3,23 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import type { Bar } from '@/core/bars';
-import { LEAD_IN_BARS } from '@/core/config';
 import { fromBase64, unpackDetail } from '@/core/pack';
 import { TICK_SIZE, toTick } from '@/core/normalize';
 import { clockAt, decisionClockSeconds, formatClock } from '@/lib/clock';
-import { DISPLAY_TIER } from '@/lib/resolution';
+import { DECISION_TF } from '@/lib/timeframe';
 import { useHotkeys } from '@/lib/useHotkeys';
 import { useReducedMotion } from '@/lib/useTween';
 import { useBeats } from '@/lib/useBeats';
 import type {
   ChartProvenance,
   DailyPayload,
+  RankedPayload,
   RevealPayload,
   RoundPayload,
   RoundResult,
   ScorePayload,
 } from '@/lib/api-types';
-import { CAMERA_TAU_MS, placementView } from '@/lib/camera';
+import { CAMERA_TAU_MS, DEFAULT_WINDOW, placementView, type Window } from '@/lib/camera';
 import { type ChartHandle } from '../Chart';
 import { ResultConsole } from './ResultConsole';
 import { type Rail } from '../TradeOverlay';
@@ -32,6 +32,7 @@ import { OrderConsole, HotkeyHint } from './OrderConsole';
 import { TransportConsole } from './TransportConsole';
 import { TimeframeControl } from './TimeframeControl';
 import { DailyPips } from './DailyPips';
+import { DecisionClock } from './DecisionClock';
 import {
   FrameControls,
   HotkeyLegend,
@@ -41,6 +42,7 @@ import {
   runningR,
   type Running,
 } from './layers';
+import { RankedSummary } from './RankedSummary';
 import { DEFAULT_SPEED, useRevealLoop } from './useRevealLoop';
 
 export type Phase =
@@ -51,7 +53,7 @@ export type Phase =
   | 'done'
   | 'summary'
   | 'error';
-export type Mode = 'daily' | 'tape';
+export type Mode = 'daily' | 'tape' | 'ranked';
 
 /** Vertical headroom kept reachable for the rails, in ATR. */
 const RAIL_HEADROOM_ATR = 3.5;
@@ -86,7 +88,37 @@ const EMPTY_RUNNING: Running = { r: null, mfe: 0, mae: 0, frozen: null };
  * at the exact moment the reveal camera cut, which is the one frame in the product that must not
  * stutter. The console scrolls inside its own row instead.
  */
-export function PlaySurface({ mode, tape = 'open' }: { mode: Mode; tape?: string }) {
+/** The issuance query for a tape round: the tape, plus whatever ruleset the launcher was set to. */
+function tapeQuery(tape: string, ruleset: { tier?: string; mods?: string }) {
+  const query = new URLSearchParams({ tape });
+  if (ruleset.tier) query.set('tier', ruleset.tier);
+  if (ruleset.mods) query.set('mods', ruleset.mods);
+  return query.toString();
+}
+
+export function PlaySurface({
+  mode,
+  tape = 'open',
+  fresh = false,
+  tier,
+  mods,
+}: {
+  mode: Mode;
+  tape?: string;
+  /** Ranked only: start a new session rather than resuming the last one. */
+  fresh?: boolean;
+  /**
+   * Tape only: the ruleset `TapeLaunch` was set to, carried through the URL.
+   *
+   * Passed straight back to `/api/round`, which is where it is validated — `tierByCode` falls back
+   * to the default for anything it does not recognise, so a hand-edited query string can pick a
+   * different ruleset but not an invalid one. The daily and ranked rulesets are the server's to
+   * choose and are deliberately not forwarded.
+   */
+  tier?: string;
+  /** Tape only: §3.3's mods, comma-separated, layered on the tier. Validated server-side too. */
+  mods?: string;
+}) {
   const chart = useRef<ChartHandle>(null);
   const issued = useRef(false);
 
@@ -99,17 +131,22 @@ export function PlaySurface({ mode, tape = 'open' }: { mode: Mode; tape?: string
   const [provenance, setProvenance] = useState<ChartProvenance | null>(null);
   const [score, setScore] = useState<ScorePayload | null>(null);
   const [daily, setDaily] = useState<DailyPayload | null>(null);
+  const [ranked, setRanked] = useState<RankedPayload | null>(null);
   const [revealed, setRevealed] = useState(0);
   const [revealTotal, setRevealTotal] = useState(0);
   const [speed, setSpeed] = useState(DEFAULT_SPEED);
   const [paused, setPaused] = useState(false);
   const [hitFlash, setHitFlash] = useState<'target' | 'stop' | null>(null);
   const [touched, setTouched] = useState<'target' | 'stop' | null>(null);
-  const [tier, setTier] = useState<number>(DISPLAY_TIER);
   const [running, setRunning] = useState<Running>(EMPTY_RUNNING);
   const [hintShown, setHintShown] = useState(true);
   const [helpOpen, setHelpOpen] = useState(false);
   const [stageVisible, setStageVisible] = useState(false);
+  /** The clock's full length, kept so the ring knows what fraction is left. */
+  const [clockTotal, setClockTotal] = useState<number | null>(null);
+  // Renamed from `tier` when the ladder landed: a tier is now a *ruleset*, and the thing this
+  // selects is a drawing resolution.
+  const [timeframe, setTimeframe] = useState<number>(DECISION_TF);
 
   // Mutable mirrors for the animation loop, which must not re-subscribe every frame.
   const reveal = useRef<Bar[]>([]);
@@ -121,12 +158,21 @@ export function PlaySurface({ mode, tape = 'open' }: { mode: Mode; tape?: string
   const speedRef = useRef(DEFAULT_SPEED);
   const pausedRef = useRef(false);
   const resultRef = useRef<RoundResult | null>(null);
-  const tierRef = useRef(DISPLAY_TIER);
+  const timeframeRef = useRef(DECISION_TF);
   const modeRef = useRef<Mode>(mode);
   const tapeRef = useRef(tape);
+  const rulesetRef = useRef({ tier, mods });
+  /** Set once from the URL: a fresh ranked session is asked for, not assumed. */
+  const freshRef = useRef(false);
   const frame = useRef<number | null>(null);
   const tauRef = useRef(CAMERA_TAU_MS);
   const entryRef = useRef(0);
+  /** What this round actually issued. A tier can grant 60, 80 or 300 candles of history. */
+  const windowRef = useRef<Window>(DEFAULT_WINDOW);
+  // The clock's expiry callback is created once and must not be rebuilt every render, or the
+  // countdown would restart from the current remaining time on every state change.
+  const phaseRef = useRef<Phase>('loading');
+  const submitRef = useRef<(() => void) | null>(null);
 
   // The reveal still reveals under reduced motion; only the camera's glide is removed.
   const reducedMotion = useReducedMotion();
@@ -145,14 +191,20 @@ export function PlaySurface({ mode, tape = 'open' }: { mode: Mode; tape?: string
 
   // The resolution is the player's, and nothing else sets it — not the zoom, not the reveal.
   useEffect(() => {
-    tierRef.current = tier;
-    chart.current?.setTier(tier);
-  }, [tier]);
+    timeframeRef.current = timeframe;
+    chart.current?.setTier(timeframe);
+  }, [timeframe]);
 
   useEffect(() => {
     modeRef.current = mode;
     tapeRef.current = tape;
-  }, [mode, tape]);
+    freshRef.current = fresh;
+    rulesetRef.current = { tier, mods };
+  }, [mode, tape, fresh, tier, mods]);
+
+  useEffect(() => {
+    phaseRef.current = phase;
+  }, [phase]);
 
   const loop = useRevealLoop(
     {
@@ -166,6 +218,7 @@ export function PlaySurface({ mode, tape = 'open' }: { mode: Mode; tape?: string
       result: resultRef,
       frame,
       tau: tauRef,
+      window: windowRef,
     },
     {
       // The running R is computed here rather than inside the loop, so the loop stays the one
@@ -210,12 +263,17 @@ export function PlaySurface({ mode, tape = 'open' }: { mode: Mode; tape?: string
     chart.current?.setPrice(null);
 
     // The daily is a five-chart session (§10.1 plus §4.4's card); free play is unlimited.
-    const response = await fetch(
+    //
+    // The tape branch carries the ruleset the player chose on the tape page. Without it every tape
+    // round came back at the default tier however the launcher was set, so the whole ladder was
+    // unreachable outside ranked — the query string was built and then dropped on the floor.
+    const endpoint =
       modeRef.current === 'daily'
         ? '/api/daily'
-        : `/api/round?tape=${encodeURIComponent(tapeRef.current)}`,
-      { method: 'POST' },
-    );
+        : modeRef.current === 'ranked'
+          ? '/api/ranked'
+          : `/api/round?${tapeQuery(tapeRef.current, rulesetRef.current)}`;
+    const response = await fetch(endpoint, { method: 'POST' });
     if (!response.ok) {
       const body = await response.json().catch(() => ({ error: 'Could not reach the server.' }));
       setError(body.error ?? 'Could not issue a round.');
@@ -224,7 +282,16 @@ export function PlaySurface({ mode, tape = 'open' }: { mode: Mode; tape?: string
     }
 
     let payload: RoundPayload;
-    if (modeRef.current === 'daily') {
+    if (modeRef.current === 'ranked') {
+      const session: RankedPayload = await response.json();
+      setRanked(session);
+      setDaily(null);
+      if (session.complete || !session.round) {
+        setPhase('summary');
+        return;
+      }
+      payload = session.round;
+    } else if (modeRef.current === 'daily') {
       const session: DailyPayload = await response.json();
       setDaily(session);
       if (session.complete || !session.round) {
@@ -234,10 +301,13 @@ export function PlaySurface({ mode, tape = 'open' }: { mode: Mode; tape?: string
       payload = session.round;
     } else {
       setDaily(null);
+      setRanked(null);
       payload = await response.json();
     }
+    freshRef.current = false;
     setRound(payload);
     entryRef.current = payload.entry;
+    windowRef.current = { leadIn: payload.bars.length, reveal: payload.revealBarCount };
 
     const openStop = toTick(payload.entry - payload.atr);
     const openTarget = toTick(payload.entry + payload.atr);
@@ -250,8 +320,8 @@ export function PlaySurface({ mode, tape = 'open' }: { mode: Mode; tape?: string
     // The one-minute detail behind the lead-in. Only the past — the reveal's minutes arrive
     // with the reveal itself (§12.1).
     minutes.current = payload.detail ? unpackDetail(fromBase64(payload.detail)) : [];
-    chart.current?.setDetail(minutes.current, LEAD_IN_BARS);
-    chart.current?.setTier(tierRef.current);
+    chart.current?.setDetail(minutes.current, windowRef.current.leadIn);
+    chart.current?.setTier(timeframeRef.current);
     // Autoscale to the visible candles, widened so the rails stay reachable however far the
     // player drags them. This is what makes zooming feel like a chart rather than a picture.
     chart.current?.setGuard({
@@ -259,14 +329,26 @@ export function PlaySurface({ mode, tape = 'open' }: { mode: Mode; tape?: string
       max: payload.entry + payload.atr * RAIL_HEADROOM_ATR,
     });
     chart.current?.setPrice(null);
-    chart.current?.setLogical(placementView());
+    chart.current?.setLogical(placementView(windowRef.current));
     chart.current?.setInteractive(true);
 
     // Rails open at one ATR either side — a neutral 1:1 that expresses no view. The player has
     // to move something to say anything. When the ladder arrives this is the Assist mod and
     // carries a scoring penalty; for now it is just a starting position.
+    // A stricter tier may not permit whatever was selected on the previous round, and leaving a
+    // disallowed timeframe selected would draw candles the ruleset does not grant.
+    if (!payload.timeframes.includes(timeframeRef.current)) {
+      const fallback = payload.timeframes.includes(DECISION_TF)
+        ? DECISION_TF
+        : (payload.timeframes[0] ?? DECISION_TF);
+      timeframeRef.current = fallback;
+      setTimeframe(fallback);
+      chart.current?.setTier(fallback);
+    }
+
     setStop(openStop);
     setTarget(openTarget);
+    setClockTotal(payload.clockMs);
     setPhase('placing');
   }, [stopLoop]);
 
@@ -307,8 +389,22 @@ export function PlaySurface({ mode, tape = 'open' }: { mode: Mode; tape?: string
     [round, phase, stop, target],
   );
 
+  /**
+   * The clock ran out.
+   *
+   * The order on screen is submitted rather than the round being abandoned. The server checks the
+   * deadline against its own clock and marks the round forfeited if it was late — so this cannot
+   * rescue a slow decision, it only stops a player sitting on an expired chart forever. Committing
+   * is also the honest reading of "set and forget": the rails were where they were when time ran
+   * out.
+   */
+  const onClockExpired = useCallback(() => {
+    if (phaseRef.current !== 'placing') return;
+    void submitRef.current?.();
+  }, []);
+
   const resetView = useCallback(() => {
-    chart.current?.setLogical(placementView());
+    chart.current?.setLogical(placementView(windowRef.current));
   }, []);
 
   /* -------------------------------------------------------------- committing */
@@ -348,7 +444,7 @@ export function PlaySurface({ mode, tape = 'open' }: { mode: Mode; tape?: string
 
       if (payload.detail) {
         minutes.current = [...minutes.current, ...unpackDetail(fromBase64(payload.detail))];
-        chart.current?.setDetail(minutes.current, LEAD_IN_BARS);
+        chart.current?.setDetail(minutes.current, windowRef.current.leadIn);
       }
 
       setPhase('revealing');
@@ -356,6 +452,10 @@ export function PlaySurface({ mode, tape = 'open' }: { mode: Mode; tape?: string
     },
     [round, phase, loop],
   );
+
+  useEffect(() => {
+    submitRef.current = () => void submit({ stop, target });
+  }, [submit, stop, target]);
 
   const skip = useCallback(() => {
     if (phase !== 'revealing') return;
@@ -369,7 +469,7 @@ export function PlaySurface({ mode, tape = 'open' }: { mode: Mode; tape?: string
     stopLoop();
     chart.current?.clearMarks();
     chart.current?.setBars(round.bars);
-    chart.current?.setDetail(minutes.current, LEAD_IN_BARS);
+    chart.current?.setDetail(minutes.current, windowRef.current.leadIn);
     shown.current = [...round.bars];
     setHitFlash(null);
     setTouched(null);
@@ -389,7 +489,9 @@ export function PlaySurface({ mode, tape = 'open' }: { mode: Mode; tape?: string
         if (phase === 'done') void load();
       },
       p: () => {
-        if (phase === 'placing') void submit({ pass: true });
+        if (phase !== 'placing') return;
+        const allowed = (round?.mayPass ?? true) && (ranked ? ranked.mayPass : true);
+        if (allowed) void submit({ pass: true });
       },
       r: () => {
         if (phase === 'placing') resetView();
@@ -455,7 +557,7 @@ export function PlaySurface({ mode, tape = 'open' }: { mode: Mode; tape?: string
 
   // The decision bar is the last lead-in candle, so its clock is the origin plus 79 hours.
   const decisionSeconds = round
-    ? decisionClockSeconds(round.startDayOfWeek, round.startHourUtc, LEAD_IN_BARS)
+    ? decisionClockSeconds(round.startDayOfWeek, round.startHourUtc, round.bars.length)
     : 0;
   const decisionClock = clockAt(decisionSeconds);
   const tapeName = tape === 'open' ? 'The Open Tape' : tape.replace(/-/g, ' ');
@@ -498,13 +600,15 @@ export function PlaySurface({ mode, tape = 'open' }: { mode: Mode; tape?: string
           {/* The way out. During a round the chart owns the screen, so this is the only
               navigation on it — §3.1's clock is running and a nav rail is a distraction. */}
           <Link
-            href={mode === 'daily' ? '/home' : '/tapes'}
+            href={mode === 'tape' ? '/tapes' : '/home'}
             className="text-ink-dim hover:text-ink-hi press flex h-8 items-center gap-1.5 rounded-md px-2 text-xs font-medium transition-colors"
           >
             <Icon name="arrow-left" size={14} />
-            {mode === 'daily' ? 'Today' : 'Tapes'}
+            {mode === 'tape' ? 'Tapes' : 'Home'}
           </Link>
-          {mode === 'daily' && daily ? (
+          {mode === 'ranked' && ranked ? (
+            <DailyPips played={ranked.played} total={ranked.total} label="RANKED" />
+          ) : mode === 'daily' && daily ? (
             <DailyPips played={daily.played} total={daily.total} day={daily.day} />
           ) : (
             <Chip tone="neutral" className="hidden sm:inline-flex">
@@ -512,7 +616,23 @@ export function PlaySurface({ mode, tape = 'open' }: { mode: Mode; tape?: string
             </Chip>
           )}
         </div>
-        {round && <TimeframeControl tier={tier} onTier={setTier} />}
+        {round && (
+          <div className="flex items-center gap-2">
+            <TimeframeControl
+              timeframe={timeframe}
+              onTimeframe={setTimeframe}
+              allowed={round.timeframes}
+              tierCode={round.tier}
+            />
+            {phase === 'placing' && round.clockMs !== null && clockTotal !== null && (
+              <DecisionClock
+                totalMs={clockTotal}
+                remainingMs={round.clockMs}
+                onExpire={onClockExpired}
+              />
+            )}
+          </div>
+        )}
       </header>
 
       {/* No stage on the summary: there is no round to draw, and an empty chart frame above the
@@ -597,6 +717,8 @@ export function PlaySurface({ mode, tape = 'open' }: { mode: Mode; tape?: string
               stopAtr={stopAtr}
               rr={rr}
               busy={phase === 'committing'}
+              mayPass={round.mayPass && (ranked ? ranked.mayPass : true)}
+              passesLeft={ranked ? ranked.passesLeft : null}
               onPass={() => void submit({ pass: true })}
               onCommit={() => void submit({ stop, target })}
             />
@@ -618,6 +740,7 @@ export function PlaySurface({ mode, tape = 'open' }: { mode: Mode; tape?: string
         )}
 
         {phase === 'summary' && daily && <DailyCeremony daily={daily} />}
+        {phase === 'summary' && ranked && <RankedSummary ranked={ranked} />}
 
         {phase === 'done' && result && (
           <ResultConsole

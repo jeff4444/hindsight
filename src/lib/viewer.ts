@@ -5,6 +5,7 @@ import { authClient } from './supabase/auth-server';
 import { SESSION_COOKIE, ensureSession, readSession } from './session';
 import { dailyNumber, DAILY_CHARTS } from './daily';
 import { streakState, type StreakView } from '@/core/streak';
+import { rankIsShowable } from '@/core/rating';
 import { isAccent, type Accent } from './avatar';
 
 /**
@@ -242,6 +243,37 @@ export async function getPlayerStats(viewer: Viewer): Promise<PlayerStats> {
     meanPercentile: scored.length ? scored.reduce((a, b) => a + b, 0) / scored.length : null,
     bestPercentile: scored.length ? Math.max(...scored) : null,
   };
+}
+
+/* ------------------------------------------------------------------ ratings */
+
+export interface RatingSummary {
+  rating: number | null;
+  rd: number | null;
+  attempts: number;
+  /** §4.9: whether there is enough sample to show the number at all. */
+  showable: boolean;
+}
+
+export async function getRating(viewer: Viewer, tier = 'ALL'): Promise<RatingSummary> {
+  if (!viewer.userId) return { rating: null, rd: null, attempts: 0, showable: false };
+
+  const supabase = serviceClient();
+  const { data } = await supabase
+    .from('player_ratings')
+    .select('rating, rd, attempts')
+    .eq('user_id', viewer.userId)
+    .eq('tier', tier)
+    .maybeSingle();
+
+  if (!data) return { rating: null, rd: null, attempts: 0, showable: false };
+
+  const summary = {
+    rating: data.rating as number,
+    rd: data.rd as number,
+    attempts: data.attempts as number,
+  };
+  return { ...summary, showable: rankIsShowable({ ...summary, sigma: 0 }) };
 }
 
 /* -------------------------------------------------------------------- tapes */

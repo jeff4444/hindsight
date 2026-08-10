@@ -1,0 +1,112 @@
+'use client';
+
+import { useEffect, useRef, useState } from 'react';
+import { cx } from '../ui';
+
+/**
+ * §3.2's deliberation clock.
+ *
+ * Naked runs 90 seconds and Blackout 20, and §3.2 gives the reason plainly: "Unlimited time plus
+ * multi-timeframe zoom is the trading equivalent of driving down the road: the player willing to
+ * spend four minutes wins, and willingness to spend four minutes is not a skill worth ranking."
+ *
+ * Three things this is careful about.
+ *
+ * **The server owns the deadline.** What arrives is a remaining duration, not a timestamp, and the
+ * commit is checked against the server's own clock again. This display cannot make a late commit
+ * land or an early one fail; it can only tell the player what is happening.
+ *
+ * **It is a requestAnimationFrame loop, not a setInterval.** The app has no intervals anywhere, and
+ * an interval in a background tab drifts against wall time in exactly the way a countdown must not.
+ * The elapsed time is measured against `performance.now()` rather than accumulated, so a throttled
+ * or backgrounded tab resumes showing the true remaining time rather than a stale one.
+ *
+ * **It does not animate under reduced motion, but it still counts.** The ring is decoration; the
+ * number is the content. §5's policy is that content keeps moving.
+ */
+export function DecisionClock({
+  totalMs,
+  remainingMs,
+  onExpire,
+  className,
+}: {
+  totalMs: number;
+  /** As issued. The component tracks its own elapsed time from mount rather than trusting updates. */
+  remainingMs: number;
+  onExpire: () => void;
+  className?: string;
+}) {
+  const [left, setLeft] = useState(remainingMs);
+  const fired = useRef(false);
+
+  useEffect(() => {
+    const start = performance.now();
+    const from = remainingMs;
+    let frame = 0;
+
+    const tick = () => {
+      // Measured, never accumulated: a throttled tab that misses 400 frames still resumes on the
+      // correct second rather than 400 frames behind.
+      const next = Math.max(0, from - (performance.now() - start));
+      setLeft(next);
+      if (next <= 0) {
+        if (!fired.current) {
+          fired.current = true;
+          onExpire();
+        }
+        return;
+      }
+      frame = requestAnimationFrame(tick);
+    };
+
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [remainingMs, onExpire]);
+
+  const fraction = totalMs > 0 ? Math.max(0, Math.min(1, left / totalMs)) : 0;
+  const seconds = Math.ceil(left / 1000);
+  // Urgency is stated in absolute seconds, not in a fraction of the limit: five seconds left feels
+  // the same whether the tier gave you ninety or twenty.
+  const urgent = left <= 10_000;
+  const critical = left <= 5_000;
+
+  const R = 9;
+  const circumference = 2 * Math.PI * R;
+
+  return (
+    <span
+      className={cx(
+        'inline-flex items-center gap-1.5 rounded px-2 py-1 font-mono text-mini tabular-nums ring-1 transition-colors',
+        critical
+          ? 'bg-short-bg text-short-ink ring-short-line'
+          : urgent
+            ? 'bg-attention-bg text-attention-ink ring-attention-line'
+            : 'bg-fill-2 text-ink ring-line',
+        className,
+      )}
+      // A countdown that only exists visually is invisible to a screen reader until it has already
+      // run out. Polite rather than assertive so it does not interrupt on every tick.
+      role="timer"
+      aria-live={urgent ? 'polite' : 'off'}
+      aria-label={`${seconds} seconds left to decide`}
+      title="§3.2 puts a clock on deliberation at this tier: the player willing to spend four minutes should not win by spending four minutes."
+    >
+      <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden className="-ml-0.5">
+        <circle cx="10" cy="10" r={R} fill="none" stroke="currentColor" strokeWidth="2" opacity={0.18} />
+        <circle
+          cx="10"
+          cy="10"
+          r={R}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={circumference * (1 - fraction)}
+          transform="rotate(-90 10 10)"
+        />
+      </svg>
+      {seconds}s
+    </span>
+  );
+}

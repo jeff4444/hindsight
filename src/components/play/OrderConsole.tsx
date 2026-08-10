@@ -24,6 +24,8 @@ export function OrderConsole({
   busy,
   onPass,
   onCommit,
+  mayPass = true,
+  passesLeft,
 }: {
   isLong: boolean;
   stopAtr: number;
@@ -31,6 +33,10 @@ export function OrderConsole({
   busy: boolean;
   onPass: () => void;
   onCommit: () => void;
+  /** False under the Iron mod, or once a ranked session has spent its quota. */
+  mayPass?: boolean;
+  /** Ranked only. Shown so the quota is a visible resource rather than a trap sprung at the end. */
+  passesLeft?: number | null;
 }) {
   return (
     <Panel pad="none" className="animate-rise p-3 sm:p-4">
@@ -40,8 +46,24 @@ export function OrderConsole({
         <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0 sm:items-center">
           {/* §4.4 makes passing a first-class scored action, not an escape hatch, so it gets a real
               button beside Commit rather than a link underneath it. */}
-          <Button variant="secondary" size="lg" onClick={onPass} disabled={busy} kbd="P">
+          <Button
+            variant="secondary"
+            size="lg"
+            onClick={onPass}
+            disabled={busy || !mayPass}
+            kbd={mayPass ? 'P' : undefined}
+            title={
+              mayPass
+                ? undefined
+                : passesLeft === 0
+                  ? 'A ranked session allows two passes, and both are spent'
+                  : 'The Iron mod removes the pass'
+            }
+          >
             Pass
+            {passesLeft !== null && passesLeft !== undefined && (
+              <span className="numeral text-ink-faint text-micro">{passesLeft}</span>
+            )}
           </Button>
           <Button
             variant="primary"

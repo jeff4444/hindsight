@@ -14,7 +14,11 @@
     "corpus": "tsx --env-file-if-exists=.env.local scripts/build-corpus.ts",
     "verify": "tsx --env-file-if-exists=.env.local scripts/verify-rounds.ts",
     "universe": "tsx scripts/universe.ts",
-    "achievable": "tsx --env-file-if-exists=.env.local scripts/backfill-achievable.ts"
+    "achievable": "tsx --env-file-if-exists=.env.local scripts/backfill-achievable.ts",
+    "extend": "tsx --env-file-if-exists=.env.local scripts/extend-corpus.ts",
+    "retire": "tsx --env-file-if-exists=.env.local scripts/retire.ts",
+    "fairness": "tsx --env-file-if-exists=.env.local scripts/fairness.ts",
+    "ladder": "tsx --env-file-if-exists=.env.local scripts/ladder.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",

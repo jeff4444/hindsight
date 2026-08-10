@@ -1,4 +1,4 @@
-# Hindsight rules — Phase 0
+# Hindsight rules
 
 Scope §3.6 argues that a ruleset has to be written at the level of specificity the Souls
 no-hit community uses, and for a reason that is easy to underrate:
@@ -441,14 +441,231 @@ The share card is **spoiler-free** by construction — a percentile, a bar and a
 Never the R-multiple, the direction, the ticker or the date, so posting it cannot spoil the setup
 for someone who has not played.
 
-## 11. What is not built yet
+## 11. The ladder
 
-Recorded so nothing here is mistaken for the finished product: no achievable set, no oracle
-bound, no percentile, no scored pass, no engines, no accounts, no rating, no chart rating, no
-tiers or mods beyond mirroring, no clock, no daily, no share card, no cost model, no synthetic
-controls in the corpus, no news, and no Layer 2 geometry.
+§3's claim is that the tiers are **strictly nested** — "each is a subset of the affordances of the
+one above, nothing is added back" — so that "harder" is a fact rather than an opinion. That is a
+property, and `tests/tiers.test.ts` tests it: if a rung ever grants something the rung above does
+not, the suite fails.
 
-Phase 0 answered one question, and §14 says it is the most important one in the document: **is the
-loop fun with no analysis layer at all?** Phase 0.5 answers a different one, and §14 allows it to
-precede the fun only because retrofitting it is close to impossible: **can anything in this corpus
-see its own future?**
+| | Sandbox | No Tools | **Naked** ★ | Blackout |
+| --- | --- | --- | --- | --- |
+| Code | — | NT | **NTZ** | NTVZ |
+| Candles | 300 | 300 | 80 | 60 |
+| Timeframes | all six | 1h · 4h · 1d | 1h | 1h |
+| Volume | yes | yes | yes | **no** |
+| Clock | none | none | **90 s** | **20 s** |
+| Rated | **no** | yes | yes | yes |
+
+**Full Desk and News Blind are not built.** FD is defined by exactly one affordance the others lack
+— pre-trade news headlines — and NN is "Full Desk except the headlines". Until the news panel
+exists they are one ruleset wearing two names, and a ladder with two rungs that are one rung is the
+arbitrary ladder §3 opens by warning against.
+
+### 11.1 What is never taken away
+
+§3.1 draws the line: restrict identity, hindsight and crutches; never restrict risk arithmetic.
+"A player who does not know the instrument's typical range cannot place a stop that is neither
+noise-adjacent nor absurd. Hiding it does not test skill; it randomises the result and compresses
+the gap between expert and novice, which is the textbook definition of artificial difficulty."
+
+So **the price axis, the ATR badge and the tick size are present at every rung**, including
+Blackout. The only thing that removes the price axis is the opt-in Blind Scale mod, and it keeps the
+ATR badge — risk arithmetic survives, the reading aid does not.
+
+### 11.2 ATR is measured over a fixed window, at every tier
+
+**ATR(14) is computed over the final 80 lead-in candles regardless of how many the tier shows.**
+
+Not an implementation detail. If ATR followed what the player can see, the same chart would carry a
+different ATR at No Tools and at Naked; the 98 stop distances are multiples of it, so the two tiers'
+achievable grids would be scaled differently and their percentiles would not be comparable. That
+breaks §3.5's "run both tiers on the same charts" and §8.1's chart-and-tier rating in a single move.
+The badge means the same thing everywhere or the ladder is not a ladder.
+
+A visible consequence: at No Tools the first candle on screen is **not** indexed to 100. The anchor
+stays at the 80-candle mark so prices are identical across tiers. §12.2's purpose is destroying the
+absolute price level, and that survives — the anchor's position is not what does that work.
+
+### 11.3 What the tier actually withholds
+
+A restriction the client applies is not a restriction. §12.1 requires the projection server-side, so
+the payload does not contain what the tier does not grant: candles beyond the count, and the
+one-minute detail path. That second one is the **only** enforceable timeframe restriction — a client
+holding the detail can draw one-minute candles whatever the picker offers — and it is why Sandbox is
+the only tier that receives it.
+
+The clock is sent as a remaining duration, never a deadline. A wall-clock timestamp would let a
+client with a skewed clock decide whether its own commit was late. A commit after the deadline is a
+**forfeit**, not a rejection, so running out of time cannot be undone by reloading.
+
+### 11.4 Mods
+
+Blind Scale, Silent, Iron, Wide and Assist. **Mirror is not among them.** §3.3's table prices it at
+1.05×, but the pull-quote directly beneath calls it "permanent in ranked, not optional… randomise it
+per chart", §12.2 lists vertical mirroring among the baseline identity defences, and the corpus has
+baked it into stored prices since Phase 0. Three statements to one, and the three agree with the
+code. A permanently-on randomised condition nobody chooses cannot carry a multiplier or a badge.
+
+Fog is deferred: playing the lead-in forward once needs a replay surface for the *past*, and the
+reveal loop only plays the future.
+
+## 12. Rating
+
+### 12.1 The score map
+
+A result is measured from **doing nothing**, not from zero. Passing scores a mean 61st percentile
+across the corpus (§10.3), so the curve is anchored there: `C(0.61) = 0`, which makes a pass a draw
+against the chart. Below the 90th percentile the curve is a straight line; above it the slope is
+damped by a third.
+
+That shape is load-bearing rather than tasteful. §15's guarantee that "degenerate wide-stop
+tight-target brackets do not top the leaderboard" was verified on **mean raw percentiles**, so any
+kink inside the range outcomes actually occupy voids it silently. The obvious alternative — rescale
+each side of the anchor to fill [0,1] — makes the degenerate 4-ATR/0.5R bracket **beat passing**,
+0.5033 to 0.500. That map is kept in the test suite as a live counterexample.
+
+The damped top decile is the only nonlinearity, and it is a penalty: it can sink a variance-seeking
+strategy and can never rescue one. Separating the best bracket from the fifth-best of 98 is intrabar
+resolution luck (§12.3 of the scope), not reading.
+
+What is compressed is the **percentile** — and the honest framing is that the percentile already
+*is* the compression table §4.3 asks for. An outcome 40R above par and one 4R above par can both be
+the 99th of 98 brackets.
+
+### 12.2 Glicko-2, and why the constants are not the chess ones
+
+Standard Glicko-2 (Glickman 2013), with two extensions, both of which reduce to the published
+algorithm when switched off. The suite reproduces Glickman's own worked example.
+
+**One attempt counts as two rated games.** §8.1 says a percentile "carries more information than a
+chess puzzle attempt does", and it does: the modelled outcome variance is about 0.043 against a
+coin-flip reference near 0.244. That is worth roughly 5.8 games; **2.0 is shipped**, because the
+estimate models a population that has not played yet, and under-shooting leaves rating deviation
+conservatively high while over-shooting manufactures confidence that would corrupt the pending gate,
+the retirement test and the fairness test at once.
+
+**Deviation grows with elapsed time, not with periods counted.** The textbook form fires once per
+rating period, which would inflate the deviation of a player who just played eight sessions in one
+evening — someone who has been measured eight times as precisely.
+
+**The deviation floor is 25, not the 45–60 chess deployments use.** The estimated population spread
+here is about 42 rating points, because the environment is noisy and the achievable band is narrow.
+A floor of 50 would give reliability 0.41 — less signal than noise.
+
+A ranked session is one rating period: five charts at weight two is ten effective games, inside
+Glickman's recommended 10–15 without tuning anything.
+
+### 12.3 Ratings do not drift
+
+§8.5 asks for "larger gains and smaller losses at the harder settings". §4.8 says "never award a
+minimum gain per round" and cites a chess platform's post-mortem on rating inflation — and
+asymmetric gain and loss *is* that mechanism.
+
+**The Glicko update is symmetric.** §8.5's asymmetry lives in XP and in which charts get served, and
+nowhere else. This matters beyond tidiness: §8.3's retirement test and §3.5's fairness test both
+regress on player rating, so a rating that drifts stops being a measuring instrument and quietly
+corrupts both. §8.5's "smaller losses" has no referent once XP is the only asymmetric quantity and
+XP is non-negative; it is not implemented, and saying so is better than inventing a penalty for the
+sentence to point at.
+
+### 12.4 Pending charts
+
+§8.2 asks that a new chart "can only gain a player rating, never cost it". Implemented literally
+that is a one-sided random walk worth about **+2.3 rating points per pending chart, and it never
+converges** — a hundred of them in a season is 234 points of pure inflation.
+
+So a pending chart is **unrated for the player in either direction**. The chart still rates against
+the player, which is exactly how a new opponent is calibrated against known-strength references, and
+the promise §8.2 makes is kept by saying so in the interface and paying XP in full. A chart leaves
+pending at 50 plays with deviation under 75, against opponents whose mean deviation is under 100 —
+the play count binds, because §8.1 says in terms that "a chart with high deviation and twelve plays
+is not trustworthy".
+
+### 12.5 Retirement is an equivalence test
+
+§8.3 retires charts on which "strong and weak players score identically". But "this chart is a coin
+flip" is the **null**, and a null cannot be accepted. A naive `|rho| < threshold` inverts the burden
+of proof and retires charts for having a small sample: at 60 attempts, a genuinely discriminating
+chart falls inside a ±0.10 band often enough to destroy roughly 17 good charts per thousand.
+
+So a chart is retired only when the 90% interval for Spearman's rho lies **entirely inside** ±0.20,
+with at least 400 attempts. The failure mode is then the right one — too little data means keep the
+chart — and the asymmetry demands it: retiring a good chart destroys content permanently, while
+keeping a coin flip adds noise the rating already absorbs.
+
+Spearman rather than Pearson, for three reasons in order of force: it is invariant to the score map,
+so changing the map does not force every verdict to be re-adjudicated; the percentile is clumped,
+because half the grid stops out at exactly −1R; and the relationship is monotone but not linear. The
+correlation is against the rating the player held **at the attempt**, never today's — the latter
+would be a look-ahead of exactly the kind this corpus's tests police.
+
+A chart where weak players reliably outscore strong ones is **flagged for review, not retired**. An
+inverted chart is far more likely a mis-signed mirror or a mislabelled regime than a real
+phenomenon, and auto-retiring it would hide the bug.
+
+### 12.6 What is never rated
+
+An ambiguous fill — that is unfairness, not inaccuracy. A retired chart. The Sandbox. A round whose
+clock expired. And a repeat attempt at a chart already played at that tier, because it has seen the
+reveal.
+
+### 12.7 Coming back to this when there is data
+
+The rating system spends its first long stretch doing almost nothing visible, entirely correctly.
+Charts sit pending because §8.2 will not graduate one before fifty plays. Nothing retires because
+§8.3's equivalence test needs four hundred attempts on a single chart. No tier is validated because
+§3.5 needs the same players on the same charts at two tiers.
+
+All three are indistinguishable from "the code is broken" if the only thing visible is that no
+numbers move — which is exactly how an un-called `exitsPending` hid for a whole phase, leaving every
+chart pending and therefore every attempt unrated while each individual test passed.
+
+So there is one command that prints the **distance to each gate** rather than the state at it:
+
+```
+npm run ladder
+```
+
+It reports the corpus, per-tier play counts, how close the most-played chart is to graduating, the
+deepest chart-and-tier pair against the retirement threshold, how many player-and-chart pairs exist
+at two tiers, and how many ranks are displayable. Read-only and safe against production. It also
+says when a gate has opened and what to run next.
+
+The two jobs behind it:
+
+| Command | What it does | Today |
+| --- | --- | --- |
+| `npm run retire` | §8.3's equivalence test over every chart-and-tier pair. **Dry by default** — `-- --apply` writes the flags | Reports nothing to assess |
+| `npm run fairness` | §3.5's test against simulated players of known skill | Recovers 3/3 known answers |
+| `npm run fairness -- --live NT NTZ` | The same test against real attempts, with the attenuation correction | Reports how far short the data is |
+
+`retire` is dry by default because retiring a chart destroys content permanently, and it is a job
+that will eventually run unattended against a corpus nobody is watching. Removing a thousand charts
+should not be one mistyped command away. Every verdict it writes is stored with the score-map and
+achievable versions that produced it, because §12.4 makes population statistics incomparable across
+a change of rule — a retirement decided under one score map has to be re-derivable, and thrown away
+rather than inherited if the map moves.
+
+## 13. What is not built yet
+
+Recorded so nothing here is mistaken for the finished product.
+
+**Not built:** the engine council and every engine in it; Layer 2 geometry; per-chart themes and the
+per-theme ratings that depend on them; the Full Desk and News Blind tiers; the Fog mod; ranked
+sessions, divisions and seasons; Manage, Storm, Duel, Racer and Calibration; creator maps and cohort
+dashboards; the cost model; synthetic controls in the corpus; news.
+
+**Built but unvalidated:** the ladder has three rated rungs and **no tier has passed §3.5's test**,
+because that needs a player pool and there is not one yet. The harness exists and is verified
+against simulated players of known skill, in both directions — it calls a widened gap legitimate, a
+compressed one artificial, and two identical tiers inconclusive. The claim about Naked versus
+Blackout is published when the sample supports it (§4.9), and until then no tier is described here
+as validated. §15.1 already suspects the answer: "whether Blackout should exist at all, or whether
+it is the tier that proves §3.5's test by failing it."
+
+**Themes, specifically.** §14 puts them in this phase and Layer 2 geometry in the next one, which
+cannot work: five of the ten — failed-breakout, liquidity-sweep, v-reversal, distribution-top and
+compression-expansion — are geometric and need swing points and levels. Tagging them now with a
+hand-rolled heuristic would mean per-theme ratings built on labels that Phase 2 replaces, which
+invalidates every rating computed against them. They wait.

@@ -17,7 +17,7 @@ import { aggregateByCount, type Bar } from '@/core/bars';
 import { LEAD_IN_BARS, WINDOW_BARS } from '@/core/config';
 import { formatClock, formatTick, timeOrigin } from '@/lib/clock';
 import { CANDLE, CHART_CHROME } from '@/lib/palette';
-import { DISPLAY_TIER, tierPhase, tierPlan } from '@/lib/resolution';
+import { DECISION_TF, timeframePhase, timeframePlan } from '@/lib/timeframe';
 
 /**
  * Horizontal window, **in hours**, not in bar indices.
@@ -152,7 +152,7 @@ export const Chart = forwardRef<ChartHandle, { className?: string }>(function Ch
   const displayBars = useRef<Bar[]>([]);
   const minutes = useRef<Bar[]>([]);
   const visibleHours = useRef(0);
-  const tier = useRef<number>(DISPLAY_TIER);
+  const tier = useRef<number>(DECISION_TF);
   /** How many candles are currently on the series, so a reveal knows which tail to touch. */
   const drawn = useRef(0);
 
@@ -163,25 +163,25 @@ export const Chart = forwardRef<ChartHandle, { className?: string }>(function Ch
    * window boundaries. For every tier that divides an hour the phase is zero and this reduces
    * to the hour the candle opens on.
    */
-  const tierBarTime = (index: number): UTCTimestamp => {
-    const { unitMinutes } = tierPlan(tier.current);
-    const phase = tierPhase(tier.current, origin.current);
+  const timeframeBarTime = (index: number): UTCTimestamp => {
+    const { unitMinutes } = timeframePlan(tier.current);
+    const phase = timeframePhase(tier.current, origin.current);
     return (origin.current -
       phase * unitMinutes * 60 +
       index * tier.current * 60) as UTCTimestamp;
   };
 
   /** Which candle contains a given display-timeframe hour. */
-  const tierIndexForHour = (hour: number): number => {
-    const { unitMinutes } = tierPlan(tier.current);
-    const phase = tierPhase(tier.current, origin.current);
+  const timeframeIndexForHour = (hour: number): number => {
+    const { unitMinutes } = timeframePlan(tier.current);
+    const phase = timeframePhase(tier.current, origin.current);
     return Math.floor((phase * unitMinutes + hour * 60) / tier.current);
   };
 
   /** The candles to draw at the current resolution, limited to what has been revealed. */
   const seriesFor = (tierMinutes: number): Bar[] => {
-    const { unitMinutes, group } = tierPlan(tierMinutes);
-    const phase = tierPhase(tierMinutes, origin.current);
+    const { unitMinutes, group } = timeframePlan(tierMinutes);
+    const phase = timeframePhase(tierMinutes, origin.current);
 
     const source =
       unitMinutes === 1
@@ -199,7 +199,7 @@ export const Chart = forwardRef<ChartHandle, { className?: string }>(function Ch
 
     candles.current?.setData(
       bars.map((bar, i) => ({
-        time: tierBarTime(i),
+        time: timeframeBarTime(i),
         open: bar.o,
         high: bar.h,
         low: bar.l,
@@ -208,7 +208,7 @@ export const Chart = forwardRef<ChartHandle, { className?: string }>(function Ch
     );
     volume.current?.setData(
       bars.map((bar, i) => ({
-        time: tierBarTime(i),
+        time: timeframeBarTime(i),
         value: bar.v,
         color: bar.c >= bar.o ? UP_VOLUME : DOWN_VOLUME,
       })),
@@ -304,7 +304,7 @@ export const Chart = forwardRef<ChartHandle, { className?: string }>(function Ch
         // one, flattening every candle into a horizontal line — which is the opposite of what
         // zooming in is for. Rails are clamped to the frame when dragged, so nothing can be
         // put somewhere it cannot be reached from.
-        if (!guard.current || tier.current < DISPLAY_TIER) return base;
+        if (!guard.current || tier.current < DECISION_TF) return base;
         if (!base?.priceRange) {
           return {
             priceRange: { minValue: guard.current.min, maxValue: guard.current.max },
@@ -334,8 +334,22 @@ export const Chart = forwardRef<ChartHandle, { className?: string }>(function Ch
 
     // Records the view in hours so a resize can restore it — lightweight-charts stores zoom as
     // a bar spacing in pixels, so a resize silently changes how many bars are on screen.
+    //
+    // The width check is what makes that restore actually work. `autoSize` gives the library its
+    // own ResizeObserver on this same element, registered inside `createChart` and therefore ahead
+    // of ours in the delivery order: on a resize it re-fits at the *preserved* bar spacing and
+    // emits that as a range change, so by the time our observer ran, the range we were about to
+    // restore had already been overwritten with the one we were trying to undo. Widening a
+    // collapsed pane to 1400px turned an 80-bar view into a 233-bar view, permanently.
+    //
+    // So a range change that arrives at a width we have not accepted yet is the library re-fitting,
+    // not the player zooming, and it is dropped. `lastWidth` advances only in the callback below,
+    // once the correct range has been put back — which also covers the change `applyHours` itself
+    // emits, since that one arrives at the new width too.
+    let lastWidth = container.current.clientWidth;
     const onRangeChange = (next: { from: number; to: number } | null) => {
       if (!next) return;
+      if ((container.current?.clientWidth ?? lastWidth) !== lastWidth) return;
       const perHour = 60 / tier.current;
       logical.current = { from: next.from / perHour, to: next.to / perHour };
     };
@@ -344,6 +358,7 @@ export const Chart = forwardRef<ChartHandle, { className?: string }>(function Ch
     const observer = new ResizeObserver(() =>
       requestAnimationFrame(() => {
         if (logical.current) applyHours(logical.current);
+        lastWidth = container.current?.clientWidth ?? lastWidth;
       }),
     );
     observer.observe(container.current);
@@ -404,17 +419,17 @@ export const Chart = forwardRef<ChartHandle, { className?: string }>(function Ch
       // Redraw only the candles this hour touched: the one it is still filling, plus any it
       // completed. At an hour and above that is a single candle updated repeatedly as it forms;
       // at a minute it is the sixty this hour just added.
-      const first = Math.max(0, Math.min(drawn.current - 1, tierIndexForHour(hourIndex)));
+      const first = Math.max(0, Math.min(drawn.current - 1, timeframeIndexForHour(hourIndex)));
       for (let i = first; i < bars.length; i++) {
         candles.current?.update({
-          time: tierBarTime(i),
+          time: timeframeBarTime(i),
           open: bars[i].o,
           high: bars[i].h,
           low: bars[i].l,
           close: bars[i].c,
         });
         volume.current?.update({
-          time: tierBarTime(i),
+          time: timeframeBarTime(i),
           value: bars[i].v,
           color: bars[i].c >= bars[i].o ? UP_VOLUME : DOWN_VOLUME,
         });
@@ -511,7 +526,7 @@ export const Chart = forwardRef<ChartHandle, { className?: string }>(function Ch
       // where the exit hour is partway through one.
       markers.current?.setMarkers([
         {
-          time: tierBarTime(tierIndexForHour(LEAD_IN_BARS + index)),
+          time: timeframeBarTime(timeframeIndexForHour(LEAD_IN_BARS + index)),
           position: 'aboveBar',
           color,
           shape: 'arrowDown',

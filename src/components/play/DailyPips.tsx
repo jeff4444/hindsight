@@ -14,7 +14,18 @@ import { cx } from '../ui';
  * differ only by hue and 8px. The group is a `progressbar` with real values, so the same fact is
  * available without looking at it.
  */
-export function DailyPips({ played, total, day }: { played: number; total: number; day: number }) {
+export function DailyPips({
+  played,
+  total,
+  day,
+  label,
+}: {
+  played: number;
+  total: number;
+  day?: number;
+  /** Shown instead of the daily number — ranked sessions have no day. */
+  label?: string;
+}) {
   return (
     <div
       className="flex items-center gap-2"
@@ -22,9 +33,9 @@ export function DailyPips({ played, total, day }: { played: number; total: numbe
       aria-valuenow={played}
       aria-valuemin={0}
       aria-valuemax={total}
-      aria-label={`Daily number ${day}, ${played} of ${total} charts played`}
+      aria-label={`${label ?? `Daily number ${day}`}, ${played} of ${total} charts played`}
     >
-      <span className="numeral text-ink-dim text-xs">#{day}</span>
+      <span className="numeral text-ink-dim text-xs">{label ?? `#${day}`}</span>
       <div className="flex gap-1">
         {Array.from({ length: total }, (_, i) => (
           <span

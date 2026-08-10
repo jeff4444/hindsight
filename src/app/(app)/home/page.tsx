@@ -1,9 +1,10 @@
 import { Suspense } from 'react';
 import Link from 'next/link';
-import { currentViewer, getDailyState, getStreak, getPlayerStats, listTapes } from '@/lib/viewer';
+import { currentViewer, getDailyState, getStreak, getPlayerStats, getRating, listTapes } from '@/lib/viewer';
 import { StreakMeter } from '@/components/home/StreakMeter';
 import { DailyCard } from '@/components/home/DailyCard';
 import { TapeCard } from '@/components/home/TapeCard';
+import { RankedCard } from '@/components/home/RankedCard';
 import { Button, EmptyState, Eyebrow, Gated, Panel, SectionHeader, Skeleton, Stat } from '@/components/ui';
 
 export const dynamic = 'force-dynamic';
@@ -40,6 +41,12 @@ export default function HomePage() {
           <StreakSection />
         </Suspense>
       </div>
+
+      <section className="mt-4">
+        <Suspense fallback={<Skeleton className="h-32" />}>
+          <RankedSection />
+        </Suspense>
+      </section>
 
       <section className="mt-10">
         <SectionHeader
@@ -124,6 +131,20 @@ async function StreakSection() {
   }
 
   return <StreakMeter streak={streak} today={streak.today} />;
+}
+
+async function RankedSection() {
+  const viewer = await currentViewer();
+  const rating = await getRating(viewer);
+  return (
+    <RankedCard
+      rating={rating.rating}
+      rd={rating.rd}
+      attempts={rating.attempts}
+      showable={rating.showable}
+      signedIn={Boolean(viewer.profile)}
+    />
+  );
 }
 
 async function TapesSection() {

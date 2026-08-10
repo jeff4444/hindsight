@@ -1,8 +1,8 @@
 'use client';
 
 import { Select } from '../ui/client';
-import { Segmented } from '../ui';
-import { DISPLAY_TIER, TIERS } from '@/lib/resolution';
+import { Chip, Segmented } from '../ui';
+import { DECISION_TF, TIMEFRAMES } from '@/lib/timeframe';
 
 /**
  * The drawing resolution.
@@ -19,36 +19,51 @@ import { DISPLAY_TIER, TIERS } from '@/lib/resolution';
  * repeated action on the screen.
  */
 export function TimeframeControl({
-  tier,
-  onTier,
+  timeframe,
+  onTimeframe,
+  allowed,
+  tierCode,
 }: {
-  tier: number;
-  onTier: (minutes: number) => void;
+  timeframe: number;
+  onTimeframe: (minutes: number) => void;
+  /** Minutes-per-candle the ruleset permits. One entry means this is a label, not a choice. */
+  allowed: number[];
+  tierCode: string;
 }) {
-  const options = TIERS.map((t) => ({
-    value: t.minutes,
-    label: t.minutes === DISPLAY_TIER ? `${t.label} · decision` : t.label,
-  }));
+  const options = TIMEFRAMES.filter((t) => allowed.includes(t.minutes));
+
+  // §3.2's "one timeframe". Shown rather than hidden: a player should be able to see what the
+  // ruleset took away, which is the whole legibility argument behind the ladder.
+  if (options.length <= 1) {
+    return (
+      <Chip mono title={`${tierCode} grants one timeframe`}>
+        {options[0]?.label ?? '1h'}
+      </Chip>
+    );
+  }
 
   return (
     <>
       <Segmented
         className="hidden lg:inline-flex"
-        options={TIERS.map((t) => ({
+        options={options.map((t) => ({
           value: t.minutes,
           label: t.label,
-          title: t.minutes === DISPLAY_TIER ? 'The decision timeframe' : `Draw ${t.label} candles`,
+          title: t.minutes === DECISION_TF ? 'The decision timeframe' : `Draw ${t.label} candles`,
         }))}
-        value={tier}
-        onChange={onTier}
+        value={timeframe}
+        onChange={onTimeframe}
       />
       <Select
         className="lg:hidden"
         label="Chart resolution"
-        value={tier}
-        options={options}
-        onChange={onTier}
-        tone={tier === DISPLAY_TIER ? 'neutral' : 'restraint'}
+        value={timeframe}
+        options={options.map((t) => ({
+          value: t.minutes,
+          label: t.minutes === DECISION_TF ? `${t.label} · decision` : t.label,
+        }))}
+        onChange={onTimeframe}
+        tone={timeframe === DECISION_TF ? 'neutral' : 'restraint'}
       />
     </>
   );

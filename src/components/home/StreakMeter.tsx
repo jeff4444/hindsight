@@ -77,7 +77,9 @@ export function StreakMeter({ streak, today }: { streak: StreakView; today: numb
               cell.kind === 'frozen' && 'border-info-line bg-info-bg border border-dashed',
               cell.kind === 'repaired' && 'bg-restraint-bg border-restraint-line border',
               cell.kind === 'today' && 'border-line-strong animate-breathe border border-dashed',
-              cell.kind === 'missed' && 'bg-fill-1',
+              // fill-2 rather than fill-1: at 4.5% white on the panel a missed day was so close
+              // to the background that a fortnight of them read as an empty row rather than as slots.
+              cell.kind === 'missed' && 'bg-fill-2',
               cell.kind === 'future' && 'bg-fill-1/50',
             )}
           />

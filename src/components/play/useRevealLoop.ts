@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef } from 'react';
 import type { Bar } from '@/core/bars';
-import { LEAD_IN_BARS } from '@/core/config';
+
 import type { RoundResult } from '@/lib/api-types';
 import {
   finalView,
@@ -12,6 +12,7 @@ import {
   settled,
   step,
   type View,
+  type Window,
 } from '@/lib/camera';
 import { exitColour } from '@/lib/palette';
 import type { ChartHandle } from '../Chart';
@@ -61,6 +62,14 @@ export interface RevealRefs {
    * stops defaulting it.
    */
   tau: React.RefObject<number>;
+  /**
+   * The candle counts this round actually issued.
+   *
+   * Not a constant since the ladder: a tier can grant 60, 80 or 300 candles of history, so the
+   * decision bar's index — which every camera target and every `revealHour` call is relative to —
+   * changes per round.
+   */
+  window: React.RefObject<Window>;
 }
 
 export interface RevealCallbacks {
@@ -100,7 +109,7 @@ export function useRevealLoop(refs: RevealRefs, callbacks: RevealCallbacks) {
    * chart is merely zoomed in and `load()` resets it.
    */
   const prime = useCallback(() => {
-    const { chart, shown, rails, frame, tau } = r.current;
+    const { chart, shown, rails, frame, tau, window: win } = r.current;
     const chartApi = chart.current;
     if (!chartApi) return;
 
@@ -109,7 +118,7 @@ export function useRevealLoop(refs: RevealRefs, callbacks: RevealCallbacks) {
 
     const logical = chartApi.getLogical();
     const price = chartApi.getPrice();
-    const opening = focusView();
+    const opening = focusView(win.current);
     const target: View = {
       ...opening,
       ...priceExtent(shown.current, opening.from, opening.to, rails.current),
@@ -136,7 +145,7 @@ export function useRevealLoop(refs: RevealRefs, callbacks: RevealCallbacks) {
   }, []);
 
   const start = useCallback(() => {
-    const { chart, reveal, shown, rails, revealed, speed, paused, result, frame, tau } = r.current;
+    const { chart, reveal, shown, rails, revealed, speed, paused, result, frame, tau, window: win } = r.current;
     const total = reveal.current.length;
     const chartApi = chart.current;
     if (!chartApi || total === 0) return;
@@ -152,7 +161,7 @@ export function useRevealLoop(refs: RevealRefs, callbacks: RevealCallbacks) {
     // from their view rather than a jump from an assumed one.
     const logical = chartApi.getLogical();
     const price = chartApi.getPrice();
-    const opening = focusView();
+    const opening = focusView(win.current);
     const camera: View = {
       from: logical?.from ?? opening.from,
       to: logical?.to ?? opening.to,
@@ -174,7 +183,7 @@ export function useRevealLoop(refs: RevealRefs, callbacks: RevealCallbacks) {
           carry -= perBar;
           const index = revealed.current;
           const bar = reveal.current[index];
-          chartApi.revealHour(bar, LEAD_IN_BARS + index);
+          chartApi.revealHour(bar, win.current.leadIn + index);
           shown.current.push(bar);
           revealed.current = index + 1;
 
@@ -199,8 +208,8 @@ export function useRevealLoop(refs: RevealRefs, callbacks: RevealCallbacks) {
 
       const done = revealed.current >= total;
       const view = done
-        ? finalView(shown.current, rails.current)
-        : revealTarget(revealed.current, total, shown.current, rails.current);
+        ? finalView(shown.current, rails.current, win.current)
+        : revealTarget(revealed.current, total, shown.current, rails.current, win.current);
 
       step(camera, view, dt, tau.current);
       chartApi.setLogical({ from: camera.from, to: camera.to });
@@ -224,12 +233,12 @@ export function useRevealLoop(refs: RevealRefs, callbacks: RevealCallbacks) {
 
   /** Jump to the end without stopping the camera, which still eases into the final view. */
   const skip = useCallback(() => {
-    const { chart, reveal, shown, revealed, result } = r.current;
+    const { chart, reveal, shown, revealed, result, window: win } = r.current;
     const chartApi = chart.current;
     if (!chartApi) return;
 
     for (let i = revealed.current; i < reveal.current.length; i++) {
-      chartApi.revealHour(reveal.current[i], LEAD_IN_BARS + i);
+      chartApi.revealHour(reveal.current[i], win.current.leadIn + i);
       shown.current.push(reveal.current[i]);
     }
     const outcome = result.current;

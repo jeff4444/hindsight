@@ -1,5 +1,18 @@
 import type { Bar } from '@/core/bars';
-import { LEAD_IN_BARS, WINDOW_BARS } from '@/core/config';
+import { LEAD_IN_BARS, REVEAL_BARS } from '@/core/config';
+
+/**
+ * How many candles of history this round actually issued.
+ *
+ * It used to be safe to read `LEAD_IN_BARS` here, because every round had eighty. The ladder ended
+ * that: §3.2 grants No Tools 300 candles and the Wide mod 250, so the decision bar is at a
+ * different index at every tier. A camera that assumes eighty frames the first eighty candles of a
+ * three-hundred-candle chart and leaves the decision bar — the one the player is deciding on —
+ * off the right-hand edge.
+ */
+export type Window = { leadIn: number; reveal: number };
+
+export const DEFAULT_WINDOW: Window = { leadIn: LEAD_IN_BARS, reveal: REVEAL_BARS };
 import type { LogicalRange, PriceRange } from '@/components/Chart';
 
 /**
@@ -59,13 +72,13 @@ export const approach = (dtMs: number, tauMs: number) => 1 - Math.exp(-dtMs / ta
 export const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
 
 /** The view a player should start on: the whole lead-in, filling the frame. */
-export function placementView(): LogicalRange {
-  return { from: -0.5, to: LEAD_IN_BARS - 0.5 };
+export function placementView(window: Window = DEFAULT_WINDOW): LogicalRange {
+  return { from: -0.5, to: window.leadIn - 0.5 };
 }
 
 /** The close-up the camera cuts to on commit, before any future arrives. */
-export function focusView(): LogicalRange {
-  return { from: LEAD_IN_BARS - FOCUS_CONTEXT, to: LEAD_IN_BARS + RIGHT_GAP };
+export function focusView(window: Window = DEFAULT_WINDOW): LogicalRange {
+  return { from: window.leadIn - FOCUS_CONTEXT, to: window.leadIn + RIGHT_GAP };
 }
 
 /**
@@ -86,23 +99,25 @@ export function revealTarget(
   total: number,
   bars: Bar[],
   rails: number[],
+  window: Window = DEFAULT_WINDOW,
 ): View {
   const progress = total > 0 ? Math.min(revealed / total, 1) : 1;
   const pullBack = progress * progress;
 
-  const from = lerp(LEAD_IN_BARS - FOCUS_CONTEXT, -1, pullBack);
+  const last = window.leadIn + window.reveal;
+  const from = lerp(window.leadIn - FOCUS_CONTEXT, -1, pullBack);
   const to = Math.max(
-    LEAD_IN_BARS + revealed + RIGHT_GAP,
-    lerp(LEAD_IN_BARS + RIGHT_GAP, WINDOW_BARS + 1, pullBack),
+    window.leadIn + revealed + RIGHT_GAP,
+    lerp(window.leadIn + RIGHT_GAP, last + 1, pullBack),
   );
 
   return { from, to, ...priceExtent(bars, from, to, rails) };
 }
 
 /** The view the chart rests on once everything has been revealed. */
-export function finalView(bars: Bar[], rails: number[]): View {
+export function finalView(bars: Bar[], rails: number[], window: Window = DEFAULT_WINDOW): View {
   const from = -1;
-  const to = WINDOW_BARS + 1;
+  const to = window.leadIn + window.reveal + 1;
   return { from, to, ...priceExtent(bars, from, to, rails) };
 }
 

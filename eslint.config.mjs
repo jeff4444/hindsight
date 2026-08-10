@@ -29,6 +29,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Build output from any nested worktree. `.next/**` only matches the root, and a stray
+    // worktree under .claude/ put five thousand generated-chunk warnings in front of the real ones.
+    "**/.next/**",
+    ".claude/**",
   ]),
 ]);
 

@@ -1,24 +1,11 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { getTape } from '@/lib/viewer';
-import { Button, Chip, Eyebrow, Panel } from '@/components/ui';
+import { Eyebrow, Panel } from '@/components/ui';
 import { Icon } from '@/components/ui/icons';
-import { RulesetPicker, type TierOption } from '@/components/tapes/RulesetPicker';
+import { TapeLaunch } from '@/components/tapes/TapeLaunch';
 
 export const dynamic = 'force-dynamic';
-
-const TIERS: TierOption[] = [
-  { code: 'FD', name: 'Full Desk', live: false, hint: 'Arrives with the ladder' },
-  { code: 'NN', name: 'News Blind', live: false, hint: 'Arrives with the ladder' },
-  { code: 'NT', name: 'No Tools', live: false, hint: 'Arrives with the ladder' },
-  {
-    code: 'NTZ',
-    name: 'Naked',
-    live: true,
-    hint: '80 candles, one timeframe, volume, ATR badge, set and forget',
-  },
-  { code: 'NTVZ', name: 'Blackout', live: false, hint: 'Arrives with the ladder' },
-];
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -29,12 +16,13 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 /**
  * A tape, and the settings you play it under.
  *
- * The tier selector shows all five tiers with only NTZ selectable. Hiding the other four would be
- * tidier and less honest — the ladder is the product's spine, and showing what is coming (dashed,
- * labelled) is worth more than pretending the shape does not exist.
+ * `TapeLaunch` owns the ruleset, the mods and the button, because those three are one decision —
+ * the href it builds carries the tier and the mods, so splitting the button away from the choice
+ * would mean two components agreeing about a query string. The sticky panel beside it holds what
+ * does not change: how many charts are in here, and the fact that none of it is metered.
  *
- * Two columns at `lg`, with the play panel sticky. On a page whose whole purpose is one button,
- * that button should not scroll away while you read the filter it applies to.
+ * Two columns at `lg`. On a page whose whole purpose is one button, that button should not scroll
+ * away while you read the filter it applies to.
  */
 export default async function TapePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -61,19 +49,11 @@ export default async function TapePage({ params }: { params: Promise<{ slug: str
             {locked ? tape.lockedReason : tape.blurb}
           </p>
 
-          <div className="mt-8">
-            <Eyebrow>Ruleset</Eyebrow>
-            <div className="mt-3">
-              <RulesetPicker tiers={TIERS} value="NTZ" />
-            </div>
-            <p className="text-ink-lo mt-4 max-w-prose text-sm leading-relaxed">
-              Naked is the ranked standard and the only tier built. The rest arrive with the ladder,
-              each removing one reading aid from the one above it.
-            </p>
-          </div>
+          <Panel pad="md" className="mt-8">
+            <TapeLaunch slug={tape.slug} locked={locked} />
+          </Panel>
         </div>
 
-        {/* The one button on the page, kept in view. */}
         <Panel tone="hero" pad="md" className="lg:sticky lg:top-6">
           <Eyebrow>In this tape</Eyebrow>
           <div className="mt-1.5 flex items-baseline gap-2">
@@ -81,26 +61,6 @@ export default async function TapePage({ params }: { params: Promise<{ slug: str
               {tape.charts.toLocaleString()}
             </span>
             <span className="text-ink-dim text-sm">charts</span>
-          </div>
-
-          <div className="mt-6">
-            {locked ? (
-              <Chip tone="neutral" icon="lock">
-                Not open yet
-              </Chip>
-            ) : (
-              <Button
-                as="a"
-                href={`/play?mode=tape&tape=${tape.slug}`}
-                variant="primary"
-                size="lg"
-                glow="brand"
-                block
-              >
-                <Icon name="play" size={15} />
-                Play this tape
-              </Button>
-            )}
           </div>
 
           <p className="text-ink-dim mt-4 text-sm leading-relaxed">
