@@ -213,16 +213,131 @@ model lands, it must not invalidate everything already recorded.
 - **Charts and rounds are unreadable without the service-role key.** Both tables have RLS
   enabled with no policies and no grants to `anon` or `authenticated`.
 - **A round belongs to one session** and can be committed only by that session.
-- **Corpus generation is deterministic.** Window selection, symbol round-robin and mirror
-  assignment all derive from one published master seed, and mirror is a pure function of
-  window identity rather than of iteration order.
+- **Corpus generation is deterministic.** Every random choice — which pairs, which months, which
+  windows, which are mirrored — derives from one published master seed, and mirror is a pure
+  function of window identity rather than of iteration order.
+- **No derived feature may read the future.** Enforced by
+  [`tests/lookahead.test.ts`](../tests/lookahead.test.ts); see §8.
 
-## 7. What Phase 0 does not do
+## 7. The corpus
+
+§13.3 requires the corpus to be built "by **published rule**, not by hand", and §6 Layer 0 says
+why: "Hand-curation changes the difficulty distribution non-randomly and invalidates every
+population statistic computed on it." This is that rule. Nothing in it looks at whether a chart
+is interesting.
+
+### 7.1 The universe
+
+Every USDT spot pair that has **ever** traded on Binance — 722 of them — read from the public
+archive's own index.
+
+The obvious source is unusable. `api.binance.com/exchangeInfo` returns *currently listed* pairs,
+so a universe built from it is by construction a universe of instruments that did not die, which
+is precisely the bias §6 Layer 0 rejects: *"every chart is a survivor, charts drift upward, longs
+are systematically rewarded, and the leaderboard develops a long bias."* The archive still holds
+directories for pairs delisted years ago, so it is the only survivorship-free source available.
+
+A pair is **eligible** if it is USDT-quoted and has at least **18 monthly 1-minute archives**
+inside 2020-01…2025-12. The floor is set by what the volatility axis needs, not by taste: a
+percentile against the instrument's trailing year cannot exist for a pair that never traded a
+year. That leaves **445 eligible pairs, 162 of them delisted — 36%**.
+
+### 7.2 Which months get downloaded
+
+A symbol-month is samplable if its 1-minute archive is at least **900,000 bytes** and the pair had
+already traded for **13 months** by then.
+
+The size floor is a liquidity measure, not a guess. Binance omits minutes in which nothing
+traded, so an archive's size counts minutes that did. Complete coverage compresses to 1.2–1.5 MB;
+below 0.9 MB enough minutes are missing that the contiguity filter below would reject most of the
+month's windows anyway. It costs one pair out of 445 and leaves the delisted share untouched.
+
+From the 13,577 samplable cells, **800** are drawn by seeded shuffle, capped at **4 months per
+pair**. The shuffle is global rather than per pair, so a pair that traded for six years is
+represented more than one that lasted eighteen months — it *is* more of the market's history, and
+flattening that would be its own distortion. The cap stops proportionality becoming domination.
+
+### 7.3 Which windows survive
+
+Non-overlapping 140-hour windows, rejected for any of:
+
+- a missing hour, or a missing minute anywhere in the window — a missing minute is a minute in
+  which a stop could have fired, so the window is not fairly resolvable;
+- a flatline, or an ATR below 0.1% of price;
+- a bad print — broken OHLC ordering, or a single minute moving more than 15%;
+- **the delisting cliff**: the reveal ends within 7 days of the pair's last archived data. This
+  drops the flat artefact after trading effectively stopped and deliberately *keeps* the collapses
+  before it. The LUNA and FTT crashes are real price action and belong in the corpus;
+- no trailing year of daily closes, so the window cannot be tagged.
+
+### 7.4 Which windows are kept
+
+Every surviving window is tagged on two axes, both of which §6 Layer 2 specifies and both of which
+are causal:
+
+- **Kaufman efficiency ratio** over the lead-in closes — net distance over distance walked.
+  Buckets are anchored to a derivation rather than to round numbers: over *n* bars a driftless
+  random walk averages ≈ 1/√n, which for the 80-candle lead-in is ≈ 0.11. So `chop` is < 0.10 —
+  *less directional than noise* — then `noise` < 0.20, `directional` < 0.35, `trend` above.
+- **Realised-volatility percentile**: the trailing 7-day realised volatility ranked within the
+  preceding 365 days of it, from daily closes strictly before the decision bar. Quartiles:
+  `quiet`, `subdued`, `active`, `violent`.
+
+1000 charts are then selected by **equal allocation across the resulting 4 × 4 grid**, ordered
+within each cell by a hash of window identity, with shortfall in sparse cells redistributed over
+the rest in the published cell order.
+
+This is the point of the exercise and it has a cost worth stating. Most windows are chop, because
+most of the time markets chop. A uniform random 1000 would therefore be a corpus *about* chop, and
+every statistic computed on it would describe chop while claiming to describe trading. Equal
+allocation fixes that, and in exchange the corpus is deliberately **not** representative of how
+often each regime occurs — which is exactly why §12.4 insists engine performance is reported per
+regime rather than in aggregate.
+
+## 8. Causality
+
+§6 Layer 0: *"Each annotation record carries the index at which the feature exists and the index
+at which it could first have been known. Rendering and scoring both gate on the second."*
+
+A swing high *exists* at the bar that made it and is not *known* until later bars confirm it.
+Drawing it at the bar it exists on puts an annotation on the chart at a moment nobody could have
+drawn it — in a product whose premise is "no hindsight", not a subtle bug. §15 records that both
+major open-source implementations of these primitives ship look-ahead, "one via a whole-dataset
+range and one via pre-confirmation stamping".
+
+Neither is visible in the output, so the suite tests a property instead: **change the future, and
+anything that was knowable before the change must not move.** It carries canaries — deliberately
+broken features reproducing both bugs — asserted to be caught, because a test suite that cannot
+fail is decoration.
+
+Phase 0.5 uses none of this itself. It exists so Layer 2 cannot be written without it.
+
+## 9. Permutation
+
+A bar-permutation generator, per §6 Layer 0. Each bar is decomposed in log space into a **gap**
+from the previous close and an **intrabar triple** relative to its own open; gaps and triples are
+shuffled under separate seeded permutations and reassembled multiplicatively.
+
+Because every triple came from a real bar, candle realism survives by construction, and because
+the sums are only reordered the series ends exactly where the original did. What is destroyed is
+serial structure — which is the point: §6 Layer 2 wants a null where *"a geometry layer that finds
+structure in shuffled data at the same rate as in real data is telling you nothing."*
+
+Volume travels with its bar's geometry rather than being shuffled separately. §6 does not say
+which; separating them would put wide candles on no volume at a rate the real series never shows,
+visible to anyone reading the volume pane.
+
+The generator exists; permuted charts are **not** in the corpus. Synthetic controls are §7.2 and
+Phase 4.
+
+## 10. What is not built yet
 
 Recorded so nothing here is mistaken for the finished product: no achievable set, no oracle
 bound, no percentile, no scored pass, no engines, no accounts, no rating, no chart rating, no
-tiers or mods beyond mirroring, no clock, no daily, no share card, no cost model, no
-synthetic controls, no news.
+tiers or mods beyond mirroring, no clock, no daily, no share card, no cost model, no synthetic
+controls in the corpus, no news, and no Layer 2 geometry.
 
-Phase 0 answers one question, and §14 says it is the most important one in the document:
-**is the loop fun with no analysis layer at all?**
+Phase 0 answered one question, and §14 says it is the most important one in the document: **is the
+loop fun with no analysis layer at all?** Phase 0.5 answers a different one, and §14 allows it to
+precede the fun only because retrofitting it is close to impossible: **can anything in this corpus
+see its own future?**
