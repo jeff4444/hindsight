@@ -360,7 +360,88 @@ visible to anyone reading the volume pane.
 The generator exists; permuted charts are **not** in the corpus. Synthetic controls are §7.2 and
 Phase 4.
 
-## 10. What is not built yet
+## 10. Scoring against what was achievable
+
+A bare R-multiple is mostly luck, and §4 opens by saying that any system rewarding realised
+profit teaches the player that reckless trades work whenever they happen to print. So the score
+is not "did you make money". It is **of everything this exact path allowed, how much did you
+take**.
+
+### 10.1 The achievable set
+
+Because every player gets the identical future path, the set of outcomes is finite and is
+enumerated rather than sampled (§4.2): **2 directions × 7 stop distances × 7 targets = 98
+brackets**, each resolved against the same one-minute path the player's own trade is resolved
+against. Stops run 0.5 to 4.0 ATR; targets run 0.5R to 8R. Every level snaps to the published
+tick, so no cell is a trade that could not have been placed.
+
+Exact, not estimated — there is no sampling error to explain when a percentile moves — and
+reproducible, so the same chart yields the same distribution forever. That second property is why
+it is computed once, offline, and stored.
+
+Your **percentile** is where your result sits among those 98, mid-rank for ties. It is meaningful
+with nobody else playing, because the comparison is against the chart, not against a population.
+
+### 10.2 The oracle, and efficiency
+
+The **oracle** is the best R any stop and target pair could have produced on that path. It has a
+closed form: to survive to a given bar, a long's stop must sit below every low so far, so the
+tightest surviving stop is one tick under the running minimum, and the best R at that bar is the
+bar's high over that risk. Sweep the bars, take the maximum, mirror it for shorts.
+
+It is a real bracket, not a theoretical ceiling — the test suite reconstructs it and resolves it.
+Because its stop is one tick wide, the number is large: **the median chart's oracle is 19R**.
+**Efficiency** is your R as a share of it, and §4.5 calls it the closest thing to trade quality.
+
+### 10.3 Restraint
+
+Passing is scored as **0R against that same distribution** (§4.4). Nothing special-cases it, and
+the consequence falls out of the arithmetic: on a chart where most brackets lost, passing beats
+most of them.
+
+That is not a rare case. Because the grid is direction-symmetric, roughly half of it is always on
+the wrong side and stops out at exactly −1R, which puts 0R above the median on **95% of charts**.
+Measured across the corpus, always passing scores a **mean 61st percentile** — and it never
+exceeds the 80th.
+
+**So the honest position is this**: passing is a strong baseline that a reader has to beat, not a
+free win. §15 asks for a check that "degenerate wide-stop tight-target brackets do not top the
+leaderboard", and they do not — the best single bracket played blindly on every chart is a short
+with a 4 ATR stop and a 0.5R target, at a mean 57.7th percentile, which is *worse* than passing.
+No fixed strategy beats restraint, and restraint does not beat reading. §4.4's only brake on
+passing everything in the daily is social: the card prints how many of the five you traded.
+
+### 10.4 What the debrief shows
+
+§4.5's decomposition, read off the grid's marginals — five of its six axes:
+
+| Axis | What it says |
+| --- | --- |
+| Direction | What share of the winning brackets were on your side |
+| Stop placement | What share of brackets at your stop distance were swept, and whether your stop sat inside the drawdown the winners survived |
+| Target placement | Whether it printed, and what share of the available move you captured |
+| Restraint | What passing would have scored here |
+| Efficiency | Your R as a share of the oracle |
+
+**Entry timing is deliberately absent.** §4.5 defines it as the cost of entering early or late
+"relative to the structural trigger", and §4.2 fixes entry at the decision bar — so there is
+nothing to be early or late against until Layer 2 defines a trigger. Approximating it against an
+arbitrary offset would measure something else and have to be replaced.
+
+### 10.5 The daily and the card
+
+Five charts, identical for every player, one attempt, rolling at midnight UTC with a 48-hour
+completion window (§10.1). The five are derived from the day number rather than assigned, so
+everyone provably gets the same set.
+
+§10.1 says one chart; §4.4 and §10.4's example card both say five. Five wins: a pass count cannot
+be printed on a card for a single chart, and §14 puts "scored pass with quota" in this phase.
+
+The share card is **spoiler-free** by construction — a percentile, a bar and a traded count.
+Never the R-multiple, the direction, the ticker or the date, so posting it cannot spoil the setup
+for someone who has not played.
+
+## 11. What is not built yet
 
 Recorded so nothing here is mistaken for the finished product: no achievable set, no oracle
 bound, no percentile, no scored pass, no engines, no accounts, no rating, no chart rating, no
