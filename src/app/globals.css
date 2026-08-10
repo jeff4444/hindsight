@@ -1,5 +1,262 @@
 @import "tailwindcss";
 
+/*
+ * The design system.
+ *
+ * The scope document has no design section. It has one explicit aesthetic instruction — §10.4's
+ * "plain Unicode, no image, no link" for the share card — and one target, §14's "a debrief screen
+ * worth screenshotting". Those point the same way, and everything here follows from it:
+ *
+ *   Premium means density, alignment and motion quality. Not gradients, not glass, not decoration.
+ *
+ * Two consequences are structural rather than decorative:
+ *
+ *   Elevation is lightness plus a hairline, never shadow or blur. Shadows do almost nothing on a
+ *   near-black surface, and `backdrop-filter` is actually forbidden here — it creates a stacking
+ *   context, and TradeOverlay's z-10 over the lightweight-charts canvas is load-bearing. A frosted
+ *   panel anywhere near the chart frame would trap the drag rails behind the canvas.
+ *
+ *   Names are semantic (surface, ink, long, short) rather than value-based (slate-900). A light
+ *   mode is not planned, but naming it this way means one is possible later without a rename.
+ */
+
+@theme {
+  /* ------------------------------------------------------------------ type */
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* ---------------------------------------------------------------- surface
+   *
+   * Slate is oklch chroma 0.042 — a lot of blue. It reads consumer-app and it fights the teal
+   * candles, which sit on the same screen at all times. This ramp runs at 0.008–0.013: near
+   * neutral, with just enough cool that it does not go muddy beside the red candles.
+   */
+  --color-surface-0: oklch(0.165 0.008 265);
+  --color-surface-1: oklch(0.196 0.009 265);
+  --color-surface-2: oklch(0.232 0.010 265);
+  --color-surface-3: oklch(0.272 0.011 265);
+  --color-surface-4: oklch(0.318 0.012 265);
+  --color-surface-5: oklch(0.372 0.013 265);
+  --color-surface-inv: oklch(0.955 0.003 265);
+
+  /* Translucent, for anything painted OVER the chart canvas, where an opaque panel would occlude
+   * candles the player is still reading. Panels use the opaque ramp above; stacking a translucent
+   * chip inside a translucent panel compounds alpha and the same chip ends up two colours. */
+  --color-fill-1: oklch(1 0 0 / 0.04);
+  --color-fill-2: oklch(1 0 0 / 0.07);
+  --color-fill-3: oklch(1 0 0 / 0.11);
+  --color-scrim: oklch(0.14 0.008 265 / 0.74);
+
+  /* ----------------------------------------------------------------- lines */
+  --color-line-faint: oklch(1 0 0 / 0.055);
+  --color-line: oklch(1 0 0 / 0.09);
+  --color-line-strong: oklch(1 0 0 / 0.15);
+
+  /* ------------------------------------------------------------------- ink */
+  --color-ink-max: oklch(0.975 0.002 265);
+  --color-ink-hi: oklch(0.905 0.004 265);
+  --color-ink: oklch(0.795 0.006 265);
+  --color-ink-lo: oklch(0.655 0.008 265);
+  --color-ink-dim: oklch(0.520 0.009 265);
+  --color-ink-faint: oklch(0.410 0.009 265);
+  --color-ink-inv: oklch(0.185 0.008 265);
+
+  /* ------------------------------------------------------------- direction
+   *
+   * Pinned to the candle colours the chart actually draws (see src/lib/palette.ts, which a test
+   * holds against these values). Before this, the panel green was emerald-400 and the candle green
+   * was #26a69a — two different greens forty pixels apart during the reveal.
+   */
+  --color-long: #26a69a;
+  --color-long-ink: oklch(0.830 0.130 172);
+  --color-long-line: oklch(0.660 0.110 172 / 0.32);
+  --color-long-bg: oklch(0.660 0.110 172 / 0.12);
+  --color-long-wash: oklch(0.660 0.110 172 / 0.07);
+
+  --color-short: #ef5350;
+  --color-short-ink: oklch(0.790 0.150 24);
+  --color-short-line: oklch(0.630 0.190 24 / 0.32);
+  --color-short-bg: oklch(0.630 0.190 24 / 0.12);
+  --color-short-wash: oklch(0.630 0.190 24 / 0.07);
+
+  /* The same hue serves an up candle, a target rail, a long-direction chip and a positive R — and
+   * only the last of those is a "win". Aliasing costs nothing and keeps call sites honest. */
+  --color-gain: var(--color-long);
+  --color-gain-ink: var(--color-long-ink);
+  --color-loss: var(--color-short);
+  --color-loss-ink: var(--color-short-ink);
+
+  /* ---------------------------------------------------------- other meaning */
+  --color-info: oklch(0.720 0.130 240);
+  --color-info-ink: oklch(0.840 0.100 240);
+  --color-info-bg: oklch(0.720 0.130 240 / 0.14);
+  --color-info-line: oklch(0.720 0.130 240 / 0.34);
+
+  --color-attention: oklch(0.800 0.140 78);
+  --color-attention-ink: oklch(0.890 0.110 84);
+  --color-attention-bg: oklch(0.800 0.140 78 / 0.11);
+  --color-attention-line: oklch(0.800 0.140 78 / 0.28);
+
+  /* Restraint: a pass, and any control sitting away from its default. §4.4 makes passing a
+   * first-class scored action, so it gets a colour of its own rather than reading as "off". */
+  --color-restraint: oklch(0.700 0.150 292);
+  --color-restraint-ink: oklch(0.810 0.130 292);
+  --color-restraint-bg: oklch(0.700 0.150 292 / 0.13);
+  --color-restraint-line: oklch(0.700 0.150 292 / 0.32);
+
+  /* §10.3's perfect-streak state, and nothing else. Spending it elsewhere would cheapen the one
+   * thing it exists to mark. */
+  --color-gold: oklch(0.855 0.115 92);
+  --color-gold-ink: oklch(0.920 0.090 95);
+  --color-gold-line: oklch(0.855 0.115 92 / 0.42);
+
+  --color-focus: oklch(0.780 0.120 232);
+
+  /* ----------------------------------------------------------------- radii */
+  --radius-xs: 3px;
+  --radius-sm: 5px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 18px;
+  --radius-2xl: 24px;
+
+  /* ------------------------------------------------------------- elevation */
+  --shadow-panel: inset 0 1px 0 0 oklch(1 0 0 / 0.04), 0 1px 2px 0 oklch(0 0 0 / 0.40);
+  --shadow-pop: 0 0 0 1px oklch(1 0 0 / 0.08), 0 12px 32px -10px oklch(0 0 0 / 0.70);
+  --shadow-key: inset 0 1px 0 0 oklch(1 0 0 / 0.20), 0 1px 2px 0 oklch(0 0 0 / 0.50);
+
+  /* ------------------------------------------------------------ type scale
+   *
+   * rem throughout. The old scale was 31 pixel literals, which combined with `maximumScale: 1` in
+   * layout.tsx left a low-vision player with no path to larger text at all: pinch-zoom is disabled
+   * for a good §16 reason, and px type ignores browser text zoom. This is WCAG 1.4.4, not taste.
+   */
+  /* Weight and tracking deliberately absent: a size token that also sets weight cannot be used for
+   * an axis label. The all-caps eyebrow treatment lives in the .eyebrow class instead. */
+  --text-micro: 0.625rem;
+  --text-micro--line-height: 1.2;
+
+  --text-mini: 0.6875rem;
+  --text-mini--line-height: 1.35;
+
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1.5;
+
+  --text-sm: 0.8125rem;
+  --text-sm--line-height: 1.55;
+
+  --text-base: 0.9375rem;
+  --text-base--line-height: 1.62;
+
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 1.45;
+
+  --text-xl: 1.5rem;
+  --text-xl--line-height: 1.25;
+  --text-xl--letter-spacing: -0.011em;
+
+  --text-2xl: 2rem;
+  --text-2xl--line-height: 1.14;
+  --text-2xl--letter-spacing: -0.016em;
+
+  --text-3xl: 2.75rem;
+  --text-3xl--line-height: 1.04;
+  --text-3xl--letter-spacing: -0.021em;
+
+  --text-4xl: 4rem;
+  --text-4xl--line-height: 0.98;
+  --text-4xl--letter-spacing: -0.028em;
+
+  --tracking-eyebrow: 0.085em;
+  --tracking-wordmark: 0.2em;
+
+  /* -------------------------------------------------------------- duration */
+  --dur-1: 80ms;
+  --dur-2: 120ms;
+  --dur-3: 180ms;
+  --dur-4: 260ms;
+  --dur-5: 380ms;
+  --dur-6: 560ms;
+  --dur-7: 900ms;
+  --stagger: 34ms;
+
+  /* --------------------------------------------------------------- easing */
+  --ease-entrance: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --ease-press: linear(0, 0.72 22%, 1.04 44%, 0.99 62%, 1);
+
+  /* ----------------------------------------------------------- animations */
+  --animate-rise: rise var(--dur-4) var(--ease-entrance) both;
+  --animate-fade: fade var(--dur-5) var(--ease-standard) both;
+  --animate-flash: flash var(--dur-7) var(--ease-exit) both;
+  --animate-breathe: breathe 1.4s var(--ease-standard) infinite;
+  --animate-draw: draw var(--dur-5) var(--ease-entrance) both;
+
+  /* 8px rather than the old 12px: at 12px over 260ms the motion reads as a slide, at 8px it reads
+   * as settling, which is the register. */
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes fade {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes flash {
+    0% {
+      opacity: 0;
+    }
+    12% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+  @keyframes breathe {
+    0%,
+    100% {
+      opacity: 0.45;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+  @keyframes draw {
+    from {
+      stroke-dashoffset: var(--len, 1000);
+    }
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+
+  /* ----------------------------------------------------------- breakpoints
+   * 375 is the iPhone floor and exists only to shed density. The app previously used exactly one
+   * breakpoint, `sm` at Tailwind's default 640 — which is neither a phone nor a tablet. */
+  --breakpoint-xs: 23.4375rem;
+  --breakpoint-sm: 30rem;
+  --breakpoint-md: 48rem;
+  --breakpoint-lg: 64rem;
+  --breakpoint-xl: 90rem;
+  --breakpoint-2xl: initial;
+
+  --container-prose: 68ch;
+  --container-app: 82.5rem;
+}
+
 :root {
   color-scheme: dark;
 }
@@ -10,80 +267,84 @@ body {
   overscroll-behavior: none;
 }
 
+html {
+  font-optical-sizing: auto;
+  font-feature-settings: 'cv05' 1, 'cv08' 1, 'ss03' 1, 'calt' 1;
+  text-size-adjust: 100%;
+}
+
 /* The chart owns the wheel while the pointer is over it, so zooming never scrolls the page. */
 canvas {
   touch-action: none;
 }
 
-@keyframes hs-rise {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-@keyframes hs-fade {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes hs-flash {
-  0% {
-    opacity: 0;
-  }
-  12% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-  }
-}
-
-@keyframes hs-pulse {
-  0%,
-  100% {
-    opacity: 0.45;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-
-.hs-rise {
-  animation: hs-rise 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-.hs-fade {
-  animation: hs-fade 600ms ease both;
-}
-
-.hs-flash {
-  animation: hs-flash 900ms ease-out both;
-}
-
-.hs-pulse {
-  animation: hs-pulse 1.4s ease-in-out infinite;
+/*
+ * Focus. There was none before this — the only visible focus anywhere in the app was whatever the
+ * browser happened to draw on the native <select>. On a product with a documented keyboard map
+ * (Enter, P, R, Space, S) that is a real gap, not a cosmetic one.
+ */
+:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+  border-radius: inherit;
 }
 
 /*
- * Everything above is motion for its own sake, which is exactly the category a reduced-motion
- * preference is asking to be spared. The reveal camera itself still moves — it is the content,
- * not decoration — but it is the one thing that does.
+ * Stagger, as one rule rather than a hand-written animationDelay at each call site.
+ *
+ * The cap matters: a sixty-card tape grid at 34ms would take two seconds to finish arriving. 34ms
+ * is chosen because below about 25ms a stagger is invisible, and above about 60ms an eight-item
+ * list outlasts the eye's patience — 34 x 8 = 272ms, which fits inside one --dur-5.
  */
+[data-stagger] > * {
+  animation: rise var(--dur-4) var(--ease-entrance) both;
+  animation-delay: calc(min(var(--i, 0), 12) * var(--stagger));
+}
+
+/*
+ * The eyebrow: 10px, caps, wide-tracked, dim. It is the system's signature element and already
+ * appears eight times in the existing UI. All-caps is reserved for this and for immutable state
+ * badges (SYNTHETIC, MIRRORED) — never on buttons, never on headings, never on nav.
+ */
+.eyebrow {
+  font-size: var(--text-micro);
+  line-height: 1.2;
+  font-weight: 600;
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+}
+
+/* The only press feedback in the product, so it is worth getting right. */
+.press {
+  transition: transform var(--dur-1) var(--ease-press);
+}
+.press:active:not(:disabled) {
+  transform: scale(0.985);
+}
+
+/*
+ * Motion preference.
+ *
+ * Everything above is motion for its own sake, which is exactly the category a reduced-motion
+ * preference asks to be spared. The reveal camera still moves — it is the content, not decoration
+ * — and it is the one thing that does. `data-motion` is set on <html> from the media query OR a
+ * stored player setting, so CSS and JS read one source of truth rather than two.
+ */
+html[data-motion='reduced'] *,
+html[data-motion='reduced'] *::before,
+html[data-motion='reduced'] *::after {
+  animation-duration: 1ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 1ms !important;
+}
+
+/* The system preference, unless the player has explicitly asked for full motion. */
 @media (prefers-reduced-motion: reduce) {
-  .hs-rise,
-  .hs-fade,
-  .hs-flash,
-  .hs-pulse {
-    animation-duration: 1ms;
-    animation-iteration-count: 1;
+  html:not([data-motion='full']) *,
+  html:not([data-motion='full']) *::before,
+  html:not([data-motion='full']) *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
   }
 }
