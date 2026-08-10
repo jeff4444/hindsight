@@ -13,7 +13,8 @@
     "fetch": "tsx scripts/fetch-binance.ts",
     "corpus": "tsx --env-file-if-exists=.env.local scripts/build-corpus.ts",
     "verify": "tsx --env-file-if-exists=.env.local scripts/verify-rounds.ts",
-    "universe": "tsx scripts/universe.ts"
+    "universe": "tsx scripts/universe.ts",
+    "achievable": "tsx --env-file-if-exists=.env.local scripts/backfill-achievable.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.2",
