@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   CHART_CONFIG,
   PLAYER_CONFIG,
+  exitsPending,
   newChartRating,
   newPlayerRating,
   rateAttempt,
@@ -47,7 +48,7 @@ export async function applyRating({
   const [chartRow, tierRow, overallRow] = await Promise.all([
     supabase
       .from('chart_ratings')
-      .select('rating, rd, sigma, plays, pending, retired')
+      .select('rating, rd, sigma, plays, pending, retired, mean_opponent_rd')
       .eq('chart_id', chartId)
       .eq('tier', tier)
       .maybeSingle(),
@@ -98,6 +99,21 @@ export async function applyRating({
     ambiguous,
   });
 
+  // §8.2's exit, evaluated on every attempt.
+  //
+  // Without this a chart stays pending for ever — and a pending chart is unrated for the player,
+  // so *no attempt would ever move a player's rating*. The whole ladder would sit at 1500 with
+  // "needs 30 more rated rounds" showing permanently. The gate has to be checked somewhere, and
+  // the cheapest correct place is the moment the chart's own rating changes.
+  const meanOpponentRd = runningMean(
+    (chartRow.data?.mean_opponent_rd as number) ?? CHART_CONFIG.initialRd,
+    chart.plays,
+    readPlayer(overallRow.data).rd,
+  );
+  const graduated = result.chart.pending
+    ? !exitsPending({ ...result.chart, plays: result.chart.plays }, meanOpponentRd)
+    : false;
+
   const now = new Date().toISOString();
 
   // The chart always moves, even while pending — calibrating a new opponent against
@@ -110,8 +126,9 @@ export async function applyRating({
       rd: result.chart.rd,
       sigma: result.chart.sigma,
       plays: result.chart.plays,
-      pending: result.chart.pending,
+      pending: graduated,
       retired: result.chart.retired,
+      mean_opponent_rd: meanOpponentRd,
       updated_at: now,
     },
     { onConflict: 'chart_id,tier' },
@@ -158,3 +175,9 @@ export async function applyRating({
 }
 
 export { PLAYER_CONFIG, CHART_CONFIG };
+
+/** Incremental mean, so the gate never has to aggregate a growing table on the hot path. */
+function runningMean(current: number, priorCount: number, next: number): number {
+  if (priorCount <= 0) return next;
+  return (current * priorCount + next) / (priorCount + 1);
+}

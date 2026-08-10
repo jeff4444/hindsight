@@ -3,12 +3,13 @@ import {
   PLAYER_CONFIG,
   RANK_MIN_ATTEMPTS,
   derivedTierOffset,
-  exitsPending,
   newChartRating,
   newPlayerRating,
   rankIsShowable,
   rateAttempt,
   targetBand,
+  PENDING_MIN_PLAYS,
+  exitsPending,
   type AttemptInput,
 } from '@/core/rating';
 import { PASS_ANCHOR } from '@/core/ranked';
@@ -90,6 +91,44 @@ describe('pending charts (§8.2)', () => {
     expect(exitsPending(settled({ pending: true, plays: 60, rd: 70 }), 60)).toBe(true);
     // …and a chart calibrated entirely against unrated newcomers is not calibrated.
     expect(exitsPending(settled({ pending: true, plays: 60, rd: 70 }), 250)).toBe(false);
+  });
+});
+
+describe('a chart can actually leave pending, and then the player moves', () => {
+  it('graduates after enough plays and starts rating the player', () => {
+    // The regression this guards is that the whole ladder can be inert while every individual
+    // piece passes its own test. A pending chart is unrated for the player by design (§8.2) — so
+    // if nothing ever evaluates the exit condition, every chart stays pending, every attempt stays
+    // unrated, and the rating sits at 1500 for ever while looking perfectly healthy.
+    let chart = newChartRating();
+    const player = { ...newPlayerRating(), rd: 80, attempts: 40 };
+    const meanOpponentRd = 80;
+
+    expect(chart.pending).toBe(true);
+    expect(rateAttempt(input({ chart })).rated).toBe(false);
+
+    // Play it until §8.2's gate opens.
+    let graduatedAfter = -1;
+    for (let i = 0; i < PENDING_MIN_PLAYS + 20; i++) {
+      const result = rateAttempt(input({ chart, tierRating: player, overall: player }));
+      chart = { ...result.chart, pending: !exitsPending(result.chart, meanOpponentRd) };
+      if (!chart.pending && graduatedAfter < 0) graduatedAfter = i + 1;
+    }
+
+    expect(chart.pending).toBe(false);
+    // The play count is the binding clause, not the deviation — §8.1: "a chart with high deviation
+    // and twelve plays is not trustworthy".
+    expect(graduatedAfter).toBeGreaterThanOrEqual(PENDING_MIN_PLAYS);
+
+    const rated = rateAttempt(input({ chart, percentile: 0.9 }));
+    expect(rated.rated).toBe(true);
+    expect(rated.overall.rating).toBeGreaterThan(1500);
+  });
+
+  it('will not graduate a chart only unrated newcomers have played', () => {
+    const chart = { ...newChartRating(), plays: 200, rd: 40 };
+    expect(exitsPending(chart, 60)).toBe(true);
+    expect(exitsPending(chart, 300)).toBe(false);
   });
 });
 
