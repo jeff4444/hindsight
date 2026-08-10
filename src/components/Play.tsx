@@ -7,7 +7,12 @@ import { fromBase64, unpackDetail } from '@/core/pack';
 import { TICK_SIZE, toTick } from '@/core/normalize';
 import { clockAt, decisionClockSeconds, formatClock } from '@/lib/clock';
 import { DISPLAY_TIER, TIERS } from '@/lib/resolution';
-import type { RevealPayload, RoundPayload, RoundResult } from '@/lib/api-types';
+import type {
+  ChartProvenance,
+  RevealPayload,
+  RoundPayload,
+  RoundResult,
+} from '@/lib/api-types';
 import {
   finalView,
   focusView,
@@ -46,6 +51,7 @@ export function Play() {
   const [stop, setStop] = useState(0);
   const [target, setTarget] = useState(0);
   const [result, setResult] = useState<RoundResult | null>(null);
+  const [provenance, setProvenance] = useState<ChartProvenance | null>(null);
   const [revealed, setRevealed] = useState(0);
   const [revealTotal, setRevealTotal] = useState(0);
   const [speed, setSpeed] = useState(DEFAULT_SPEED);
@@ -95,6 +101,7 @@ export function Play() {
     setPhase('loading');
     setError(null);
     setResult(null);
+    setProvenance(null);
     resultRef.current = null;
     setRevealed(0);
     setRevealTotal(0);
@@ -292,6 +299,7 @@ export function Play() {
       const payload: RevealPayload = await response.json();
       setResult(payload.result);
       resultRef.current = payload.result;
+      setProvenance(payload.provenance ?? null);
       reveal.current = payload.revealBars;
       setRevealTotal(payload.revealBars.length);
       railsRef.current =
@@ -599,7 +607,12 @@ export function Play() {
       )}
 
       {phase === 'done' && result && (
-        <ResultCard result={result} onNext={() => void load()} onReplay={replay} />
+        <ResultCard
+          result={result}
+          provenance={provenance}
+          onNext={() => void load()}
+          onReplay={replay}
+        />
       )}
     </div>
   );

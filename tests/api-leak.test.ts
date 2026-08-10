@@ -123,6 +123,19 @@ describe('POST /api/round leaks nothing about the future or the instrument', () 
     expect(body).not.toContain('deadbeef');
   });
 
+  it('withholds the identity that the reveal is allowed to release', () => {
+    // The whole point of the split. §12.2 hides the instrument and the moment so a chart cannot
+    // be looked up *before* the decision; the reveal hands both over afterwards, once there is
+    // nothing left to protect. If issuance ever carried them, the game would be over.
+    expect(body).not.toContain('BTCUSDT');
+    expect(body).not.toContain('Binance');
+    expect(parsed).not.toHaveProperty('provenance');
+    expect(parsed).not.toHaveProperty('symbol');
+    expect(parsed).not.toHaveProperty('mirrored');
+    // Nor the factor that would turn an indexed price back into a real one.
+    expect(parsed).not.toHaveProperty('indexFactor');
+  });
+
   it('carries no chart id, so charts cannot be correlated across sessions', () => {
     expect(body).not.toContain('22222222-2222-4222-8222-222222222222');
   });

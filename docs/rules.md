@@ -65,7 +65,37 @@ violent candle does not read as session structure — it reads as the payrolls p
 material hint the 24/7 crypto corpus does not contain, and it edges toward the §9.1 leakage
 rule. Revisit this decision before equities ship rather than inheriting it.
 
-### 1.2 The player picks the resolution; the decision timeframe does not move
+### 1.2 Identity is released after the commit, never before
+
+Once the order is committed, the reveal names what the chart actually was: **the pair, the venue,
+the calendar moment, and the instrument's real price at the entry**. If the chart was mirrored, it
+says so.
+
+This is not a relaxation of §12.2. That rule hides identity so a chart cannot be *looked up before
+the decision*; once the decision is committed and scored there is nothing left to protect, and
+something to gain — the player can check for themselves that the price action was real, which is
+the claim the whole product rests on. §3.3 confirms the default by defining a **Silent** mod as
+"no ticker or date reveal even after the round", and §13.1 assumes the same when it notes that
+"the ticker and date are revealed afterwards".
+
+The real price is recovered by undoing the transform in reverse: un-mirror first, then unscale.
+The order is not symmetric, and getting it backwards returns a plausible-looking number that is
+simply not the price.
+
+**Every chart in the corpus today is real price action**, and the reveal says so. §7.2's synthetic
+controls do not exist yet — Phase 0.5 built the permutation generator but deliberately kept
+permuted charts out of the corpus. The field is stored per chart so that the day they land, the
+reveal is not quietly lying.
+
+> **Open, for Phase 4.** §7.2 wants synthetic charts mixed in "silently... invisible to the
+> player". Labelling one at the reveal does not contaminate that round — the score is locked in
+> before the label appears — but over many rounds it teaches players what a synthetic chart looks
+> like, which erodes both the §7.2 measurement and its §12.6 use as a cheat detector. §15.1
+> already lists the proportion of synthetic charts as an open question; whether they are disclosed
+> belongs with it. This build discloses, because everything is currently real and silence would be
+> the lie.
+
+### 1.3 The player picks the resolution; the decision timeframe does not move
 
 The hour is the **decision timeframe**, and no timeframe the player selects changes it. It is
 marked in the menu. Specifically, the hour fixes:
@@ -113,7 +143,7 @@ None of this reaches the future. The client holds the lead-in's minutes and noth
 the order is committed; the reveal's minutes are withheld by the same rule as the reveal's
 hours, and the database function that issues a round returns a slice rather than a column.
 
-### 1.3 Panning and zooming is not hindsight
+### 1.4 Panning and zooming is not hindsight
 
 The chart pans and zooms freely while the order is being placed. This looks like it collides
 with §3.1, which lists "scrollable data" under the *hindsight* axis to be restricted, so it is
@@ -206,8 +236,8 @@ model lands, it must not invalidate everything already recorded.
 
 ## 6. Integrity
 
-- **Future data never reaches the client before the order is committed.** The issuance API
-  returns six fields — round id, lead-in bars, ATR, tick size, entry, reveal length — and the
+- **Future data and identity never reach the client before the order is committed.** The
+  issuance API returns eight fields — round id, lead-in bars, ATR, tick size, entry, reveal length — and the
   database function that serves it does not have the reveal bars in its return type at all.
   Enforced by [`tests/api-leak.test.ts`](../tests/api-leak.test.ts).
 - **Charts and rounds are unreadable without the service-role key.** Both tables have RLS

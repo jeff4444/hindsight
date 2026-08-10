@@ -3,11 +3,11 @@ import { z } from 'zod';
 import { serviceClient } from '@/lib/supabase/server';
 import { readSession } from '@/lib/session';
 import { LEAD_IN_BARS, PATH_BARS_PER_DISPLAY_BAR } from '@/core/config';
-import { toTick } from '@/core/normalize';
+import { denormalizePrice, toTick } from '@/core/normalize';
 import { DETAIL_BAR_BYTES, fromPgHex, toBase64, unpackPath } from '@/core/pack';
 import { InvalidOrderError, NO_COSTS, resolve } from '@/core/resolve';
 import { NORMALIZATION_VERSION, PIPELINE_VERSION } from '@/core/versions';
-import type { RevealPayload, RoundResult } from '@/lib/api-types';
+import type { ChartProvenance, RevealPayload, RoundResult } from '@/lib/api-types';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -69,7 +69,9 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
   const { data: chart, error: chartError } = await supabase
     .from('charts')
-    .select('reveal_bars, resolution_path, detail_path, entry_price')
+    // One literal, not a concatenation: supabase-js parses this string to type the row, and a
+    // concatenated one degrades every field to an error type.
+    .select('reveal_bars, resolution_path, detail_path, entry_price, symbol, window_start, decision_at, mirrored, index_factor, synthetic, source_note')
     .eq('id', round.chart_id)
     .single();
 
@@ -188,6 +190,29 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     ? toBase64(fromPgHex(chart.detail_path as string).subarray(leadInBytes))
     : '';
 
-  const payload: RevealPayload = { result, revealBars: chart.reveal_bars, detail };
+  // What it actually was. §12.2 hides this so the chart cannot be looked up before the
+  // decision; the decision is now committed and scored, so withholding it any longer would only
+  // stop the player checking that the price action was real.
+  const provenance: ChartProvenance = {
+    symbol: chart.symbol as string,
+    venue: 'Binance spot',
+    decisionAt: chart.decision_at as string,
+    windowStart: chart.window_start as string,
+    entryPriceReal: denormalizePrice(
+      chart.entry_price as number,
+      chart.index_factor as number,
+      chart.mirrored as boolean,
+    ),
+    mirrored: chart.mirrored as boolean,
+    synthetic: chart.synthetic as boolean,
+    sourceNote: (chart.source_note as string | null) ?? null,
+  };
+
+  const payload: RevealPayload = {
+    result,
+    revealBars: chart.reveal_bars,
+    detail,
+    provenance,
+  };
   return NextResponse.json(payload);
 }
