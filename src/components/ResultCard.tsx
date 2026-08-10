@@ -1,17 +1,17 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { easeOutCubic } from '@/lib/camera';
 import type { ChartProvenance, RoundResult, ScorePayload } from '@/lib/api-types';
+import { useTween } from '@/lib/useTween';
 import { Debrief } from './Debrief';
+import { Button, Chip, Eyebrow, Stat, toneInk } from './ui';
 
 /**
  * The post-trade panel.
  *
- * Phase 0 shows the R-multiple and the excursions and nothing else — there is no achievable
- * distribution, no percentile and no council yet. §4.1 fixes the vocabulary: R is the initial
- * risk, the R-multiple is the outcome divided by it, and both terms are defined in-app rather
- * than assumed. §4.6 puts MFE and MAE on every result at every tier.
+ * §4.1 fixes the vocabulary: R is the initial risk, the R-multiple is the outcome divided by it,
+ * and both terms are defined in-app rather than assumed. §4.6 puts MFE and MAE on every result at
+ * every tier — and distinguishes the excursion during the trade's life from the excursion across
+ * the whole window, which is the managed ceiling a set-and-forget bracket cannot reach.
  */
 export function ResultCard({
   result,
@@ -30,83 +30,69 @@ export function ResultCard({
 }) {
   const passed = result.outcome === 'pass';
   const r = result.rMultiple ?? 0;
-  const counted = useCountUp(passed ? 0 : r, 620);
-  const tone = passed
-    ? 'text-slate-300'
-    : r > 0
-      ? 'text-emerald-400'
-      : r < 0
-        ? 'text-rose-400'
-        : 'text-slate-300';
+  // Deliberately short. The R-multiple is the headline of the screen and arriving at it reads
+  // better than appearing at it, but anything past about 600ms feels like the app is withholding
+  // the answer.
+  const counted = (passed ? 0 : r) * useTween(620, [r, passed]);
+  const tone = passed ? 'neutral' : r > 0 ? 'long' : r < 0 ? 'short' : 'neutral';
 
   return (
-    <div className="hs-rise rounded-lg border border-white/10 bg-slate-900/60 p-4">
+    <div className="bg-surface-2 border-line shadow-panel animate-rise rounded-lg border p-4">
       <div className="flex items-baseline justify-between gap-4">
         <div>
-          <div className="text-[10px] font-semibold tracking-widest text-slate-500">
-            {passed ? 'PASSED' : outcomeLabel(result)}
-          </div>
-          <div className={`font-mono text-4xl font-semibold tabular-nums ${tone}`}>
+          <Eyebrow>{passed ? 'Passed' : outcomeLabel(result)}</Eyebrow>
+          <div className={`font-mono text-3xl font-semibold tabular-nums ${toneInk(tone)}`}>
             {counted >= 0 ? '+' : ''}
             {counted.toFixed(2)}R
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={onReplay}
-            className="rounded-md border border-white/15 px-3 py-2 text-sm text-slate-300 transition hover:bg-white/5 active:scale-[0.98]"
-          >
-            Replay <kbd className="ml-1 text-[10px] text-slate-600">R</kbd>
-          </button>
-          <button
-            onClick={onNext}
-            className="rounded-md bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-white active:scale-[0.98]"
-          >
-            {nextLabel} <kbd className="ml-1 text-[10px] text-slate-500">⏎</kbd>
-          </button>
+          <Button variant="secondary" size="lg" onClick={onReplay} kbd="R">
+            Replay
+          </Button>
+          <Button variant="primary" size="lg" onClick={onNext} kbd="⏎">
+            {nextLabel}
+          </Button>
         </div>
       </div>
 
       {passed ? (
-        <p className="mt-3 text-xs leading-relaxed text-slate-400">
-          Restraint is a scored action. On a chart that went nowhere, passing beats most entries
-          — but Phase&nbsp;0 has no achievable distribution to score it against yet, so this one
-          just reads flat.
+        <p className="text-ink-lo mt-3 text-xs leading-relaxed">
+          Restraint is a scored action (§4.4). It is measured as 0R against the same 98 brackets any
+          trade would have been measured against — so on a chart whose median outcome was negative,
+          standing aside legitimately beat most of the entries available.
         </p>
       ) : (
         <>
-          <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-xs sm:grid-cols-4">
-            <Stat label="Direction" value={result.direction ?? '—'} delay={60} />
-            <Stat label="Risk / unit" value={result.riskPerUnit?.toFixed(2) ?? '—'} delay={120} />
+          <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4" data-stagger>
+            <Stat label="Direction" value={result.direction ?? '—'} index={0} />
+            <Stat label="Risk / unit" value={result.riskPerUnit?.toFixed(2) ?? '—'} index={1} />
             <Stat
               label="MFE"
               value={fmtR(result.mfeR)}
               hint="best it showed while you held it"
-              delay={180}
+              index={2}
             />
             <Stat
               label="MAE"
               value={fmtR(result.maeR)}
               hint="worst it showed while you held it"
-              delay={240}
+              index={3}
             />
           </dl>
 
-          <div className="mt-4 border-t border-white/5 pt-3">
-            <div className="text-[10px] font-semibold tracking-widest text-slate-500">
-              THE MANAGED CEILING
-            </div>
-            <p className="mt-1 text-xs leading-relaxed text-slate-400">
+          <div className="border-line-faint mt-4 border-t pt-3">
+            <Eyebrow>The managed ceiling</Eyebrow>
+            <p className="text-ink-lo mt-1 text-xs leading-relaxed">
               Across the whole window the move was worth{' '}
-              <span className="font-mono text-slate-200">{fmtR(result.windowMfeR)}</span> your way
-              and <span className="font-mono text-slate-200">{fmtR(result.windowMaeR)}</span>{' '}
-              against you. A set-and-forget bracket cannot capture that; managing the trade
-              could have.
+              <span className="text-ink-hi font-mono">{fmtR(result.windowMfeR)}</span> your way and{' '}
+              <span className="text-ink-hi font-mono">{fmtR(result.windowMaeR)}</span> against you.
+              A set-and-forget bracket cannot capture that; managing the trade could have.
             </p>
           </div>
 
           {result.ambiguous && (
-            <p className="mt-3 rounded border border-amber-500/20 bg-amber-500/5 p-2 text-[11px] leading-relaxed text-amber-200/80">
+            <p className="border-attention-line bg-attention-bg text-attention-ink text-mini mt-3 rounded border p-2 leading-relaxed">
               Stop and target were both touched inside a single one-minute bar, so even the
               resolution path cannot order them. Resolved stop-first and flagged — a round like
               this would be excluded from ranked play.
@@ -131,48 +117,48 @@ export function ResultCard({
  */
 function Provenance({ provenance }: { provenance: ChartProvenance }) {
   return (
-    <div className="hs-rise mt-4 border-t border-white/5 pt-3" style={{ animationDelay: '300ms' }}>
+    <div
+      className="border-line-faint animate-rise mt-4 border-t pt-3"
+      style={{ '--i': 2 } as React.CSSProperties}
+    >
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <span className="text-[10px] font-semibold tracking-widest text-slate-500">
-          THIS WAS
-        </span>
+        <Eyebrow className="shrink-0">This was</Eyebrow>
 
-        <span className="rounded bg-white/5 px-2 py-1 font-mono text-xs text-slate-200 ring-1 ring-white/10">
-          {provenance.symbol}
-        </span>
-        <span className="font-mono text-xs text-slate-400">{provenance.venue}</span>
-        <span className="font-mono text-xs text-slate-400">{formatMoment(provenance.decisionAt)}</span>
-        <span className="font-mono text-xs text-slate-400">
+        <Chip mono>{provenance.symbol}</Chip>
+        <span className="text-ink-lo font-mono text-xs">{provenance.venue}</span>
+        <span className="text-ink-lo font-mono text-xs">{formatMoment(provenance.decisionAt)}</span>
+        <span className="text-ink-lo font-mono text-xs">
           entry {formatPrice(provenance.entryPriceReal)}
         </span>
 
         {provenance.synthetic ? (
-          <span className="rounded bg-violet-500/15 px-2 py-1 text-[10px] font-semibold tracking-wider text-violet-300 ring-1 ring-violet-500/30">
-            SYNTHETIC
-          </span>
+          <Chip tone="restraint" className="eyebrow">
+            Synthetic
+          </Chip>
         ) : (
-          <span className="rounded bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold tracking-wider text-emerald-300/80 ring-1 ring-emerald-500/20">
-            REAL PRICE ACTION
-          </span>
+          <Chip tone="long" className="eyebrow">
+            Real price action
+          </Chip>
         )}
 
         {provenance.mirrored && (
-          <span
-            className="rounded bg-sky-500/10 px-2 py-1 text-[10px] font-semibold tracking-wider text-sky-300 ring-1 ring-sky-500/25"
+          <Chip
+            tone="info"
+            className="eyebrow"
             title="The chart you read was flipped vertically, so it will not match the real one until you invert it."
           >
-            MIRRORED
-          </span>
+            Mirrored
+          </Chip>
         )}
       </div>
 
       {provenance.synthetic ? (
-        <p className="mt-2 text-[11px] leading-relaxed text-slate-400">
+        <p className="text-ink-lo text-mini mt-2 leading-relaxed">
           Not a real market. {provenance.sourceNote ?? 'Generated as a control.'} Your score on
           charts like this one is how the product measures whether chart reading is a skill at all.
         </p>
       ) : (
-        <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
+        <p className="text-ink-dim text-mini mt-2 leading-relaxed">
           Every candle above is real trading, exactly as it happened
           {provenance.mirrored ? ' — flipped vertically so the shape could not be recognised' : ''}.
           Look it up.
@@ -184,15 +170,17 @@ function Provenance({ provenance }: { provenance: ChartProvenance }) {
 
 /** "Fri 16 Apr 2021, 08:00 UTC" — the real calendar moment, released only after the commit. */
 function formatMoment(iso: string): string {
-  return new Date(iso).toLocaleString('en-GB', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    timeZone: 'UTC',
-  }) + ' UTC';
+  return (
+    new Date(iso).toLocaleString('en-GB', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'UTC',
+    }) + ' UTC'
+  );
 }
 
 /**
@@ -207,65 +195,13 @@ function formatPrice(value: number): string {
   });
 }
 
-/**
- * Run a number up to its value once, on mount.
- *
- * Purely decorative, and deliberately short: the R-multiple is the headline of the screen and
- * arriving at it reads better than appearing at it. Anything longer than about 600ms starts to
- * feel like the app is withholding the answer.
- */
-function useCountUp(value: number, durationMs: number): number {
-  const [shown, setShown] = useState(0);
-  const frame = useRef<number | null>(null);
-
-  useEffect(() => {
-    // Nothing to run up to; `shown` already starts at zero.
-    if (value === 0) return;
-
-    const start = performance.now();
-    const tick = (now: number) => {
-      const t = Math.min((now - start) / durationMs, 1);
-      setShown(value * easeOutCubic(t));
-      if (t < 1) frame.current = requestAnimationFrame(tick);
-    };
-    frame.current = requestAnimationFrame(tick);
-
-    return () => {
-      if (frame.current !== null) cancelAnimationFrame(frame.current);
-    };
-  }, [value, durationMs]);
-
-  return shown;
-}
-
 function outcomeLabel(result: RoundResult): string {
-  if (result.outcome === 'target') return 'TARGET HIT';
-  if (result.outcome === 'stop') return 'STOPPED OUT';
-  return 'NEITHER — MARKED TO MARKET';
+  if (result.outcome === 'target') return 'Target hit';
+  if (result.outcome === 'stop') return 'Stopped out';
+  return 'Neither — marked to market';
 }
 
 function fmtR(value: number | null): string {
   if (value === null || !Number.isFinite(value)) return '—';
   return `${value >= 0 ? '+' : ''}${value.toFixed(2)}R`;
-}
-
-function Stat({
-  label,
-  value,
-  hint,
-  delay,
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-  delay: number;
-}) {
-  return (
-    <div className="hs-rise" style={{ animationDelay: `${delay}ms` }}>
-      <dt className="text-[10px] font-semibold tracking-widest text-slate-500" title={hint}>
-        {label}
-      </dt>
-      <dd className="mt-0.5 font-mono text-sm tabular-nums text-slate-200">{value}</dd>
-    </div>
-  );
 }

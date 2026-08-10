@@ -16,6 +16,7 @@ import {
 import { aggregateByCount, type Bar } from '@/core/bars';
 import { LEAD_IN_BARS, WINDOW_BARS } from '@/core/config';
 import { formatClock, formatTick, timeOrigin } from '@/lib/clock';
+import { CANDLE, CHART_CHROME } from '@/lib/palette';
 import { DISPLAY_TIER, tierPhase, tierPlan } from '@/lib/resolution';
 
 /**
@@ -109,10 +110,20 @@ export interface ChartHandle {
   clearMarks(): void;
 }
 
-const UP = '#26a69a';
-const DOWN = '#ef5350';
-const UP_VOLUME = 'rgba(38,166,154,0.32)';
-const DOWN_VOLUME = 'rgba(239,83,80,0.32)';
+const { up: UP, down: DOWN, upVolume: UP_VOLUME, downVolume: DOWN_VOLUME } = CANDLE;
+
+/**
+ * The mono stack, read from the resolved custom property rather than hardcoded.
+ *
+ * `createChart` needs a string at construction time, and next/font may not have loaded by then —
+ * so this returns the fallback on a cold start and the effect below re-applies it once
+ * `document.fonts.ready` settles. Without that second call the axis metrics stay measured against
+ * the fallback face forever, and the price labels are laid out for a font that is not on screen.
+ */
+function monoStack(el: HTMLElement): string {
+  const resolved = getComputedStyle(el).getPropertyValue('--font-mono').trim();
+  return resolved || 'ui-monospace, SFMono-Regular, Menlo, monospace';
+}
 
 export const Chart = forwardRef<ChartHandle, { className?: string }>(function Chart(
   { className },
@@ -221,16 +232,16 @@ export const Chart = forwardRef<ChartHandle, { className?: string }>(function Ch
       autoSize: true,
       layout: {
         background: { color: 'transparent' },
-        textColor: '#8b93a7',
-        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+        textColor: CHART_CHROME.axis,
+        fontFamily: monoStack(container.current),
         attributionLogo: false,
       },
       grid: {
-        vertLines: { color: 'rgba(255,255,255,0.03)' },
-        horzLines: { color: 'rgba(255,255,255,0.03)' },
+        vertLines: { color: CHART_CHROME.grid },
+        horzLines: { color: CHART_CHROME.grid },
       },
       rightPriceScale: {
-        borderColor: 'rgba(255,255,255,0.08)',
+        borderColor: CHART_CHROME.border,
         // §3.1 keeps the normalised price axis at every tier — it is risk arithmetic, not a
         // crutch. The Blind Scale mod removes it; the default does not.
         visible: true,
@@ -259,8 +270,8 @@ export const Chart = forwardRef<ChartHandle, { className?: string }>(function Ch
       },
       crosshair: {
         mode: 0,
-        vertLine: { color: 'rgba(255,255,255,0.18)', width: 1, style: 3, labelVisible: false },
-        horzLine: { color: 'rgba(255,255,255,0.18)', width: 1, style: 3 },
+        vertLine: { color: CHART_CHROME.crosshair, width: 1, style: 3, labelVisible: false },
+        horzLine: { color: CHART_CHROME.crosshair, width: 1, style: 3 },
       },
       handleScroll: false,
       handleScale: false,
@@ -337,12 +348,22 @@ export const Chart = forwardRef<ChartHandle, { className?: string }>(function Ch
     );
     observer.observe(container.current);
 
+    // next/font loads asynchronously, so `monoStack` above may have resolved to the fallback. The
+    // library measures its axis labels once, at the width of whatever face was current — so
+    // without this the price scale keeps a gutter sized for a font that is no longer drawn.
+    let stale = false;
+    void document.fonts?.ready.then(() => {
+      if (stale || !container.current) return;
+      api.applyOptions({ layout: { fontFamily: monoStack(container.current) } });
+    });
+
     chart.current = api;
     candles.current = candleSeries;
     volume.current = volumeSeries;
     markers.current = createSeriesMarkers(candleSeries, []);
 
     return () => {
+      stale = true;
       observer.disconnect();
       api.timeScale().unsubscribeVisibleLogicalRangeChange(onRangeChange);
       markers.current = null;

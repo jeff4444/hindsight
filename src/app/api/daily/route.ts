@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { randomBytes } from 'node:crypto';
 import { serviceClient } from '@/lib/supabase/server';
 import { SESSION_COOKIE, SESSION_COOKIE_OPTIONS, ensureSession } from '@/lib/session';
+import { authClient } from '@/lib/supabase/auth-server';
 import { REVEAL_BARS } from '@/core/config';
 import { fromPgHex, toBase64 } from '@/core/pack';
 import { DAILY_CHARTS, dailyNumber, isDailyOpen } from '@/lib/daily';
@@ -24,6 +25,7 @@ export const dynamic = 'force-dynamic';
  */
 export async function POST(request: Request) {
   const sessionId = await ensureSession();
+  const userId = await currentUserId();
   const now = Date.now();
 
   // `Number(null)` is 0 and `Number.isInteger(0)` is true, so an absent parameter must be
@@ -45,8 +47,9 @@ export async function POST(request: Request) {
   const { data: played, error: playedError } = await supabase
     .from('rounds')
     .select('daily_index, passed, r_multiple, percentile')
-    .eq('session_id', sessionId)
+    .eq('owner', userId ?? sessionId)
     .eq('daily_day', day)
+    .eq('superseded', false)
     .not('committed_at', 'is', null)
     .order('daily_index');
 
@@ -63,6 +66,10 @@ export async function POST(request: Request) {
 
   // Complete: hand back the summary and the card rather than a sixth chart.
   if (results.length >= DAILY_CHARTS) {
+    // The durable record streaks read. Written here rather than in the order route so it also
+    // heals a session whose fifth chart committed before they had an account.
+    if (userId) await supabase.rpc('record_daily_completion', { p_user: userId, p_day: day });
+
     const scored = results.map((r) => r.percentile).filter((p): p is number => p !== null);
     const mean = scored.length > 0 ? scored.reduce((a, b) => a + b, 0) / scored.length : null;
     const traded = results.filter((r) => !r.passed).length;
@@ -83,6 +90,7 @@ export async function POST(request: Request) {
   const nonce = randomBytes(16).toString('hex');
   const { data, error } = await supabase.rpc('issue_daily', {
     p_session: sessionId,
+    p_user: userId,
     p_day: day,
     p_nonce: nonce,
   });
@@ -126,4 +134,14 @@ function withSession(payload: DailyPayload, sessionId: string) {
   const response = NextResponse.json(payload);
   response.cookies.set(SESSION_COOKIE, sessionId, SESSION_COOKIE_OPTIONS);
   return response;
+}
+
+async function currentUserId(): Promise<string | null> {
+  try {
+    const auth = await authClient();
+    const { data } = await auth.getUser();
+    return data.user?.id ?? null;
+  } catch {
+    return null;
+  }
 }
