@@ -1,0 +1,140 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+/**
+ * §12.1 is the single most important integrity rule in the product, and §12.2 asks for
+ * "auditing every response payload and variable name for leaks". A convention cannot be
+ * audited; a test can.
+ *
+ * The mocked RPC below returns far more than `issue_round` actually returns — the symbol, the
+ * window timestamps, the reveal bars and the resolution path. That is deliberate. If someone
+ * later widens the function's return type, or swaps the RPC for a `select *`, this test fails
+ * on the handler rather than on the database, which is where the mistake would actually be
+ * made.
+ */
+
+const REVEAL_BARS = [{ o: 900, h: 950, l: 890, c: 940, v: 3 }];
+
+// Four minute bars' worth of bytes. The route re-encodes whatever issue_round hands back, so
+// this stands in for the lead-in prefix the function is supposed to have sliced.
+const LEAD_IN_DETAIL_HEX = '\\x' + '11'.repeat(80);
+
+const OVERSHARING_ROW = {
+  round_id: '11111111-1111-4111-8111-111111111111',
+  chart_id: '22222222-2222-4222-8222-222222222222',
+  lead_in_bars: [{ o: 100, h: 101, l: 99, c: 100.5, v: 1 }],
+  atr14: 2.4,
+  tick_size: 0.01,
+  entry_price: 100.5,
+  start_dow: 1, // Tuesday
+  start_hour: 14,
+  lead_in_detail: LEAD_IN_DETAIL_HEX,
+  // None of the following may appear in the response.
+  symbol: 'BTCUSDT',
+  window_start: '2021-04-13T00:00:00.000Z',
+  decision_at: '2021-04-16T08:00:00.000Z',
+  reveal_bars: REVEAL_BARS,
+  resolution_path: '\\xdeadbeef',
+  index_factor: 0.00167,
+};
+
+vi.mock('server-only', () => ({}));
+
+vi.mock('next/headers', () => ({
+  cookies: async () => ({ get: () => undefined, set: () => undefined }),
+}));
+
+vi.mock('@/lib/supabase/server', () => ({
+  serviceClient: () => ({
+    rpc: async () => ({ data: [OVERSHARING_ROW], error: null }),
+  }),
+}));
+
+describe('POST /api/round leaks nothing about the future or the instrument', () => {
+  let body: string;
+  let parsed: Record<string, unknown>;
+
+  beforeEach(async () => {
+    const { POST } = await import('@/app/api/round/route');
+    const response = await POST();
+    body = await response.text();
+    parsed = JSON.parse(body);
+  });
+
+  it('returns only the documented fields', () => {
+    expect(Object.keys(parsed).sort()).toEqual(
+      [
+        'atr',
+        'bars',
+        'entry',
+        'revealBarCount',
+        'roundId',
+        'detail',
+        'startDayOfWeek',
+        'startHourUtc',
+        'tickSize',
+      ].sort(),
+    );
+  });
+
+  it('releases a weekday and an hour, and nothing else about when it was', () => {
+    // Three bits and a little under five. Enough to read session and weekend structure;
+    // nowhere near enough to place the window in a year, a month or a day of the month.
+    expect(parsed.startDayOfWeek).toBe(1);
+    expect(parsed.startHourUtc).toBe(14);
+    expect(parsed.startDayOfWeek).toBeGreaterThanOrEqual(0);
+    expect(parsed.startDayOfWeek).toBeLessThanOrEqual(6);
+    expect(parsed.startHourUtc).toBeGreaterThanOrEqual(0);
+    expect(parsed.startHourUtc).toBeLessThanOrEqual(23);
+  });
+
+  it('carries no ticker', () => {
+    expect(body).not.toContain('BTCUSDT');
+    expect(body.toLowerCase()).not.toContain('symbol');
+  });
+
+  it('carries no date, in any form', () => {
+    expect(body).not.toContain('2021');
+    expect(body).not.toMatch(/\d{4}-\d{2}-\d{2}/);
+    expect(body).not.toContain('window_start');
+    expect(body).not.toContain('decision_at');
+    expect(body).not.toContain('T08:00');
+    // No bar carries a timestamp field either.
+    for (const bar of parsed.bars as Record<string, unknown>[]) {
+      expect(Object.keys(bar).sort()).toEqual(['c', 'h', 'l', 'o', 'v']);
+    }
+  });
+
+  it('ships the lead-in detail as base64, not as raw Postgres hex', () => {
+    // Base64 costs a third; hex costs double. At 4800 minute bars that is the difference
+    // between a 128 KB payload and a 192 KB one.
+    expect(typeof parsed.detail).toBe('string');
+    expect(parsed.detail).not.toContain('\\x');
+    expect(Buffer.from(parsed.detail as string, 'base64')).toEqual(
+      Buffer.from('11'.repeat(80), 'hex'),
+    );
+  });
+
+  it('carries no future bar', () => {
+    for (const value of [900, 950, 890, 940]) {
+      expect(body).not.toContain(String(value));
+    }
+    expect(body).not.toContain('reveal_bars');
+    expect(body).not.toContain('resolution_path');
+    expect(body).not.toContain('deadbeef');
+  });
+
+  it('carries no chart id, so charts cannot be correlated across sessions', () => {
+    expect(body).not.toContain('22222222-2222-4222-8222-222222222222');
+  });
+
+  it('carries no denormalisation factor, which would recover the real price level', () => {
+    expect(body).not.toContain('index_factor');
+    expect(body).not.toContain('0.00167');
+  });
+
+  it('does still carry the risk arithmetic §3.1 says must never be hidden', () => {
+    expect(parsed.atr).toBe(2.4);
+    expect(parsed.tickSize).toBe(0.01);
+    expect(parsed.entry).toBe(100.5);
+  });
+});
