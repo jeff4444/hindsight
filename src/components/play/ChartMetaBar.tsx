@@ -1,6 +1,6 @@
 'use client';
 
-import { DISPLAY_TIER, TIERS } from '@/lib/resolution';
+import { DECISION_TF, TIMEFRAMES } from '@/lib/timeframe';
 import { Chip, cx } from '../ui';
 
 /**
@@ -59,15 +59,15 @@ export function ChartMetaBar({
           }
           className={cx(
             'text-mini cursor-pointer appearance-none rounded py-1 pr-6 pl-2 font-mono ring-1 transition-colors',
-            tier === DISPLAY_TIER
+            tier === DECISION_TF
               ? 'bg-fill-2 text-ink ring-line hover:bg-fill-3'
               : 'bg-restraint-bg text-restraint-ink ring-restraint-line hover:brightness-115',
           )}
         >
-          {TIERS.map((option) => (
+          {TIMEFRAMES.map((option) => (
             <option key={option.minutes} value={option.minutes} className="bg-surface-2">
               {option.label}
-              {option.minutes === DISPLAY_TIER ? '  ·  decision' : ''}
+              {option.minutes === DECISION_TF ? '  ·  decision' : ''}
             </option>
           ))}
         </select>

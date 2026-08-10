@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { aggregateByCount } from '@/core/bars';
 import { packDetail, unpackDetail, toBase64, fromBase64, DETAIL_BAR_BYTES } from '@/core/pack';
-import { DISPLAY_TIER, TIERS, tierLabel, tierPhase, tierPlan } from '@/lib/resolution';
+import { DECISION_TF, TIMEFRAMES, timeframeLabel, timeframePhase, timeframePlan } from '@/lib/timeframe';
 import { HOUR_SECONDS, formatClock, timeOrigin } from '@/lib/clock';
 import { bar, path } from './helpers';
 
@@ -78,32 +78,32 @@ describe('detail packing', () => {
 
 describe('the resolution menu', () => {
   it('offers the timeframes a trader expects, coarsening in order', () => {
-    expect(TIERS.map((t) => t.label)).toEqual(['1m', '15m', '30m', '1h', '4h', '1d']);
-    const minutes = TIERS.map((t) => t.minutes);
+    expect(TIMEFRAMES.map((t) => t.label)).toEqual(['1m', '15m', '30m', '1h', '4h', '1d']);
+    const minutes = TIMEFRAMES.map((t) => t.minutes);
     expect(minutes).toEqual([...minutes].sort((a, b) => a - b));
   });
 
   it('defaults to the timeframe the trade is scored on', () => {
-    expect(DISPLAY_TIER).toBe(60);
-    expect(TIERS.some((t) => t.minutes === DISPLAY_TIER)).toBe(true);
+    expect(DECISION_TF).toBe(60);
+    expect(TIMEFRAMES.some((t) => t.minutes === DECISION_TF)).toBe(true);
   });
 
   it('labels tiers the way a trader writes them', () => {
-    expect(tierLabel(60)).toBe('1h');
-    expect(tierLabel(15)).toBe('15m');
-    expect(tierLabel(240)).toBe('4h');
-    expect(tierLabel(1440)).toBe('1d');
+    expect(timeframeLabel(60)).toBe('1h');
+    expect(timeframeLabel(15)).toBe('15m');
+    expect(timeframeLabel(240)).toBe('4h');
+    expect(timeframeLabel(1440)).toBe('1d');
   });
 
   it('builds sub-hour tiers from the minute detail and the rest from the scored candles', () => {
-    expect(tierPlan(1)).toEqual({ unitMinutes: 1, group: 1 });
-    expect(tierPlan(15)).toEqual({ unitMinutes: 1, group: 15 });
-    expect(tierPlan(30)).toEqual({ unitMinutes: 1, group: 30 });
+    expect(timeframePlan(1)).toEqual({ unitMinutes: 1, group: 1 });
+    expect(timeframePlan(15)).toEqual({ unitMinutes: 1, group: 15 });
+    expect(timeframePlan(30)).toEqual({ unitMinutes: 1, group: 30 });
     // At an hour and above the source is the authoritative display candles, not the Float32
     // detail, so the resolution the trade is scored on is never re-derived.
-    expect(tierPlan(60)).toEqual({ unitMinutes: 60, group: 1 });
-    expect(tierPlan(240)).toEqual({ unitMinutes: 60, group: 4 });
-    expect(tierPlan(1440)).toEqual({ unitMinutes: 60, group: 24 });
+    expect(timeframePlan(60)).toEqual({ unitMinutes: 60, group: 1 });
+    expect(timeframePlan(240)).toEqual({ unitMinutes: 60, group: 4 });
+    expect(timeframePlan(1440)).toEqual({ unitMinutes: 60, group: 24 });
   });
 });
 
@@ -112,7 +112,7 @@ describe('clock alignment (§12.2 aside: 4h and 1d do not divide an hour)', () =
     for (const startHour of [0, 7, 15, 23]) {
       const origin = timeOrigin(2, startHour);
       for (const minutes of [1, 15, 30, 60]) {
-        expect(tierPhase(minutes, origin)).toBe(0);
+        expect(timeframePhase(minutes, origin)).toBe(0);
       }
     }
   });
@@ -121,13 +121,13 @@ describe('clock alignment (§12.2 aside: 4h and 1d do not divide an hour)', () =
     // A window opening Wednesday 15:00 is three hours into a 12:00-16:00 candle, and fifteen
     // hours into that day. Without this, a "daily" candle would run 15:00 to 15:00.
     const origin = timeOrigin(2, 15);
-    expect(tierPhase(240, origin)).toBe(3);
-    expect(tierPhase(1440, origin)).toBe(15);
+    expect(timeframePhase(240, origin)).toBe(3);
+    expect(timeframePhase(1440, origin)).toBe(15);
   });
 
   it('opens the first 1d candle at midnight, before the window starts', () => {
     const origin = timeOrigin(2, 15);
-    const phase = tierPhase(1440, origin);
+    const phase = timeframePhase(1440, origin);
     const firstCandleOpens = origin - phase * HOUR_SECONDS;
     expect(formatClock(firstCandleOpens)).toBe('Wed 00:00');
   });

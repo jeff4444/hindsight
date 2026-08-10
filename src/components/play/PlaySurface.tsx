@@ -6,7 +6,7 @@ import { LEAD_IN_BARS } from '@/core/config';
 import { fromBase64, unpackDetail } from '@/core/pack';
 import { TICK_SIZE, toTick } from '@/core/normalize';
 import { clockAt, decisionClockSeconds, formatClock } from '@/lib/clock';
-import { DISPLAY_TIER } from '@/lib/resolution';
+import { DECISION_TF } from '@/lib/timeframe';
 import { useHotkeys } from '@/lib/useHotkeys';
 import { useReducedMotion } from '@/lib/useTween';
 import type {
@@ -70,7 +70,7 @@ export function PlaySurface({ mode, tape = 'open' }: { mode: Mode; tape?: string
   const [speed, setSpeed] = useState(DEFAULT_SPEED);
   const [paused, setPaused] = useState(false);
   const [hitFlash, setHitFlash] = useState<'target' | 'stop' | null>(null);
-  const [tier, setTier] = useState<number>(DISPLAY_TIER);
+  const [tier, setTier] = useState<number>(DECISION_TF);
 
   // Mutable mirrors for the animation loop, which must not re-subscribe every frame.
   const reveal = useRef<Bar[]>([]);
@@ -82,7 +82,7 @@ export function PlaySurface({ mode, tape = 'open' }: { mode: Mode; tape?: string
   const speedRef = useRef(DEFAULT_SPEED);
   const pausedRef = useRef(false);
   const resultRef = useRef<RoundResult | null>(null);
-  const tierRef = useRef(DISPLAY_TIER);
+  const tierRef = useRef(DECISION_TF);
   const modeRef = useRef<Mode>(mode);
   const tapeRef = useRef(tape);
   const frame = useRef<number | null>(null);
