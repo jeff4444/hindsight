@@ -88,6 +88,35 @@ export interface ChartProvenance {
   sourceNote: string | null;
 }
 
+/**
+ * Layer 1's verdict on the trade.
+ *
+ * §4 exists because a bare R-multiple is mostly luck. This is the answer to the question that is
+ * not luck: of everything this exact path allowed, how much did you take.
+ *
+ * Released only with the reveal — the whole block is derived from the future (§12.1).
+ */
+export interface ScorePayload {
+  /** Where the result sits in the 98-cell achievable distribution, 0–1. */
+  percentile: number | null;
+  /** Best R any bracket could have made here (§4.2). */
+  oracleR: number;
+  /** The distribution's median. Negative means restraint outscored most entries (§8.1 parR). */
+  parR: number | null;
+  /** The 98 achievable R-multiples, for drawing the distribution. */
+  distribution: number[];
+  axes: {
+    direction: number | null;
+    stopSweptShare: number | null;
+    stopInsideNoise: boolean | null;
+    profitableMaeR: number | null;
+    targetReached: boolean | null;
+    captureShare: number | null;
+    restraint: number | null;
+    efficiency: number | null;
+  };
+}
+
 export interface RevealPayload {
   result: RoundResult;
   /** The future. Released only now, after the order is committed. */
@@ -96,4 +125,27 @@ export interface RevealPayload {
   detail: string;
   /** What it actually was. Released only now, for the same reason as the bars. */
   provenance: ChartProvenance;
+  /** Layer 1's score. Null only for charts enumerated before Layer 1 existed. */
+  score: ScorePayload | null;
+}
+
+/**
+ * The player's state in a daily (§10.1).
+ *
+ * Either the next chart to play, or — once all five are committed — the summary and the share
+ * card. Nothing here carries the future: `round` is the same lead-in-only projection free play
+ * uses, and the card is spoiler-free by construction (§10.4).
+ */
+export interface DailyPayload {
+  day: number;
+  complete: boolean;
+  /** How many of the five have been committed. */
+  played: number;
+  total: number;
+  /** How many were traded rather than passed — §4.4's social brake. */
+  traded: number;
+  /** Mean percentile across the session, once complete. */
+  percentile: number | null;
+  card: string | null;
+  round: RoundPayload | null;
 }
