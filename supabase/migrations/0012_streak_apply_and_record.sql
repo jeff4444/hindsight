@@ -134,3 +134,36 @@ begin
 end;
 $$;
 revoke all on function public.credit_repair(uuid) from public, anon, authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Backfill the durable daily-completion records after a claim.
+--
+-- Without this, a player who completed dailies anonymously and then signed in kept their rounds
+-- but lost their streak: `daily_completions` is only written when the fifth chart commits, and at
+-- that moment there was no account to write it against. The sign-in screen promises "nothing is
+-- lost", so the claim has to make that true for streaks too.
+create or replace function public.backfill_daily_completions(p_user uuid)
+returns integer language plpgsql security invoker set search_path = ''
+as $$
+declare
+  v_day integer;
+  v_count integer := 0;
+begin
+  if p_user is null then return 0; end if;
+
+  for v_day in
+    select r.daily_day
+    from public.rounds r
+    where r.user_id = p_user and r.daily_day is not null
+      and r.committed_at is not null and not r.superseded
+    group by r.daily_day
+    having count(*) >= 5
+  loop
+    perform public.record_daily_completion(p_user, v_day);
+    v_count := v_count + 1;
+  end loop;
+
+  return v_count;
+end;
+$$;
+revoke all on function public.backfill_daily_completions(uuid) from public, anon, authenticated;

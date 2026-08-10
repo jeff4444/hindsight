@@ -63,6 +63,11 @@ begin
    where a.session_id = p_session and a.user_id is null and not a.superseded;
   get diagnostics v_claim = row_count;
 
+  -- 5. Every daily the merged history actually completed now gets its durable record, so the
+  --    streak the player earned before signing in is the streak they see afterwards.
+  --    (Defined in 0012; claim_session is re-created there once it exists.)
+  perform public.backfill_daily_completions(p_user);
+
   return query select v_claim, v_super, null::uuid;
 end;
 $$;

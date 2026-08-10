@@ -3,12 +3,16 @@ import { serviceClient } from '@/lib/supabase/server';
 import { MarketSignature } from '@/components/ui/MarketSignature';
 import { Eyebrow, Panel } from '@/components/ui';
 import { isAccent } from '@/lib/avatar';
+import { currentViewer } from '@/lib/viewer';
+import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
 
 export default async function ProfilePage({ params }: { params: Promise<{ handle: string }> }) {
   const { handle } = await params;
   const supabase = serviceClient();
+
+  const viewer = await currentViewer();
 
   const { data: profile } = await supabase
     .from('profiles')
@@ -43,7 +47,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
   const perfect = (streak?.longest_perfect ?? 0) > 0;
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-10">
+    <div className="mx-auto max-w-3xl">
       <div className="flex items-center gap-5">
         <MarketSignature seed={profile.avatar_seed} accent={accent} size={88} ring={perfect ? 'gold' : 'accent'} />
         <div>
@@ -51,6 +55,14 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
             {profile.display_name ?? profile.handle_display ?? profile.handle}
           </h1>
           <div className="text-ink-dim mt-0.5 font-mono text-sm">@{profile.handle}</div>
+          {viewer.userId === profile.user_id && (
+            <Link
+              href="/settings"
+              className="text-ink-dim hover:text-ink-hi mt-1 inline-block text-xs font-medium transition-colors"
+            >
+              Edit signature →
+            </Link>
+          )}
           <div className="text-ink-faint text-mini mt-1">
             Reading charts since{' '}
             {new Date(profile.created_at as string).toLocaleDateString('en-GB', {
