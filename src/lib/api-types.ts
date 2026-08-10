@@ -62,10 +62,38 @@ export interface RoundResult {
   target: number | null;
 }
 
+/**
+ * What the chart actually was.
+ *
+ * Released only with the reveal, never at issuance — §12.2 hides identity so the chart cannot be
+ * looked up *before* the decision, and §3.3 defines a Silent mod as "no ticker or date reveal
+ * even after the round", which only makes sense because revealing it afterwards is the default.
+ * §13.1 assumes the same.
+ */
+export interface ChartProvenance {
+  /** e.g. "BTCUSDT". */
+  symbol: string;
+  venue: string;
+  /** ISO instant of the decision bar — the moment the trade was placed. */
+  decisionAt: string;
+  /** ISO instant of the first visible candle. */
+  windowStart: string;
+  /** The instrument's real price at the entry, in quote currency. */
+  entryPriceReal: number;
+  /** The chart was vertically mirrored, so it did not look like this at the time (§3.3). */
+  mirrored: boolean;
+  /** False for real price action. §7.2 synthetic controls do not exist yet. */
+  synthetic: boolean;
+  /** How a synthetic chart was produced. Null for real ones. */
+  sourceNote: string | null;
+}
+
 export interface RevealPayload {
   result: RoundResult;
   /** The future. Released only now, after the order is committed. */
   revealBars: Bar[];
   /** The reveal window's one-minute detail, same encoding as RoundPayload.detail. */
   detail: string;
+  /** What it actually was. Released only now, for the same reason as the bars. */
+  provenance: ChartProvenance;
 }

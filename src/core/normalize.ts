@@ -74,6 +74,26 @@ export function mirrorBar<T extends Bar>(bar: T): T {
   };
 }
 
+/**
+ * Recover an instrument's real price from what the player was shown.
+ *
+ * The inverse of everything §12.2 does to hide identity: undo the mirror if one was applied,
+ * then undo the indexing. Used only after an order is committed, when the reveal screen names
+ * the instrument and the moment — §3.3 defines a *Silent* mod as "no ticker or date reveal even
+ * after the round", which only makes sense because revealing them is the default.
+ *
+ * Order matters and is not symmetric: the pipeline scales first and mirrors second, so undoing
+ * it means un-mirroring first and unscaling second.
+ */
+export function denormalizePrice(
+  displayed: number,
+  factor: number,
+  mirrored: boolean,
+): number {
+  const unmirrored = mirrored ? mirrorPrice(displayed) : displayed;
+  return unmirrored / factor;
+}
+
 /** Median of a numeric array. Does not mutate the input. */
 export function median(values: number[]): number {
   if (values.length === 0) return 0;

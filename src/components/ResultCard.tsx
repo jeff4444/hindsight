@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { easeOutCubic } from '@/lib/camera';
-import type { RoundResult } from '@/lib/api-types';
+import type { ChartProvenance, RoundResult } from '@/lib/api-types';
 
 /**
  * The post-trade panel.
@@ -14,10 +14,12 @@ import type { RoundResult } from '@/lib/api-types';
  */
 export function ResultCard({
   result,
+  provenance,
   onNext,
   onReplay,
 }: {
   result: RoundResult;
+  provenance: ChartProvenance | null;
   onNext: () => void;
   onReplay: () => void;
 }) {
@@ -107,8 +109,96 @@ export function ResultCard({
           )}
         </>
       )}
+
+      {provenance && <Provenance provenance={provenance} />}
     </div>
   );
+}
+
+/**
+ * What the chart actually was.
+ *
+ * Withheld until the order is committed, because §12.2 hides identity so a chart cannot be
+ * looked up before the decision. Afterwards there is nothing left to protect and something to
+ * gain: the player can check for themselves that the price action was real, which is the whole
+ * claim the product rests on. §3.3's Silent mod is the opt-out.
+ */
+function Provenance({ provenance }: { provenance: ChartProvenance }) {
+  return (
+    <div className="hs-rise mt-4 border-t border-white/5 pt-3" style={{ animationDelay: '300ms' }}>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <span className="text-[10px] font-semibold tracking-widest text-slate-500">
+          THIS WAS
+        </span>
+
+        <span className="rounded bg-white/5 px-2 py-1 font-mono text-xs text-slate-200 ring-1 ring-white/10">
+          {provenance.symbol}
+        </span>
+        <span className="font-mono text-xs text-slate-400">{provenance.venue}</span>
+        <span className="font-mono text-xs text-slate-400">{formatMoment(provenance.decisionAt)}</span>
+        <span className="font-mono text-xs text-slate-400">
+          entry {formatPrice(provenance.entryPriceReal)}
+        </span>
+
+        {provenance.synthetic ? (
+          <span className="rounded bg-violet-500/15 px-2 py-1 text-[10px] font-semibold tracking-wider text-violet-300 ring-1 ring-violet-500/30">
+            SYNTHETIC
+          </span>
+        ) : (
+          <span className="rounded bg-emerald-500/10 px-2 py-1 text-[10px] font-semibold tracking-wider text-emerald-300/80 ring-1 ring-emerald-500/20">
+            REAL PRICE ACTION
+          </span>
+        )}
+
+        {provenance.mirrored && (
+          <span
+            className="rounded bg-sky-500/10 px-2 py-1 text-[10px] font-semibold tracking-wider text-sky-300 ring-1 ring-sky-500/25"
+            title="The chart you read was flipped vertically, so it will not match the real one until you invert it."
+          >
+            MIRRORED
+          </span>
+        )}
+      </div>
+
+      {provenance.synthetic ? (
+        <p className="mt-2 text-[11px] leading-relaxed text-slate-400">
+          Not a real market. {provenance.sourceNote ?? 'Generated as a control.'} Your score on
+          charts like this one is how the product measures whether chart reading is a skill at all.
+        </p>
+      ) : (
+        <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
+          Every candle above is real trading, exactly as it happened
+          {provenance.mirrored ? ' — flipped vertically so the shape could not be recognised' : ''}.
+          Look it up.
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** "Fri 16 Apr 2021, 08:00 UTC" — the real calendar moment, released only after the commit. */
+function formatMoment(iso: string): string {
+  return new Date(iso).toLocaleString('en-GB', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'UTC',
+  }) + ' UTC';
+}
+
+/**
+ * Prices in this corpus span nine orders of magnitude — a coin at 0.0000034 and BTC at 100,000
+ * cannot share a format, so the number of decimals follows the size.
+ */
+function formatPrice(value: number): string {
+  const digits = value >= 1000 ? 2 : value >= 1 ? 4 : value >= 0.01 ? 6 : 8;
+  return value.toLocaleString('en-US', {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  });
 }
 
 /**

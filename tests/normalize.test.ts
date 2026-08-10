@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   INDEX_BASE,
   TICK_SIZE,
+  denormalizePrice,
   indexFactor,
   median,
   mirrorBar,
@@ -122,5 +123,53 @@ describe('normalizeWindow', () => {
     for (const collection of [norm.leadIn, norm.reveal, norm.path]) {
       expect(collection.every((b) => !('t' in b))).toBe(true);
     }
+  });
+});
+
+describe('recovering the real price for the reveal (§3.3, §13.1)', () => {
+  // The reveal screen names the instrument and the moment, so it also shows what the price
+  // really was. That means undoing §12.2's identity hiding — and undoing it in the right order,
+  // because the pipeline scales first and mirrors second.
+  const raw = [0.00000312, 1.0842, 61_284.12, 67_431.25];
+
+  it('round-trips an unmirrored chart', () => {
+    for (const price of raw) {
+      const factor = indexFactor(price);
+      const displayed = price * factor;
+      expect(denormalizePrice(displayed, factor, false)).toBeCloseTo(price, 9);
+    }
+  });
+
+  it('round-trips a mirrored chart', () => {
+    for (const price of raw) {
+      const factor = indexFactor(price);
+      // Exactly what the pipeline does: scale, then mirror.
+      const displayed = mirrorPrice(price * factor);
+      expect(denormalizePrice(displayed, factor, true)).toBeCloseTo(price, 9);
+    }
+  });
+
+  it('recovers the entry price of a whole normalised window', () => {
+    const leadIn = timed(0, path(80, (i) => bar(50 + i * 0.1, 50 + i * 0.1 + 0.5, 50 + i * 0.1 - 0.5, 50 + i * 0.1 + 0.2, 1000)));
+    const reveal = timed(80 * 3_600_000, path(60, () => bar(58, 59, 57, 58.5, 2000)), 3_600_000);
+    const pathRaw = timed(80 * 3_600_000, flat(3600, 58));
+
+    for (const mirrored of [false, true]) {
+      const norm = normalizeWindow(leadIn, reveal, pathRaw, mirrored);
+      const shownEntry = norm.leadIn[79].c;
+      const realEntry = denormalizePrice(shownEntry, norm.indexFactor, mirrored);
+      expect(realEntry).toBeCloseTo(leadIn[79].c, 9);
+    }
+  });
+
+  it('gets the order wrong if the mirror is undone second', () => {
+    // Guards the one mistake worth guarding: the transform is not symmetric, so unscaling before
+    // un-mirroring returns a plausible-looking number that is simply not the price.
+    const price = 61_284.12;
+    const factor = indexFactor(price);
+    const displayed = mirrorPrice(price * factor);
+    const wrongOrder = mirrorPrice(displayed / factor);
+    expect(wrongOrder).not.toBeCloseTo(price, 2);
+    expect(denormalizePrice(displayed, factor, true)).toBeCloseTo(price, 6);
   });
 });
