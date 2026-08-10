@@ -62,18 +62,39 @@ function previousMonth(month: string): string {
 const cachePath = (symbol: string, month: string) =>
   path.join(CACHE_DIR, `${symbol}-1h-${month}.zip`);
 
-/** Fetch once, cache forever. A month of hourly klines is about 30 KB. */
+/**
+ * A month the archive does not have — a symbol not yet listed, or already delisted.
+ *
+ * Marked on disk rather than merely returned empty. Without it an absent month is re-requested on
+ * every run, and `data.binance.vision` is a public archive somebody else pays for — a script that
+ * asks the same question repeatedly because it never wrote down the answer is the script's fault,
+ * not the archive's. (The 22 charts this corpus cannot extend are not 404s; their archives exist
+ * and simply do not carry 220 contiguous hours. But a symbol whose prior month predates its
+ * listing is a real 404, and the general case is worth closing.)
+ */
+const missingPath = (symbol: string, month: string) =>
+  path.join(CACHE_DIR, `${symbol}-1h-${month}.missing`);
+
+/** Fetch once, cache forever — including the misses. A month of hourly klines is about 30 KB. */
 async function hourArchive(symbol: string, month: string): Promise<TimedBar[]> {
   const file = cachePath(symbol, month);
+  const missing = missingPath(symbol, month);
+
+  if (existsSync(missing)) return [];
+
   if (!existsSync(file)) {
     const response = await fetch(klineUrl(symbol, month, '1h'));
-    if (!response.ok) return [];
     await mkdir(CACHE_DIR, { recursive: true });
+    if (!response.ok) {
+      await writeFile(missing, '');
+      return [];
+    }
     await writeFile(file, Buffer.from(await response.arrayBuffer()));
   }
   try {
     return parseKlineZip(await readFile(file));
   } catch {
+    // A corrupt download is worth one retry on a later run, so it is not marked missing.
     return [];
   }
 }
@@ -133,8 +154,15 @@ async function run() {
   let filled = 0;
   let short = 0;
   let lastId = '';
+  // A hard stop. The loop terminates on its own; this is here because the last version of it did
+  // not, and an unbounded loop against a database and a public archive is the kind of bug that
+  // should be impossible rather than merely fixed.
+  const maxPages = Math.ceil(((count ?? 0) + 1) / PAGE) + 2;
 
-  for (;;) {
+  for (let page = 0; ; page++) {
+    if (page > maxPages) {
+      throw new Error(`extend-corpus made no progress after ${maxPages} pages — refusing to loop`);
+    }
     let query = supabase
       .from('charts')
       .select('id, symbol, window_start, index_factor, volume_base, mirrored')
@@ -172,8 +200,13 @@ async function run() {
       if (done % 100 === 0) console.log(`  ${done} processed, ${filled} extended`);
     }
 
-    // Without --force the filter itself advances the cursor, so paging by id would skip rows.
-    if (!FORCE) lastId = '';
+    // The cursor is NEVER reset.
+    //
+    // It was, on the reasoning that the `is null` filter advances the window by itself. It does
+    // not: the charts that *cannot* be extended keep `lead_in_extra = null`, so they keep matching
+    // the filter, and restarting from the beginning selected the same handful forever. The first
+    // run of this spent two and a half hours re-processing twenty-two rows and re-requesting their
+    // archives. With `.gt('id', lastId)` the scan is monotone and terminates on its own.
   }
 
   console.log('');
