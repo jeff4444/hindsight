@@ -3,9 +3,8 @@ import { randomBytes } from 'node:crypto';
 import { serviceClient } from '@/lib/supabase/server';
 import { SESSION_COOKIE, SESSION_COOKIE_OPTIONS, ensureSession } from '@/lib/session';
 import { authClient } from '@/lib/supabase/auth-server';
-import { REVEAL_BARS } from '@/core/config';
-import { fromPgHex, toBase64 } from '@/core/pack';
-import type { RoundPayload } from '@/lib/api-types';
+import { DEFAULT_TIER, MODS, affordances, isTierCode, tierByCode } from '@/core/tiers';
+import { parseMods, roundPayload } from '@/lib/round-payload';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -23,7 +22,17 @@ export async function POST(request: Request) {
   const userId = await currentUserId();
   // The tape is a published filter over the regime tags (§11.1), applied server-side. Nothing
   // about which charts it contains reaches the client.
-  const tape = new URL(request.url).searchParams.get('tape') ?? 'open';
+  const params = new URL(request.url).searchParams;
+  const tape = params.get('tape') ?? 'open';
+
+  // §3.2's ruleset. Unrated Sandbox is the default for free play; anything else is a deliberate ask.
+  const requested = params.get('tier');
+  const tier = tierByCode(isTierCode(requested) ? requested : DEFAULT_TIER);
+  if (!tier) {
+    return NextResponse.json({ error: 'No such ruleset.' }, { status: 404 });
+  }
+  const mods = parseMods(params.get('mods'), MODS);
+  const granted = affordances(tier, mods);
   // Per-round nonce, §12.6. Server-side issuance means a round is a thing the server handed
   // out, not a thing a client can assert into existence.
   const nonce = randomBytes(16).toString('hex');
@@ -34,6 +43,10 @@ export async function POST(request: Request) {
     p_user: userId,
     p_nonce: nonce,
     p_tape: tape,
+    p_tier: tier.code,
+    p_candles: granted.candles,
+    p_detail: granted.detail,
+    p_clock_seconds: granted.clockSeconds,
   });
 
   if (error) {
@@ -57,22 +70,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'The corpus is empty.' }, { status: 503 });
   }
 
-  const payload: RoundPayload = {
-    roundId: row.round_id,
-    bars: row.lead_in_bars,
-    atr: row.atr14,
-    tickSize: row.tick_size,
-    entry: row.entry_price,
-    revealBarCount: REVEAL_BARS,
-    // Weekday and hour only. The year, month and day of the month stay on the server (§12.2);
-    // see src/lib/clock.ts for why these two are released and what they cannot reconstruct.
-    startDayOfWeek: row.start_dow,
-    startHourUtc: row.start_hour,
-    // Already sliced to the lead-in inside issue_round, whose return type has no way to
-    // express the reveal half. Re-encoded from Postgres hex to base64 to save a third of the
-    // payload.
-    detail: row.lead_in_detail ? toBase64(fromPgHex(row.lead_in_detail)) : '',
-  };
+  const payload = roundPayload(row, tier, mods);
 
   const response = NextResponse.json(payload);
   response.cookies.set(SESSION_COOKIE, sessionId, SESSION_COOKIE_OPTIONS);

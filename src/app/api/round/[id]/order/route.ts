@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { serviceClient } from '@/lib/supabase/server';
+import { applyRating } from '@/lib/apply-rating';
 import { readSession } from '@/lib/session';
 import { LEAD_IN_BARS, PATH_BARS_PER_DISPLAY_BAR } from '@/core/config';
 import { decodeCells, scoreAgainst, type PlayerTrade } from '@/core/achievable';
@@ -68,7 +69,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
   const { data: round, error: roundError } = await supabase
     .from('rounds')
-    .select('id, chart_id, session_id, committed_at')
+    .select('id, chart_id, session_id, user_id, owner, committed_at, tier, expires_at')
     .eq('id', id)
     .maybeSingle();
 
@@ -79,6 +80,12 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   if (!round || round.session_id !== sessionId) {
     return NextResponse.json({ error: 'No such round.' }, { status: 404 });
   }
+  // §3.2's clock. Enforced here rather than in the client because the client's clock is not the
+  // one that counts — and a late commit is a *forfeit*, not a rejection, so a player who ran out
+  // of time cannot simply reload and get the chart back.
+  const expired =
+    round.expires_at !== null && Date.parse(round.expires_at as string) < Date.now();
+
   if (round.committed_at !== null) {
     return NextResponse.json({ error: 'This round is already committed.' }, { status: 409 });
   }
@@ -225,6 +232,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       oracle_r: score?.oracleR ?? null,
       efficiency: score?.axes.efficiency ?? null,
       achievable_version: score ? ACHIEVABLE_VERSION : null,
+      forfeited: expired,
     })
     .eq('id', round.id)
     // Belt and braces against two requests racing to commit the same round.
@@ -233,6 +241,29 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   if (updateError) {
     console.error('commit failed', updateError);
     return NextResponse.json({ error: 'Could not commit the order.' }, { status: 500 });
+  }
+
+  // §10.3's earn-back credit. Any committed round in the window counts, passes included —
+  // excluding passes would push a player to trade everything to rescue a streak, which is the exact
+  // habit §4.4 exists to discourage.
+  if (round.user_id) {
+    await supabase.rpc('credit_repair', { p_user: round.user_id as string });
+  }
+
+  // §8.1's rated game between the player and the chart. Only where it is honest to: the Sandbox is
+  // unrated by §3.2, a round that ran out of clock was not really played, and an ambiguous fill is
+  // unfairness rather than inaccuracy (§12.3.2) so neither side is rated on it.
+  const tierCode = (round.tier as string | null) ?? null;
+  if (round.user_id && tierCode && tierCode !== 'SBX' && score?.percentile != null && !expired) {
+    await applyRating({
+      supabase,
+      userId: round.user_id as string,
+      chartId: round.chart_id as string,
+      tier: tierCode,
+      percentile: score.percentile,
+      ambiguous: Boolean(result.ambiguous),
+      roundId: round.id as string,
+    });
   }
 
   // The reveal half of the detail path, released only now. The lead-in prefix was issued with

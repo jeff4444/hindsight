@@ -1,4 +1,5 @@
 import type { Bar } from '@/core/bars';
+import type { ModCode, TierCode } from '@/core/tiers';
 import type { Direction, Outcome } from '@/core/resolve';
 
 /**
@@ -34,6 +35,27 @@ export interface RoundPayload {
    * arrive on RevealPayload.
    */
   detail: string;
+
+  /** §3.2's ruleset this round is played under. */
+  tier: TierCode;
+  /** §3.3's mods in force, layered on the tier. */
+  mods: ModCode[];
+  /** Timeframes the tier permits, in minutes. One entry means the picker is a label. */
+  timeframes: number[];
+  /** Whether the volume pane is drawn. Removed only at Blackout (§3.2). */
+  volume: boolean;
+  /** Whether the price axis is drawn. Removed only by the Blind Scale mod, never by a tier (§3.1). */
+  priceAxis: boolean;
+  /** Whether a pass is available. Removed by Iron (§3.3). */
+  mayPass: boolean;
+  /**
+   * Milliseconds left to decide, or null when the tier is untimed.
+   *
+   * Deliberately a duration rather than a wall-clock deadline: an absolute timestamp would let a
+   * client's clock skew decide whether a commit was late, and the server is the only clock that
+   * matters. The authoritative check happens again at commit.
+   */
+  clockMs: number | null;
 }
 
 export interface OrderRequest {

@@ -9,8 +9,29 @@
 
 import { HOUR_MS, MINUTE_MS } from './bars';
 
-/** Candles the player sees before deciding. */
+/** Candles the player sees before deciding, at the Naked tier the corpus is shaped for. */
 export const LEAD_IN_BARS = 80;
+
+/**
+ * Extra candles stored before those, for the tiers that grant more history.
+ *
+ * §3.2 gives No Tools 300 candles and the Wide mod 250. Stored separately rather than folded into
+ * `lead_in_bars` so that everything derived from the lead-in — the entry, the ATR, the 98-cell
+ * grid, every stored percentile — is untouched by their existence.
+ */
+export const EXTRA_LEAD_IN_BARS = 220;
+export const EXTENDED_LEAD_IN_BARS = LEAD_IN_BARS + EXTRA_LEAD_IN_BARS;
+
+/**
+ * The window ATR(14) is measured over, at every tier.
+ *
+ * Pinned, and it has to be. If ATR followed whatever the player can see, the same chart would carry
+ * a different ATR at No Tools and at Naked; the 98 stop distances are multiples of it, so the two
+ * tiers' achievable grids would differ and their percentiles would not be comparable. That breaks
+ * §3.5's "run both tiers on the same charts with the same player pool" and §8.1's chart-and-tier
+ * rating in one move. The badge means the same thing everywhere or the ladder is not a ladder.
+ */
+export const ATR_WINDOW_BARS = LEAD_IN_BARS;
 
 /** Candles revealed after the order is committed. */
 export const REVEAL_BARS = 60;

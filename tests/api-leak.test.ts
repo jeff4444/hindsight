@@ -27,7 +27,8 @@ const OVERSHARING_ROW = {
   entry_price: 100.5,
   start_dow: 1, // Tuesday
   start_hour: 14,
-  lead_in_detail: LEAD_IN_DETAIL_HEX,
+  expires_at: new Date(Date.now() + 90_000).toISOString(),
+            lead_in_detail: LEAD_IN_DETAIL_HEX,
   // None of the following may appear in the response.
   symbol: 'BTCUSDT',
   window_start: '2021-04-13T00:00:00.000Z',
@@ -78,8 +79,44 @@ describe('POST /api/round leaks nothing about the future or the instrument', () 
         'startDayOfWeek',
         'startHourUtc',
         'tickSize',
+        // The ruleset the round is played under. Every one of these describes what the *player*
+        // may do, never anything about the chart — see the assertion below.
+        'tier',
+        'mods',
+        'timeframes',
+        'volume',
+        'priceAxis',
+        'mayPass',
+        'clockMs',
       ].sort(),
     );
+  });
+
+  it('describes the ruleset without describing the chart', () => {
+    // A tier field would be a leak if it varied with the instrument. It varies with what was asked
+    // for, so the same request always yields the same affordances whatever chart came back.
+    expect(parsed.tier).toBe('NTZ');
+    expect(parsed.mods).toEqual([]);
+    expect(parsed.timeframes).toEqual([60]);
+    expect(parsed.volume).toBe(true);
+    // §3.1: the price axis and the ATR badge survive every tier. Only an opt-in mod removes one.
+    expect(parsed.priceAxis).toBe(true);
+    expect(typeof parsed.atr).toBe('number');
+  });
+
+  it('sends the clock as a duration, never as a deadline', () => {
+    // A wall-clock timestamp would let a client with a skewed clock decide whether its own commit
+    // was late, and it would also disclose the server's notion of "now" to no purpose.
+    expect(typeof parsed.clockMs).toBe('number');
+    expect(parsed.clockMs).toBeGreaterThan(0);
+    expect(parsed.clockMs).toBeLessThanOrEqual(90_000);
+    expect(body).not.toMatch(/expires|deadline|\d{4}-\d{2}-\d{2}T/);
+  });
+
+  it('withholds the minute detail at every tier that does not grant it', () => {
+    // The only enforceable timeframe restriction: a client holding the detail can render 1m
+    // whatever the picker offers, so Naked must not receive it at all.
+    expect(parsed.detail).toBe('');
   });
 
   it('releases a weekday and an hour, and nothing else about when it was', () => {
@@ -110,14 +147,25 @@ describe('POST /api/round leaks nothing about the future or the instrument', () 
     }
   });
 
-  it('ships the lead-in detail as base64, not as raw Postgres hex', () => {
+  it('ships the lead-in detail as base64, not as raw Postgres hex, at the one tier that gets it', async () => {
     // Base64 costs a third; hex costs double. At 4800 minute bars that is the difference
     // between a 128 KB payload and a 192 KB one.
-    expect(typeof parsed.detail).toBe('string');
-    expect(parsed.detail).not.toContain('\\x');
-    expect(Buffer.from(parsed.detail as string, 'base64')).toEqual(
+    //
+    // Only the unrated Sandbox grants a sub-hour timeframe, so it is the only tier this can be
+    // asserted against — which is itself the point of the assertion above it.
+    const { POST } = await import('@/app/api/round/route');
+    const sandbox = await POST(
+      new Request('http://localhost/api/round?tape=open&tier=SBX', { method: 'POST' }),
+    );
+    const payload = JSON.parse(await sandbox.text());
+
+    expect(typeof payload.detail).toBe('string');
+    expect(payload.detail).not.toContain('\\x');
+    expect(Buffer.from(payload.detail as string, 'base64')).toEqual(
       Buffer.from('11'.repeat(80), 'hex'),
     );
+    // And the Sandbox is untimed, so there is no clock to count down.
+    expect(payload.clockMs).toBeNull();
   });
 
   it('carries no future bar', () => {
