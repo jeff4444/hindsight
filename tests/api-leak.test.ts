@@ -35,6 +35,10 @@ const OVERSHARING_ROW = {
   reveal_bars: REVEAL_BARS,
   resolution_path: '\\xdeadbeef',
   index_factor: 0.00167,
+  achievable_r: '\\xcafebabe',
+  oracle_r: 31.7,
+  par_r: -1,
+  pass_percentile: 0.62,
 };
 
 vi.mock('server-only', () => ({}));
@@ -134,6 +138,21 @@ describe('POST /api/round leaks nothing about the future or the instrument', () 
     expect(parsed).not.toHaveProperty('mirrored');
     // Nor the factor that would turn an indexed price back into a real one.
     expect(parsed).not.toHaveProperty('indexFactor');
+  });
+
+  it('carries no achievable set, which is future data by construction', () => {
+    // The 98-cell grid is enumerated *against the reveal path*, so it encodes the future as
+    // surely as the reveal bars do. Its oracle and its median are the same data compressed: an
+    // oracle of 31.7R says the path moved a long way, and a negative median says most brackets
+    // lost. Both belong to the reveal, and neither may be issued.
+    expect(parsed).not.toHaveProperty('score');
+    expect(parsed).not.toHaveProperty('distribution');
+    expect(parsed).not.toHaveProperty('oracleR');
+    expect(parsed).not.toHaveProperty('parR');
+    expect(body).not.toContain('achievable');
+    expect(body).not.toContain('cafebabe');
+    expect(body).not.toContain('31.7');
+    expect(body).not.toContain('0.62');
   });
 
   it('carries no chart id, so charts cannot be correlated across sessions', () => {

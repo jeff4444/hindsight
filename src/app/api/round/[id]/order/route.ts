@@ -3,11 +3,27 @@ import { z } from 'zod';
 import { serviceClient } from '@/lib/supabase/server';
 import { readSession } from '@/lib/session';
 import { LEAD_IN_BARS, PATH_BARS_PER_DISPLAY_BAR } from '@/core/config';
+import { decodeCells, scoreAgainst, type PlayerTrade } from '@/core/achievable';
 import { denormalizePrice, toTick } from '@/core/normalize';
-import { DETAIL_BAR_BYTES, fromPgHex, toBase64, unpackPath } from '@/core/pack';
+import {
+  DETAIL_BAR_BYTES,
+  fromPgHex,
+  toBase64,
+  unpackFloats,
+  unpackPath,
+} from '@/core/pack';
 import { InvalidOrderError, NO_COSTS, resolve } from '@/core/resolve';
-import { NORMALIZATION_VERSION, PIPELINE_VERSION } from '@/core/versions';
-import type { ChartProvenance, RevealPayload, RoundResult } from '@/lib/api-types';
+import {
+  ACHIEVABLE_VERSION,
+  NORMALIZATION_VERSION,
+  PIPELINE_VERSION,
+} from '@/core/versions';
+import type {
+  ChartProvenance,
+  RevealPayload,
+  RoundResult,
+  ScorePayload,
+} from '@/lib/api-types';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -71,7 +87,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     .from('charts')
     // One literal, not a concatenation: supabase-js parses this string to type the row, and a
     // concatenated one degrades every field to an error type.
-    .select('reveal_bars, resolution_path, detail_path, entry_price, symbol, window_start, decision_at, mirrored, index_factor, synthetic, source_note')
+    .select('reveal_bars, resolution_path, detail_path, entry_price, symbol, window_start, decision_at, mirrored, index_factor, synthetic, source_note, achievable_r, achievable_outcome, oracle_r, atr14')
     .eq('id', round.chart_id)
     .single();
 
@@ -165,6 +181,36 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     };
   }
 
+  // Layer 1. The grid was enumerated offline against this same path (§13.2), so scoring is a
+  // lookup plus a percentile rather than 98 fresh resolutions on the request.
+  let score: ScorePayload | null = null;
+  if (chart.achievable_r && chart.achievable_outcome) {
+    const distribution = unpackFloats(fromPgHex(chart.achievable_r as string));
+    const cells = decodeCells(distribution, fromPgHex(chart.achievable_outcome as string));
+    const atr = chart.atr14 as number;
+
+    const trade: PlayerTrade = {
+      direction: result.direction,
+      // The grid's stop axis is in ATR, so the player's stop is converted into the same unit.
+      stopAtr:
+        result.stop === null || !(atr > 0)
+          ? null
+          : Math.abs((chart.entry_price as number) - result.stop) / atr,
+      rMultiple: result.rMultiple ?? 0,
+      outcome: result.outcome,
+      windowMfeR: result.windowMfeR,
+    };
+
+    const scored = scoreAgainst(trade, cells, (chart.oracle_r as number) ?? 0);
+    score = {
+      percentile: scored.percentile,
+      oracleR: scored.oracleR,
+      parR: scored.parR,
+      distribution,
+      axes: scored.axes,
+    };
+  }
+
   // §1.2: the versions that produced this result are pinned to it, in the first commit.
   const { error: updateError } = await supabase
     .from('rounds')
@@ -173,6 +219,12 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       committed_at: committedAt,
       normalization_version: NORMALIZATION_VERSION,
       pipeline_version: PIPELINE_VERSION,
+      // Layer 1's verdict, stored with the grid version that produced it — a percentile is not
+      // comparable across a change of the grid.
+      percentile: score?.percentile ?? null,
+      oracle_r: score?.oracleR ?? null,
+      efficiency: score?.axes.efficiency ?? null,
+      achievable_version: score ? ACHIEVABLE_VERSION : null,
     })
     .eq('id', round.id)
     // Belt and braces against two requests racing to commit the same round.
@@ -213,6 +265,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     revealBars: chart.reveal_bars,
     detail,
     provenance,
+    score,
   };
   return NextResponse.json(payload);
 }

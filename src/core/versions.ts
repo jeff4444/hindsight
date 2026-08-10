@@ -28,3 +28,13 @@ export const PIPELINE_VERSION = 'pipeline-2';
  * records the one that admitted it.
  */
 export const SELECTION_VERSION = 'selection-1';
+
+/**
+ * The achievable set: the enumerated grid, the oracle bound and the axis decomposition.
+ *
+ * Separate again, because it invalidates a different thing. Change the grid's stop or target
+ * ladder, or the oracle's definition, and every percentile ever recorded means something else —
+ * §6's promise that "the same chart yields the same distribution forever" only holds within one
+ * version of it. Charts record the version they were enumerated under.
+ */
+export const ACHIEVABLE_VERSION = 'achievable-1';

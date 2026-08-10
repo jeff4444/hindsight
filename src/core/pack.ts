@@ -137,3 +137,22 @@ export function fromBase64(value: string): Uint8Array {
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
   return bytes;
 }
+
+/* -------------------------------------------------------- achievable set */
+
+/** Pack a plain series of numbers as Float32 — the 98 R-multiples of the achievable grid. */
+export function packFloats(values: readonly number[]): Uint8Array {
+  const floats = new Float32Array(values.length);
+  for (let i = 0; i < values.length; i++) floats[i] = values[i];
+  return new Uint8Array(floats.buffer, floats.byteOffset, floats.byteLength);
+}
+
+export function unpackFloats(bytes: Uint8Array): number[] {
+  const aligned = new Uint8Array(bytes.byteLength);
+  aligned.set(bytes);
+  return Array.from(new Float32Array(aligned.buffer));
+}
+
+/** Outcome codes for a stored grid cell. The high bit flags an ambiguous fill (§12.3.2). */
+export const OUTCOME_CODE = { stop: 0, target: 1, timeout: 2 } as const;
+export const AMBIGUOUS_FLAG = 0x80;
