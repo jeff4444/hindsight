@@ -27,7 +27,7 @@ export function StreakMeter({ streak, today }: { streak: StreakView; today: numb
   return (
     <div
       className={cx(
-        'bg-surface-2 shadow-panel relative overflow-hidden rounded-lg border p-4',
+        'bg-surface-2 shadow-e1 relative overflow-hidden rounded-xl border p-4 md:p-5',
         streak.perfect ? 'border-gold-line' : 'border-line',
       )}
     >
@@ -39,13 +39,13 @@ export function StreakMeter({ streak, today }: { streak: StreakView; today: numb
           <div className="mt-1 flex items-baseline gap-2">
             <span
               className={cx(
-                'font-mono text-3xl font-semibold tabular-nums',
+                'numeral text-3xl font-semibold',
                 streak.length === 0 ? 'text-ink-faint' : streak.perfect ? 'text-gold-ink' : 'text-ink-max',
               )}
             >
               {streak.length}
             </span>
-            <span className="text-ink-dim text-xs">
+            <span className="text-ink-dim text-sm">
               {streak.length === 1 ? 'day' : 'days'}
               {streak.longest > streak.length ? ` · best ${streak.longest}` : ''}
             </span>
@@ -62,14 +62,16 @@ export function StreakMeter({ streak, today }: { streak: StreakView; today: numb
         </div>
       </div>
 
-      <div className="mt-4 flex gap-1" data-stagger>
+      {/* Fourteen cells across a 375px phone: at h-8 and gap-1 they were 20px wide and the row
+          ran past the card. Shorter and tighter below sm, full height from there. */}
+      <div className="mt-4 flex gap-0.5 sm:gap-1" data-stagger>
         {cells.map((cell, i) => (
           <div
             key={cell.day}
             style={{ '--i': i } as React.CSSProperties}
             title={cellTitle(cell)}
             className={cx(
-              'h-8 flex-1 rounded-sm',
+              'h-6 min-w-0 flex-1 rounded-sm sm:h-8',
               cell.kind === 'done' && (streak.perfect ? 'bg-gold/70' : 'bg-long/70'),
               // A freeze is drawn, never celebrated.
               cell.kind === 'frozen' && 'border-info-line bg-info-bg border border-dashed',
@@ -82,7 +84,7 @@ export function StreakMeter({ streak, today }: { streak: StreakView; today: numb
         ))}
       </div>
 
-      <p className="text-ink-dim mt-3 text-xs leading-relaxed">
+      <p className="text-ink-lo mt-3.5 text-sm leading-relaxed">
         {streak.length === 0 ? (
           <>Complete today&rsquo;s daily to start a streak. You get two freezes to spend on days you miss.</>
         ) : rescueIsBacklog ? (
@@ -103,9 +105,9 @@ export function StreakMeter({ streak, today }: { streak: StreakView; today: numb
       {streak.repair && (
         <div className="border-restraint-line bg-restraint-bg mt-3 rounded-md border p-3">
           <div className="eyebrow text-restraint-ink">Earn it back</div>
-          <p className="text-ink-lo mt-1 text-xs leading-relaxed">
+          <p className="text-ink-lo mt-1 text-sm leading-relaxed">
             Your run ended, but it is recoverable. Complete{' '}
-            <span className="text-ink-hi font-mono">
+            <span className="text-ink-hi numeral">
               {streak.repair.chartsRequired - streak.repair.chartsDone}
             </span>{' '}
             more charts and the run reattaches — passes count, because trading everything to save a

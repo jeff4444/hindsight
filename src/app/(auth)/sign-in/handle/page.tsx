@@ -16,13 +16,14 @@ export default async function ClaimHandlePage() {
   const seed = Math.abs(hash(viewer.userId)) % 2147483647;
 
   return (
-    <div>
+    <div className="animate-rise">
       <Eyebrow>One last thing</Eyebrow>
-      <h1 className="text-ink-max mt-2 text-xl font-semibold">Your signature</h1>
-      <p className="text-ink-lo mt-2 text-sm leading-relaxed">
-        Generated from a seed, not uploaded. Reroll until one looks like you.
+      <h1 className="text-ink-max mt-2 text-2xl font-semibold">Your signature</h1>
+      <p className="text-ink-lo mt-3 text-base leading-relaxed">
+        Generated from a seed, not uploaded. Reroll until one looks like you — it gilds when your
+        streak is perfect.
       </p>
-      <div className="mt-7">
+      <div className="mt-8">
         <SignaturePicker initialSeed={seed} action={saveProfile} submitLabel="Claim it" />
       </div>
     </div>
