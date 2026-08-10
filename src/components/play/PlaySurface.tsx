@@ -70,7 +70,9 @@ export function PlaySurface({ mode, tape = 'open' }: { mode: Mode; tape?: string
   const [speed, setSpeed] = useState(DEFAULT_SPEED);
   const [paused, setPaused] = useState(false);
   const [hitFlash, setHitFlash] = useState<'target' | 'stop' | null>(null);
-  const [tier, setTier] = useState<number>(DECISION_TF);
+  /** The clock's full length, kept so the ring knows what fraction is left. */
+  const [clockTotal, setClockTotal] = useState<number | null>(null);
+  const [timeframe, setTimeframe] = useState<number>(DECISION_TF);
 
   // Mutable mirrors for the animation loop, which must not re-subscribe every frame.
   const reveal = useRef<Bar[]>([]);
@@ -82,11 +84,15 @@ export function PlaySurface({ mode, tape = 'open' }: { mode: Mode; tape?: string
   const speedRef = useRef(DEFAULT_SPEED);
   const pausedRef = useRef(false);
   const resultRef = useRef<RoundResult | null>(null);
-  const tierRef = useRef(DECISION_TF);
+  const timeframeRef = useRef(DECISION_TF);
   const modeRef = useRef<Mode>(mode);
   const tapeRef = useRef(tape);
   const frame = useRef<number | null>(null);
   const tauRef = useRef(CAMERA_TAU_MS);
+  // The clock's expiry callback is created once and must not be rebuilt every render, or the
+  // countdown would restart from the current remaining time on every state change.
+  const phaseRef = useRef<Phase>('loading');
+  const submitRef = useRef<(() => void) | null>(null);
 
   // The reveal still reveals under reduced motion; only the camera's glide is removed.
   const reducedMotion = useReducedMotion();
@@ -105,14 +111,18 @@ export function PlaySurface({ mode, tape = 'open' }: { mode: Mode; tape?: string
 
   // The resolution is the player's, and nothing else sets it — not the zoom, not the reveal.
   useEffect(() => {
-    tierRef.current = tier;
-    chart.current?.setTier(tier);
-  }, [tier]);
+    timeframeRef.current = timeframe;
+    chart.current?.setTier(timeframe);
+  }, [timeframe]);
 
   useEffect(() => {
     modeRef.current = mode;
     tapeRef.current = tape;
   }, [mode, tape]);
+
+  useEffect(() => {
+    phaseRef.current = phase;
+  }, [phase]);
 
   const loop = useRevealLoop(
     {
@@ -198,7 +208,7 @@ export function PlaySurface({ mode, tape = 'open' }: { mode: Mode; tape?: string
     // with the reveal itself (§12.1).
     minutes.current = payload.detail ? unpackDetail(fromBase64(payload.detail)) : [];
     chart.current?.setDetail(minutes.current, LEAD_IN_BARS);
-    chart.current?.setTier(tierRef.current);
+    chart.current?.setTier(timeframeRef.current);
     // Autoscale to the visible candles, widened so the rails stay reachable however far the
     // player drags them. This is what makes zooming feel like a chart rather than a picture.
     chart.current?.setGuard({
@@ -212,8 +222,20 @@ export function PlaySurface({ mode, tape = 'open' }: { mode: Mode; tape?: string
     // Rails open at one ATR either side — a neutral 1:1 that expresses no view. The player has
     // to move something to say anything. When the ladder arrives this is the Assist mod and
     // carries a scoring penalty; for now it is just a starting position.
+    // A stricter tier may not permit whatever was selected on the previous round, and leaving a
+    // disallowed timeframe selected would draw candles the ruleset does not grant.
+    if (!payload.timeframes.includes(timeframeRef.current)) {
+      const fallback = payload.timeframes.includes(DECISION_TF)
+        ? DECISION_TF
+        : (payload.timeframes[0] ?? DECISION_TF);
+      timeframeRef.current = fallback;
+      setTimeframe(fallback);
+      chart.current?.setTier(fallback);
+    }
+
     setStop(openStop);
     setTarget(openTarget);
+    setClockTotal(payload.clockMs);
     setPhase('placing');
   }, [stopLoop]);
 
@@ -252,6 +274,20 @@ export function PlaySurface({ mode, tape = 'open' }: { mode: Mode; tape?: string
     },
     [round, phase, stop, target],
   );
+
+  /**
+   * The clock ran out.
+   *
+   * The order on screen is submitted rather than the round being abandoned. The server checks the
+   * deadline against its own clock and marks the round forfeited if it was late — so this cannot
+   * rescue a slow decision, it only stops a player sitting on an expired chart forever. Committing
+   * is also the honest reading of "set and forget": the rails were where they were when time ran
+   * out.
+   */
+  const onClockExpired = useCallback(() => {
+    if (phaseRef.current !== 'placing') return;
+    void submitRef.current?.();
+  }, []);
 
   const resetView = useCallback(() => {
     chart.current?.setLogical(placementView());
@@ -301,6 +337,10 @@ export function PlaySurface({ mode, tape = 'open' }: { mode: Mode; tape?: string
     },
     [round, phase, loop],
   );
+
+  useEffect(() => {
+    submitRef.current = () => void submit({ stop, target });
+  }, [submit, stop, target]);
 
   const skip = useCallback(() => {
     if (phase !== 'revealing') return;
@@ -400,8 +440,13 @@ export function PlaySurface({ mode, tape = 'open' }: { mode: Mode; tape?: string
             tickSize={round.tickSize}
             clockLabel={formatClock(decisionSeconds)}
             weekend={decisionClock.weekend}
-            tier={tier}
-            onTier={setTier}
+            timeframe={timeframe}
+            onTimeframe={setTimeframe}
+            allowed={round.timeframes}
+            tierCode={round.tier}
+            clockMs={phase === 'placing' ? round.clockMs : null}
+            clockTotalMs={clockTotal}
+            onExpire={onClockExpired}
           />
         )}
       </header>
