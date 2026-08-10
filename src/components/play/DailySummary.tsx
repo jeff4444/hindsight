@@ -12,15 +12,7 @@ import { Button, Eyebrow } from '../ui';
  * card because §4.4 makes it the daily's only brake on passing everything — "so the format
  * self-polices socially rather than mechanically".
  */
-export function DailySummary({
-  daily,
-  onKeepPlaying,
-  keepPlayingLabel = 'Free play',
-}: {
-  daily: DailyPayload;
-  onKeepPlaying: () => void;
-  keepPlayingLabel?: string;
-}) {
+export function DailySummary({ daily }: { daily: DailyPayload }) {
   const [copied, setCopied] = useState(false);
 
   const copy = async () => {
@@ -49,8 +41,8 @@ export function DailySummary({
         </div>
 
         <div className="flex items-center gap-2">
-          <Button variant="secondary" size="lg" onClick={onKeepPlaying}>
-            {keepPlayingLabel}
+          <Button variant="secondary" size="lg" as="a" href="/tapes">
+            Keep playing
           </Button>
           <Button variant="primary" size="lg" onClick={() => void copy()}>
             {copied ? 'Copied' : 'Copy card'}

@@ -21,12 +21,14 @@ import { CAMERA_TAU_MS, placementView } from '@/lib/camera';
 import { type ChartHandle } from '../Chart';
 import { ResultCard } from '../ResultCard';
 import { type Rail } from '../TradeOverlay';
-import { Segmented } from '../ui';
+import Link from 'next/link';
+import { Chip } from '../ui';
 import { ChartFrame } from './ChartFrame';
 import { ChartMetaBar } from './ChartMetaBar';
 import { DailySummary } from './DailySummary';
 import { OrderReadout, PlacementBar } from './PlacementBar';
 import { RevealTransport } from './RevealTransport';
+import { DailyPips } from './DailyPips';
 import { DEFAULT_SPEED, useRevealLoop } from './useRevealLoop';
 
 export type Phase =
@@ -37,7 +39,7 @@ export type Phase =
   | 'done'
   | 'summary'
   | 'error';
-export type Mode = 'daily' | 'free';
+export type Mode = 'daily' | 'tape';
 
 /** Vertical headroom kept reachable for the rails, in ATR. */
 const RAIL_HEADROOM_ATR = 3.5;
@@ -50,7 +52,7 @@ const RAIL_HEADROOM_ATR = 3.5;
  * receive props, which is the whole point of the split — the loop is the part that is delicate,
  * and it is now the only part that is.
  */
-export function PlaySurface() {
+export function PlaySurface({ mode, tape = 'open' }: { mode: Mode; tape?: string }) {
   const chart = useRef<ChartHandle>(null);
   const issued = useRef(false);
 
@@ -62,7 +64,6 @@ export function PlaySurface() {
   const [result, setResult] = useState<RoundResult | null>(null);
   const [provenance, setProvenance] = useState<ChartProvenance | null>(null);
   const [score, setScore] = useState<ScorePayload | null>(null);
-  const [mode, setMode] = useState<Mode>('daily');
   const [daily, setDaily] = useState<DailyPayload | null>(null);
   const [revealed, setRevealed] = useState(0);
   const [revealTotal, setRevealTotal] = useState(0);
@@ -82,7 +83,8 @@ export function PlaySurface() {
   const pausedRef = useRef(false);
   const resultRef = useRef<RoundResult | null>(null);
   const tierRef = useRef(DISPLAY_TIER);
-  const modeRef = useRef<Mode>('daily');
+  const modeRef = useRef<Mode>(mode);
+  const tapeRef = useRef(tape);
   const frame = useRef<number | null>(null);
   const tauRef = useRef(CAMERA_TAU_MS);
 
@@ -109,7 +111,8 @@ export function PlaySurface() {
 
   useEffect(() => {
     modeRef.current = mode;
-  }, [mode]);
+    tapeRef.current = tape;
+  }, [mode, tape]);
 
   const loop = useRevealLoop(
     {
@@ -155,9 +158,12 @@ export function PlaySurface() {
     chart.current?.setPrice(null);
 
     // The daily is a five-chart session (§10.1 plus §4.4's card); free play is unlimited.
-    const response = await fetch(modeRef.current === 'daily' ? '/api/daily' : '/api/round', {
-      method: 'POST',
-    });
+    const response = await fetch(
+      modeRef.current === 'daily'
+        ? '/api/daily'
+        : `/api/round?tape=${encodeURIComponent(tapeRef.current)}`,
+      { method: 'POST' },
+    );
     if (!response.ok) {
       const body = await response.json().catch(() => ({ error: 'Could not reach the server.' }));
       setError(body.error ?? 'Could not issue a round.');
@@ -245,16 +251,6 @@ export function PlaySurface() {
       }
     },
     [round, phase, stop, target],
-  );
-
-  const switchMode = useCallback(
-    (next: Mode) => {
-      if (next === mode) return;
-      modeRef.current = next;
-      setMode(next);
-      void load();
-    },
-    [mode, load],
   );
 
   const resetView = useCallback(() => {
@@ -374,24 +370,28 @@ export function PlaySurface() {
     ? decisionClockSeconds(round.startDayOfWeek, round.startHourUtc, LEAD_IN_BARS)
     : 0;
   const decisionClock = clockAt(decisionSeconds);
+  const tapeName = tape === 'open' ? 'The Open Tape' : tape.replace(/-/g, ' ');
 
   return (
     <div className="flex min-h-dvh flex-col gap-3 p-3 sm:p-5">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <h1 className="text-ink-hi tracking-wordmark text-sm font-semibold">HINDSIGHT</h1>
-          <Segmented
-            options={[
-              { value: 'daily', label: 'Daily' },
-              { value: 'free', label: 'Free play' },
-            ]}
-            value={mode}
-            onChange={switchMode}
-          />
-          {mode === 'daily' && daily && (
-            <span className="text-ink-dim text-mini font-mono">
-              #{daily.day} · {Math.min(daily.played + 1, daily.total)}/{daily.total}
-            </span>
+          {/* The way out. During a round the chart owns the screen, so this is the only
+              navigation on it — §3.1's clock is running and a nav rail is a distraction. */}
+          <Link
+            href={mode === 'daily' ? '/home' : '/tapes'}
+            className="text-ink-dim hover:text-ink-hi press flex h-8 items-center gap-1.5 rounded-md px-2 text-mini font-medium transition-colors"
+          >
+            <span aria-hidden>←</span>
+            {mode === 'daily' ? 'Today' : 'Tapes'}
+          </Link>
+          <span className="text-ink-hi tracking-wordmark text-sm font-semibold">HINDSIGHT</span>
+          {mode === 'daily' && daily ? (
+            <DailyPips played={daily.played} total={daily.total} day={daily.day} />
+          ) : (
+            <Chip tone="neutral" className="hidden sm:inline-flex">
+              {tapeName}
+            </Chip>
           )}
         </div>
         {round && (
@@ -454,9 +454,7 @@ export function PlaySurface() {
         />
       )}
 
-      {phase === 'summary' && daily && (
-        <DailySummary daily={daily} onKeepPlaying={() => switchMode('free')} />
-      )}
+      {phase === 'summary' && daily && <DailySummary daily={daily} />}
 
       {phase === 'done' && result && (
         <ResultCard

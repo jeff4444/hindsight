@@ -348,3 +348,78 @@ html[data-motion='reduced'] *::after {
     transition-duration: 1ms !important;
   }
 }
+
+/*
+ * The published ruleset, rendered from docs/rules.md.
+ *
+ * Scoped rather than a general prose class: this is the only long-form document in the product,
+ * and giving it its own block keeps a `<table>` styled here from leaking into the debrief.
+ */
+.rules {
+  color: var(--color-ink);
+  font-size: var(--text-base);
+  line-height: 1.7;
+}
+.rules h1,
+.rules h2,
+.rules h3 {
+  color: var(--color-ink-max);
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  scroll-margin-top: 2rem;
+}
+.rules h1 { font-size: var(--text-2xl); margin-block: 0 1.5rem; }
+.rules h2 {
+  font-size: var(--text-xl);
+  margin-block: 3rem 1rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--color-line-faint);
+}
+.rules h3 { font-size: var(--text-lg); margin-block: 2rem 0.75rem; }
+.rules p { margin-block: 1rem; }
+.rules strong { color: var(--color-ink-hi); font-weight: 600; }
+.rules em { color: var(--color-ink-hi); font-style: italic; }
+.rules a { color: var(--color-info-ink); text-decoration: underline; text-underline-offset: 3px; }
+.rules ul, .rules ol { margin-block: 1rem; padding-left: 1.25rem; }
+.rules li { margin-block: 0.4rem; }
+.rules ul { list-style: disc; }
+.rules ol { list-style: decimal; }
+.rules code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  background: var(--color-fill-2);
+  border-radius: var(--radius-xs);
+  padding: 0.1em 0.35em;
+}
+.rules pre {
+  background: var(--color-surface-1);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  overflow-x: auto;
+  margin-block: 1.25rem;
+}
+.rules pre code { background: none; padding: 0; }
+.rules blockquote {
+  border-left: 2px solid var(--color-line-strong);
+  padding-left: 1rem;
+  margin-block: 1.25rem;
+  color: var(--color-ink-lo);
+}
+/* Wide tables scroll inside their own box; the page body never scrolls sideways. */
+.rules table {
+  display: block;
+  overflow-x: auto;
+  width: 100%;
+  border-collapse: collapse;
+  margin-block: 1.25rem;
+  font-size: var(--text-sm);
+}
+.rules th, .rules td {
+  border: 1px solid var(--color-line-faint);
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  vertical-align: top;
+}
+.rules th { color: var(--color-ink-hi); font-weight: 600; background: var(--color-fill-1); }
+.rules hr { border: 0; border-top: 1px solid var(--color-line-faint); margin-block: 2rem; }

@@ -59,7 +59,9 @@ describe('POST /api/round leaks nothing about the future or the instrument', () 
 
   beforeEach(async () => {
     const { POST } = await import('@/app/api/round/route');
-    const response = await POST();
+    // The route now reads a tape from the query string, so it needs a Request. The assertion
+    // below is unchanged: whatever the tape, the issuance payload carries no future.
+    const response = await POST(new Request('http://localhost/api/round?tape=open', { method: 'POST' }));
     body = await response.text();
     parsed = JSON.parse(body);
   });

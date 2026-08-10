@@ -1,7 +1,11 @@
-'use client';
-
 /**
  * The primitives.
+ *
+ * Deliberately *not* marked `'use client'`. Everything here is presentational — it renders from
+ * props and holds no state — so leaving the directive off lets a server component import `cx` or
+ * an `Eyebrow` directly, while a client component that imports the same module still bundles it.
+ * Marking the file client-only made even the `cx` string helper a client reference, which a
+ * server component cannot call.
  *
  * Before this the app hand-rolled eleven buttons, five panels, eight eyebrows and about a dozen
  * badges as class-string literals, and two components defined the same stat readout under different
@@ -86,6 +90,19 @@ const BUTTON_SIZE = {
   lg: 'h-11 px-5 text-sm rounded-lg gap-2',
 } as const;
 
+type ButtonOwnProps = {
+  variant?: ButtonVariant;
+  size?: keyof typeof BUTTON_SIZE;
+  /** The keyboard shortcut, rendered inline. Five buttons in the play loop carry one. */
+  kbd?: string;
+  loading?: boolean;
+  block?: boolean;
+  /** Render as an anchor. A button that navigates should be a link — middle-click, open in a new
+   *  tab and "copy link address" all stop working the moment it is not. */
+  as?: 'button' | 'a';
+  href?: string;
+};
+
 export function Button({
   variant = 'secondary',
   size = 'md',
@@ -94,19 +111,16 @@ export function Button({
   block,
   className,
   children,
+  as = 'button',
+  href,
   ...rest
-}: {
-  variant?: ButtonVariant;
-  size?: keyof typeof BUTTON_SIZE;
-  /** The keyboard shortcut, rendered inline. Five buttons in the play loop carry one. */
-  kbd?: string;
-  loading?: boolean;
-  block?: boolean;
-} & React.ButtonHTMLAttributes<HTMLButtonElement>) {
+}: ButtonOwnProps & React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  const Tag = (as === 'a' ? 'a' : 'button') as 'button';
   return (
-    <button
+    <Tag
       {...rest}
-      disabled={rest.disabled || loading}
+      {...(as === 'a' ? ({ href } as Record<string, unknown>) : {})}
+      disabled={as === 'a' ? undefined : rest.disabled || loading}
       className={cx(
         'press inline-flex items-center justify-center font-medium transition-colors',
         'disabled:cursor-not-allowed disabled:opacity-45',
@@ -127,7 +141,7 @@ export function Button({
           {kbd}
         </kbd>
       )}
-    </button>
+    </Tag>
   );
 }
 
