@@ -9,9 +9,11 @@ import { clockAt, decisionClockSeconds, formatClock } from '@/lib/clock';
 import { DISPLAY_TIER, TIERS } from '@/lib/resolution';
 import type {
   ChartProvenance,
+  DailyPayload,
   RevealPayload,
   RoundPayload,
   RoundResult,
+  ScorePayload,
 } from '@/lib/api-types';
 import {
   finalView,
@@ -27,7 +29,8 @@ import { Chart, type ChartHandle } from './Chart';
 import { ResultCard } from './ResultCard';
 import { TradeOverlay, type Rail } from './TradeOverlay';
 
-type Phase = 'loading' | 'placing' | 'committing' | 'revealing' | 'done' | 'error';
+type Phase = 'loading' | 'placing' | 'committing' | 'revealing' | 'done' | 'summary' | 'error';
+type Mode = 'daily' | 'free';
 
 /** Milliseconds per revealed candle. */
 const SPEEDS = [
@@ -52,6 +55,9 @@ export function Play() {
   const [target, setTarget] = useState(0);
   const [result, setResult] = useState<RoundResult | null>(null);
   const [provenance, setProvenance] = useState<ChartProvenance | null>(null);
+  const [score, setScore] = useState<ScorePayload | null>(null);
+  const [mode, setMode] = useState<Mode>('daily');
+  const [daily, setDaily] = useState<DailyPayload | null>(null);
   const [revealed, setRevealed] = useState(0);
   const [revealTotal, setRevealTotal] = useState(0);
   const [speed, setSpeed] = useState(DEFAULT_SPEED);
@@ -70,6 +76,7 @@ export function Play() {
   const pausedRef = useRef(false);
   const resultRef = useRef<RoundResult | null>(null);
   const tierRef = useRef(DISPLAY_TIER);
+  const modeRef = useRef<Mode>('daily');
   const frame = useRef<number | null>(null);
 
   // Mirrored into refs so the animation loop reads the live value without being torn down
@@ -87,6 +94,10 @@ export function Play() {
     chart.current?.setTier(tier);
   }, [tier]);
 
+  useEffect(() => {
+    modeRef.current = mode;
+  }, [mode]);
+
   const stopLoop = useCallback(() => {
     if (frame.current !== null) cancelAnimationFrame(frame.current);
     frame.current = null;
@@ -102,6 +113,7 @@ export function Play() {
     setError(null);
     setResult(null);
     setProvenance(null);
+    setScore(null);
     resultRef.current = null;
     setRevealed(0);
     setRevealTotal(0);
@@ -113,7 +125,10 @@ export function Play() {
     chart.current?.clearMarks();
     chart.current?.setPrice(null);
 
-    const response = await fetch('/api/round', { method: 'POST' });
+    // The daily is a five-chart session (§10.1 plus §4.4's card); free play is unlimited.
+    const response = await fetch(modeRef.current === 'daily' ? '/api/daily' : '/api/round', {
+      method: 'POST',
+    });
     if (!response.ok) {
       const body = await response.json().catch(() => ({ error: 'Could not reach the server.' }));
       setError(body.error ?? 'Could not issue a round.');
@@ -121,7 +136,19 @@ export function Play() {
       return;
     }
 
-    const payload: RoundPayload = await response.json();
+    let payload: RoundPayload;
+    if (modeRef.current === 'daily') {
+      const session: DailyPayload = await response.json();
+      setDaily(session);
+      if (session.complete || !session.round) {
+        setPhase('summary');
+        return;
+      }
+      payload = session.round;
+    } else {
+      setDaily(null);
+      payload = await response.json();
+    }
     setRound(payload);
 
     const openStop = toTick(payload.entry - payload.atr);
@@ -189,6 +216,16 @@ export function Play() {
       }
     },
     [round, phase, stop, target],
+  );
+
+  const switchMode = useCallback(
+    (next: Mode) => {
+      if (next === mode) return;
+      modeRef.current = next;
+      setMode(next);
+      void load();
+    },
+    [mode, load],
   );
 
   const resetView = useCallback(() => {
@@ -300,6 +337,7 @@ export function Play() {
       setResult(payload.result);
       resultRef.current = payload.result;
       setProvenance(payload.provenance ?? null);
+      setScore(payload.score ?? null);
       reveal.current = payload.revealBars;
       setRevealTotal(payload.revealBars.length);
       railsRef.current =
@@ -408,9 +446,28 @@ export function Play() {
   return (
     <div className="flex min-h-dvh flex-col gap-3 p-3 sm:p-5">
       <header className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-baseline gap-3">
+        <div className="flex items-center gap-3">
           <h1 className="text-sm font-semibold tracking-[0.2em] text-slate-200">HINDSIGHT</h1>
-          <span className="text-[10px] tracking-widest text-slate-600">PHASE 0</span>
+          <div className="flex rounded-md bg-white/5 p-0.5 text-[11px]">
+            {(['daily', 'free'] as Mode[]).map((option) => (
+              <button
+                key={option}
+                onClick={() => switchMode(option)}
+                className={`rounded px-2.5 py-1 font-medium transition ${
+                  mode === option
+                    ? 'bg-slate-100 text-slate-900'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                {option === 'daily' ? 'Daily' : 'Free play'}
+              </button>
+            ))}
+          </div>
+          {mode === 'daily' && daily && (
+            <span className="font-mono text-[11px] text-slate-500">
+              #{daily.day} · {Math.min(daily.played + 1, daily.total)}/{daily.total}
+            </span>
+          )}
         </div>
         {round && (
           <div className="flex items-center gap-2 text-[11px]">
@@ -606,14 +663,90 @@ export function Play() {
         </div>
       )}
 
+      {phase === 'summary' && daily && (
+        <DailySummary daily={daily} onFreePlay={() => switchMode('free')} />
+      )}
+
       {phase === 'done' && result && (
         <ResultCard
           result={result}
           provenance={provenance}
+          score={score}
+          nextLabel={
+            daily && daily.played + 1 >= daily.total ? 'See your card' : 'Next chart'
+          }
           onNext={() => void load()}
           onReplay={replay}
         />
       )}
+    </div>
+  );
+}
+
+/**
+ * The end of a daily.
+ *
+ * §10.4: the card is "a bid for a reply rather than a broadcast", so the screen leads with the
+ * card itself and a way to copy it, not with a wall of statistics. The traded count is on the
+ * card because §4.4 makes it the daily's only brake on passing everything — "so the format
+ * self-polices socially rather than mechanically".
+ */
+function DailySummary({ daily, onFreePlay }: { daily: DailyPayload; onFreePlay: () => void }) {
+  const [copied, setCopied] = useState(false);
+
+  const copy = async () => {
+    if (!daily.card) return;
+    try {
+      await navigator.clipboard.writeText(daily.card);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
+    } catch {
+      // Clipboard denied; the card is on screen and selectable anyway.
+    }
+  };
+
+  return (
+    <div className="hs-rise rounded-lg border border-white/10 bg-slate-900/60 p-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-3">
+        <div>
+          <div className="text-[10px] font-semibold tracking-widest text-slate-500">
+            DAILY #{daily.day} COMPLETE
+          </div>
+          <div className="mt-0.5 font-mono text-4xl font-semibold tabular-nums text-slate-100">
+            {daily.percentile === null ? '—' : Math.round(daily.percentile * 100)}
+            <span className="ml-1 text-base font-normal text-slate-500">of 100</span>
+          </div>
+          <p className="mt-1 text-xs text-slate-500">
+            Mean percentile across {daily.total} charts, against everything each one allowed.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onFreePlay}
+            className="rounded-md border border-white/15 px-3 py-2 text-sm text-slate-300 transition hover:bg-white/5"
+          >
+            Free play
+          </button>
+          <button
+            onClick={() => void copy()}
+            className="rounded-md bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-white active:scale-[0.98]"
+          >
+            {copied ? 'Copied' : 'Copy card'}
+          </button>
+        </div>
+      </div>
+
+      {daily.card && (
+        <pre className="mt-4 select-all whitespace-pre rounded-md border border-white/10 bg-slate-950/60 p-3 font-mono text-sm leading-relaxed text-slate-300">
+          {daily.card}
+        </pre>
+      )}
+
+      <p className="mt-3 text-[11px] leading-relaxed text-slate-500">
+        The card carries no R-multiple, no direction and no ticker, so posting it cannot spoil the
+        setup for anyone who has not played today (§10.4). Everyone gets the same five charts.
+      </p>
     </div>
   );
 }

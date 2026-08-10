@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { easeOutCubic } from '@/lib/camera';
-import type { ChartProvenance, RoundResult } from '@/lib/api-types';
+import type { ChartProvenance, RoundResult, ScorePayload } from '@/lib/api-types';
+import { Debrief } from './Debrief';
 
 /**
  * The post-trade panel.
@@ -15,11 +16,15 @@ import type { ChartProvenance, RoundResult } from '@/lib/api-types';
 export function ResultCard({
   result,
   provenance,
+  score,
+  nextLabel = 'Next chart',
   onNext,
   onReplay,
 }: {
   result: RoundResult;
   provenance: ChartProvenance | null;
+  score: ScorePayload | null;
+  nextLabel?: string;
   onNext: () => void;
   onReplay: () => void;
 }) {
@@ -57,7 +62,7 @@ export function ResultCard({
             onClick={onNext}
             className="rounded-md bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-white active:scale-[0.98]"
           >
-            Next chart <kbd className="ml-1 text-[10px] text-slate-500">⏎</kbd>
+            {nextLabel} <kbd className="ml-1 text-[10px] text-slate-500">⏎</kbd>
           </button>
         </div>
       </div>
@@ -110,6 +115,7 @@ export function ResultCard({
         </>
       )}
 
+      {score && <Debrief score={score} result={result} />}
       {provenance && <Provenance provenance={provenance} />}
     </div>
   );
