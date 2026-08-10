@@ -14,5 +14,17 @@ export const RESOLVER_VERSION = 'resolver-1';
 /** Price indexing, mirroring and volume rebasing. */
 export const NORMALIZATION_VERSION = 'norm-1';
 
-/** Corpus generation: windowing, filtering, selection. */
-export const PIPELINE_VERSION = 'pipeline-1';
+/** Corpus generation: windowing, filtering, materialisation. */
+export const PIPELINE_VERSION = 'pipeline-2';
+
+/**
+ * The published rule that decides *which* windows become charts.
+ *
+ * Separate from PIPELINE_VERSION because the two change for different reasons and invalidate
+ * different things. A pipeline change alters how a chart is built; a selection change alters
+ * which charts exist, and therefore every population statistic computed over the corpus — chart
+ * ratings, engine track records, the achievable-set distributions. §12.4 is emphatic that those
+ * cannot be compared across a change of rule, so the rule gets its own version and every chart
+ * records the one that admitted it.
+ */
+export const SELECTION_VERSION = 'selection-1';
