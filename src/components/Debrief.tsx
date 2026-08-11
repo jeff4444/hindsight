@@ -41,6 +41,24 @@ export function Debrief({
   const t = useTween(560, [percentile]);
   const playerR = passed ? 0 : (result.rMultiple ?? 0);
 
+  /**
+   * The player's standing, counted the same way the ladder ranks its rungs.
+   *
+   * Not derived from `percentile`, which is a mid-rank statistic: `percentileOf` splits ties, so
+   * `percentile * 98` is not a number of brackets and saying "you beat 21" when 42 tied and none
+   * were worse is simply false. A stop-out makes that the common case rather than the edge one —
+   * a full 1R loss is the floor of the distribution, so most of what ties is sitting exactly on it.
+   * Counting here keeps this sentence and the ladder's "you · n of 98" answering to the same set.
+   */
+  const standing = score.distribution.reduce(
+    (acc, r) => ({
+      total: acc.total,
+      worse: acc.worse + (r < playerR ? 1 : 0),
+      tied: acc.tied + (r === playerR ? 1 : 0),
+    }),
+    { total: score.distribution.length, worse: 0, tied: 0 },
+  );
+
   // The player's bracket in grid coordinates. Continuous, so it lands between cells.
   const stopAtr = atr && atr > 0 && result.riskPerUnit ? result.riskPerUnit / atr : null;
   const targetR =
@@ -64,7 +82,9 @@ export function Debrief({
           <p className="text-ink-lo mt-1 text-sm">
             {percentile === null
               ? 'Not scored — this chart predates the achievable set.'
-              : `You beat ${Math.round(percentile * 98)} of the 98 brackets that were placeable here.`}
+              : standing.tied > 0
+                ? `You beat ${standing.worse} of the ${standing.total} brackets placeable here, and matched ${standing.tied}.`
+                : `You beat ${standing.worse} of the ${standing.total} brackets that were placeable here.`}
           </p>
 
           {/* Wraps. The old row was a bare flex with no wrap and overflowed below 420px. */}

@@ -543,7 +543,12 @@ export function PlaySurface({
    * the result — instead of pushing a string from each handler — means there is no way for the
    * announcement and the screen to disagree, and no setState in an effect to arrange it.
    */
-  const announcement = describe(phase, result);
+  // Derived from `round` rather than read off `windowRef`, so this stays a pure render.
+  const announcement = describe(
+    phase,
+    result,
+    round ? { leadIn: round.bars.length, reveal: round.revealBarCount } : DEFAULT_WINDOW,
+  );
 
   /* -------------------------------------------------------------- rendering */
 
@@ -769,10 +774,17 @@ export function PlaySurface({
   );
 }
 
-/** The live-region text for a phase. Spelled out, because a reader says "R" better than "+2.4R". */
-function describe(phase: Phase, result: RoundResult | null): string | null {
-  if (phase === 'placing') return 'New chart. Eighty candles of history. Place a stop and a target.';
-  if (phase === 'committing') return 'Order sent. Revealing the next sixty candles.';
+/**
+ * The live-region text for a phase. Spelled out, because a reader says "R" better than "+2.4R".
+ *
+ * The counts are read off the round rather than written into the sentence: since the ladder, a
+ * tier grants sixty, eighty or three hundred candles of history, so a hardcoded "eighty" was
+ * simply a lie to the one person on the screen who cannot see how many there are.
+ */
+function describe(phase: Phase, result: RoundResult | null, window: Window): string | null {
+  if (phase === 'placing')
+    return `New chart. ${window.leadIn} candles of history. Place a stop and a target.`;
+  if (phase === 'committing') return `Order sent. Revealing the next ${window.reveal} candles.`;
   if (phase !== 'done' || !result) return null;
   if (result.outcome === 'pass') return 'Passed. Zero R.';
   const r = result.rMultiple;
