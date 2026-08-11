@@ -168,7 +168,7 @@ export interface RevealPayload {
    * `tests/api-leak.test.ts` is untouched by this.
    *
    * Never a consensus. §5.5: "The player-facing output is a spread of opinion, never a consensus
-   * verdict" — so this is the full list, and on 56.5% of charts every school in it has passed.
+   * verdict" — so this is the full list, and on 66.9% of charts every school in it has passed.
    */
   council: Verdict[];
 }

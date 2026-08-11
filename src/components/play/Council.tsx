@@ -8,7 +8,7 @@ import { cx } from '../ui';
  *
  * §5.5: *"The player-facing output is a spread of opinion, never a consensus verdict."* So there is
  * no majority here, no aggregate score, and no arrow. Every engine gets a row, including every
- * engine that passed — and on **56.5%** of charts that is all of them.
+ * engine that passed — and on **66.9%** of charts that is all of them.
  *
  * Three things this panel is built to make impossible to miss, each because the alternative would be
  * a quiet lie:
@@ -124,21 +124,21 @@ export function Council({ verdicts, entry }: { verdicts: Verdict[]; entry: numbe
 
         Each engine's mean R sits inside Engine Zero's band at its own sample size, and the full
         measurement says why: paired chart by chart against a coin flip on the *same* charts, no
-        engine on this roster can be told apart from one (SPA p = 0.46). What beats Engine Zero is
+        engine on this roster can be told apart from one (SPA p = 0.85). What beats Engine Zero is
         not trading, which every school here does most of the time — and which Geometry, firing on
-        no chart at all, does perfectly. Without this line a 63% win rate reads as skill.
+        no chart at all, does perfectly. Without this line a 41% win rate reads as skill.
 
-        The trial count is 9 against 8 rows on purpose: Sweep was specified twice, and §14.9 counts
-        the attempt we discarded. Saying "all 8" here would be the quiet undercount the whole
-        manifest exists to prevent.
+        The trial count is 10 against 8 rows on purpose: Sweep has been specified three times, and
+        §14.9 counts both attempts we discarded. Saying "all 8" here would be the quiet undercount
+        the whole manifest exists to prevent.
       */}
       <p className="text-ink-faint mt-4 max-w-prose text-xs leading-relaxed">
         Every conviction figure above is measured over {EDGE.charts.toLocaleString()} charts, and
         every one of them sits <strong className="text-ink-dim">inside a coin flip’s range</strong>{' '}
         at that engine’s own sample size. Corrected for all {EDGE.trials} specifications we have
-        tried on this corpus — one more than there are rows, because a threshold we replaced still
-        counts — and paired chart by chart against a coin flip on the same charts, no school here
-        picks better than chance.{' '}
+        tried on this corpus — more than there are rows, because thresholds we replaced still count —
+        and paired chart by chart against a coin flip on the same charts, no school here picks better
+        than chance.{' '}
         <strong className="text-ink-dim">The only thing on this roster that beats a coin flip is not
         trading.</strong>{' '}
         Which is why the rows above are not ranked, and why passing is scored.

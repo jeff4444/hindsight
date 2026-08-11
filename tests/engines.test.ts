@@ -79,6 +79,27 @@ describe('pre-registration is enforced, not promised', () => {
     expect(digest(reordered)).toBe(THRESHOLD_HASH);
   });
 
+  it('counts one trial for every specification ever replayed', () => {
+    // §14.9's claim, guarded. Eight engines and ten trials, because Sweep has been registered three
+    // times — and every discarded attempt still prices the search that produced the surviving one.
+    expect(REGISTERED.trials).toBe(REGISTERED.engines.length + EDGE.reregistrations.length - 1);
+  });
+
+  it('keeps §14.9 true: expectancy fell every time, and the win rate did not', () => {
+    // The published sentence is that three defensible specifications of one idea moved coverage by
+    // a factor of seven while the answer never changed — and that the win rate is not a proxy for
+    // any of it. If a re-registration ever makes that false, this fails before the prose ships.
+    const runs = EDGE.reregistrations;
+    for (let k = 1; k < runs.length; k++) {
+      expect(runs[k].sweepCoverage).toBeLessThan(runs[k - 1].sweepCoverage);
+      expect(runs[k].sweepMeanR).toBeLessThan(runs[k - 1].sweepMeanR);
+    }
+    // Non-monotonic, which is the point: strictness bought a better hit rate and then lost it.
+    const winRates = runs.map((run) => run.sweepWinRate);
+    expect(winRates[1]).toBeGreaterThan(winRates[0]);
+    expect(winRates[2]).toBeLessThan(winRates[1]);
+  });
+
   it('never counts fewer trials than it has engines', () => {
     // `trials` prices the search: every specification ever replayed over the corpus, including the
     // ones that were replaced. It can exceed the roster — Sweep was replayed under two — but it can

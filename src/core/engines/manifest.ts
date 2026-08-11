@@ -29,6 +29,7 @@
  * and marked as ours in `PROVENANCE` below.
  */
 
+import { LEAD_IN_BARS } from '../config';
 import { ENGINE_VERSION } from '../versions';
 
 /**
@@ -108,10 +109,30 @@ export const THRESHOLDS = {
    * and where there is no opposing pool the engine passes rather than inventing one.
    */
   sweep: {
-    /** Which swings count as pools. Ours — `SWING_GRADES` from §13.1. */
-    poolGrade: 'intermediate',
-    /** How far back a pool may sit, in bars. Ours. */
-    lookbackBars: 60,
+    /**
+     * Which swings count as pools. Ours — `SWING_GRADES` from §13.1.
+     *
+     * **Re-registered to `major` from `intermediate` at `engine-4`, from the engine's own thesis.**
+     * The entire premise is that *other traders' stops rest beyond this level*. That only holds for
+     * a level other traders actually marked. §13.1 grades swings by persistence in ATR — minor at
+     * 0.5, intermediate at 1.0, major at 2.0 — and `intermediate` admits levels half the chart would
+     * never have drawn. Claiming a stop run at a high nobody marked is claiming a crowd that is not
+     * there.
+     */
+    poolGrade: 'major',
+    /**
+     * How far back a pool may sit, in bars. Ours.
+     *
+     * **Re-registered to the ranked window at `engine-4`.** 60 was arbitrary. §14.6 already
+     * discloses the one asymmetry in this design — engines read up to 300 candles while a Naked
+     * player sees 80 — and the levels an engine *trades against* are the one place that asymmetry
+     * can be removed at no cost. A sweep of a level from 200 bars back is not a claim the player
+     * could have evaluated, whatever its merits.
+     *
+     * Deliberately `LEAD_IN_BARS` rather than the number 80, so that changing the ranked window
+     * moves this with it instead of silently decoupling.
+     */
+    lookbackBars: LEAD_IN_BARS,
     /**
      * Minimum penetration beyond the pool, in ATR, before a wick counts as a sweep.
      *
@@ -312,11 +333,12 @@ export function digest(value: unknown): string {
  * > pre-registration. It is written out by hand below, and 3c's four engines are the change that
  * > would have slipped through.
  *
- * `engine-3` is the first deliberate re-registration: Sweep's penetration and rejection thresholds
- * moved after the corpus had been replayed under `engine-2`. Everything downstream was re-measured
- * rather than inherited, and `REGISTERED.trials` counts the discarded specification.
+ * `engine-3` was the first deliberate re-registration and `engine-4` the second, both of Sweep,
+ * both after the corpus had been replayed. Everything downstream was re-measured rather than
+ * inherited each time, and `REGISTERED.trials` counts **every** discarded specification — which is
+ * why it reads 10 against a roster of 8.
  */
-export const THRESHOLD_HASH = '388f4588';
+export const THRESHOLD_HASH = '7e7c197a';
 
 /** The registered family, and its size. §14.7's corrections are computed against these numbers. */
 export const REGISTERED = {
@@ -358,9 +380,12 @@ export const REGISTERED = {
    * | `engine-1` | CHANNEL, REVERSION, REVERSION_H, ZERO |
    * | `engine-2` | …plus SWEEP, PATTERN, GEOMETRY, TAPE |
    * | `engine-3` | SWEEP re-specified: penetration and rejection 0.05 → 0.25 ATR |
+   * | `engine-4` | SWEEP re-specified again: pools major-grade only, lookback tied to the ranked window |
    *
-   * Eight engines, nine specifications. The extra trial is Sweep's first one, and it counts against
-   * every engine's result even though it was discarded — that is the cost of having looked.
+   * Eight engines, **ten** specifications. Two of those trials are Sweep attempts that were
+   * discarded, and they count against every engine's result exactly as the surviving ones do — that
+   * is the cost of having looked. A change touching two constants at once is still **one**
+   * specification: the unit is a replay of the corpus, not a diff hunk.
    */
-  trials: 9,
+  trials: 10,
 } as const;

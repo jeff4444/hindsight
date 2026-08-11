@@ -48,7 +48,7 @@ export interface BaseRate {
 }
 
 /** The corpus this was measured on. A record does not transfer to a different one. */
-export const MEASURED_OVER = { charts: 1000, thresholdHash: '388f4588' } as const;
+export const MEASURED_OVER = { charts: 1000, thresholdHash: '7e7c197a' } as const;
 
 /** The static bracket — the record comparable to a player's, and to the 98-cell achievable set. */
 export const BRACKET: Record<EngineCode, BaseRate> = {
@@ -80,24 +80,29 @@ export const BRACKET: Record<EngineCode, BaseRate> = {
     nullBand: { low: -0.29, high: 0.224 },
   },
   /**
-   * Re-registered at `engine-3`, and the result is the most instructive on the page.
+   * Re-registered twice, and the sequence is the most instructive thing on the page.
    *
-   * The sweep and rejection thresholds went from 0.05 ATR to 0.25 — a stricter definition of what
-   * counts as a stop run, chosen for internal consistency with the engine's own stop buffer and not
-   * from anything measured. Coverage more than halved, 400 charts to 184.
+   * | | coverage | win | mean R |
+   * | --- | --- | --- | --- |
+   * | `engine-2` — 0.05 ATR sweep, intermediate pools, 60-bar lookback | 400 | 58.3% | −0.008 |
+   * | `engine-3` — sweep tightened to 0.25 ATR | 184 | **63.0%** | −0.127 |
+   * | `engine-4` — pools major-grade only, lookback tied to the ranked window | **54** | 40.7% | **−0.179** |
    *
-   * **The win rate went up and the expectancy went down.** 58.3% to 63.0%, and −0.008R to −0.127R.
-   * Demanding a more decisive sweep selected trades that hit their (nearby) target more often and
-   * lost more when they did not. It is the same lesson §4.4 is built on, arriving from a direction
-   * nobody chose: a win rate is not a result.
+   * Every change was argued from the spec — internal consistency, then the engine's own thesis that
+   * stops rest beyond levels *other traders marked*. None was chosen from a measurement.
+   *
+   * **Expectancy fell monotonically and the win rate did not.** 58.3% → 63.0% → 40.7% while mean R
+   * went −0.008 → −0.127 → −0.179. Whatever a stricter definition of a stop run is selecting for, it
+   * is not profitability, and it is not even consistently selecting for hit rate. Three defensible
+   * specifications of one idea produced three different engines and one unchanged answer.
    */
   SWEEP: {
-    n: 184,
-    coverage: 0.184,
-    winRate: 0.63,
-    meanR: -0.127,
-    targetRate: 0.63,
-    nullBand: { low: -0.23, high: 0.191 },
+    n: 54,
+    coverage: 0.054,
+    winRate: 0.407,
+    meanR: -0.179,
+    targetRate: 0.407,
+    nullBand: { low: -0.383, high: 0.318 },
   },
   PATTERN: {
     n: 32,
@@ -190,21 +195,19 @@ export const NATIVE: Partial<Record<EngineCode, BaseRate>> = {
 /**
  * How often the council has anything to say at all.
  *
- * Four more engines took the silence from 76.6% at a roster of two schools to **56.5%** at six, and
- * disagreement from 5.2% to 7.5%. That is the roster working as §5.5 intended: a spread of opinion
- * needs opinions, and with two engines there was usually only one on offer.
+ * **56.5% → 66.9% silent, and not one chart changed.** The only thing that moved between those two
+ * numbers was Sweep's definition of which levels count as pools and how far back it may look.
  *
- * These figures moved twice. Under `engine-2` they were 39.7% and 10.9%, because SWEEP alone took
- * 40% of charts on a definition loose enough that "swept" meant "touched". Tightening it at
- * `engine-3` handed 216 charts back to silence. **A coverage number is a statement about our
- * thresholds before it is a statement about the market**, which is the argument for publishing the
- * thresholds.
+ * The full sequence, all on the same 1,000 charts: 76.6% silent at a roster of two schools, 39.7% at
+ * six, 56.5% after Sweep's first re-registration, 66.9% after its second. **A coverage figure is a
+ * statement about our thresholds before it is a statement about the market**, and that is the whole
+ * argument for publishing the thresholds rather than the figure alone.
  */
 export const COUNCIL_COVERAGE = {
   /** No school took a position. Engine Zero is excluded — it always speaks, so it would mask this. */
-  silent: 0.565,
-  twoOrMoreSpoke: 0.123,
-  disagreed: 0.075,
+  silent: 0.669,
+  twoOrMoreSpoke: 0.109,
+  disagreed: 0.071,
 } as const;
 
 /**
@@ -233,11 +236,11 @@ export const EDGE = {
   symbols: 314,
   resamples: 4000,
   /**
-   * **Specifications tried, not engines shipped.** Nine, over eight engines — Sweep was replayed
-   * under two. See `REGISTERED.trials`: the deflation floor prices the search, and a search that
-   * reconsidered a threshold after seeing a result is a larger search.
+   * **Specifications tried, not engines shipped.** Ten, over eight engines — Sweep was replayed
+   * under three. See `REGISTERED.trials`: the deflation floor prices the search, and a search that
+   * reconsidered a threshold twice after seeing results is a larger search than the roster suggests.
    */
-  trials: 9,
+  trials: 10,
   /** The control: a strategy that never trades, tested in the same family as the schools. */
   abstain: { deltaVsZero: 0.0907, t: 2.199, beatsZero: true },
   /**
@@ -250,41 +253,38 @@ export const EDGE = {
     CHANNEL: { delta: -0.007, t: -0.278, trades: 198 },
     REVERSION: { delta: -0.0006, t: -0.068, trades: 22 },
     REVERSION_H: { delta: -0.002, t: -0.13, trades: 88 },
-    SWEEP: { delta: 0.0237, t: 1.236, trades: 184 },
+    SWEEP: { delta: 0.0063, t: 0.503, trades: 54 },
     PATTERN: { delta: 0.0026, t: 0.269, trades: 32 },
     GEOMETRY: { delta: 0, t: 0, trades: 0 },
     TAPE: { delta: -0.0166, t: -1.019, trades: 61 },
   },
   /** One test for the whole roster, asked once. */
-  spa: { pValue: 0.463, best: 'Sweep' },
+  spa: { pValue: 0.854, best: 'Sweep' },
   /**
-   * 0.730 — above a half, so the in-sample winner lands *below* median out of sample more often
+   * 0.752 — above a half, so the in-sample winner lands *below* median out of sample more often
    * than chance. Picking the leader on past performance is worse than useless here, not merely
    * uninformative. Its median out-of-sample finish is 7th of 9.
    */
-  pbo: 0.73,
-  /** Best of nine skill-free specifications is expected to reach this Sharpe. Observed: 0.0177. */
-  deflationFloor: 0.0556,
+  pbo: 0.752,
+  /** Best of ten skill-free specifications is expected to reach this Sharpe. Observed: 0.0177. */
+  deflationFloor: 0.0466,
   observedBestSharpe: 0.0177,
   /**
-   * What one threshold choice did to the ordering, with nothing about the world changing.
+   * What three specifications of one engine did, with the corpus, the code and the seeds unchanged.
    *
-   * Under `engine-2` Sweep beat Engine Zero and took first place in 20.2% of bootstrap resamples.
-   * Under `engine-3` — a stricter sweep, chosen on reasoning rather than on any measurement — it is
-   * the **only** engine that fails to beat Engine Zero, and it finishes **8th of 9 in 72%** of
-   * resamples. Same corpus, same code, one constant.
+   * Sweep has been registered three times. Each change was argued from the spec rather than chosen
+   * from a measurement, and each was defensible on its own terms. Between them the engine went from
+   * firing on 40% of charts to 5.4%, from beating Engine Zero to failing to and back, and from first
+   * place in a fifth of bootstrap resamples to second-to-last in two fifths.
    *
-   * This is the most direct evidence in the project for why the family has to be counted, and it is
-   * the reason `trials` is 9 rather than 8.
+   * **Nothing about the market changed across any of it.** This is the most direct evidence in the
+   * project for why the family has to be counted, and it is why `trials` is 10 rather than 8.
    */
-  reregistration: {
-    from: 'engine-2',
-    to: 'engine-3',
-    sweepCoverageBefore: 0.4,
-    sweepCoverageAfter: 0.184,
-    sweepFirstPlaceBefore: 0.202,
-    sweepLastPlaceAfter: 0.72,
-  },
+  reregistrations: [
+    { version: 'engine-2', sweepCoverage: 0.4, sweepWinRate: 0.583, sweepMeanR: -0.008, beatsZero: true },
+    { version: 'engine-3', sweepCoverage: 0.184, sweepWinRate: 0.63, sweepMeanR: -0.127, beatsZero: false },
+    { version: 'engine-4', sweepCoverage: 0.054, sweepWinRate: 0.407, sweepMeanR: -0.179, beatsZero: true },
+  ],
 } as const;
 
 /**
