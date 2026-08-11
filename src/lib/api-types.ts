@@ -1,6 +1,7 @@
 import type { Bar } from '@/core/bars';
 import type { ModCode, TierCode, ToolCode } from '@/core/tiers';
 import type { Direction, Outcome } from '@/core/resolve';
+import type { Verdict } from '@/core/engines';
 
 /**
  * The issuance payload.
@@ -158,6 +159,18 @@ export interface RevealPayload {
   provenance: ChartProvenance;
   /** Layer 1's score. Null only for charts enumerated before Layer 1 existed. */
   score: ScorePayload | null;
+  /**
+   * §5's engine council — every school's read of the same chart, passes included.
+   *
+   * On the reveal rather than at issuance, and that placement is the whole safety argument: an
+   * engine's verdict is derived from the lead-in the player already had, but shipping it *before*
+   * the decision would hand over a bracket to copy. `RevealPayload` already carries the future, so
+   * `tests/api-leak.test.ts` is untouched by this.
+   *
+   * Never a consensus. §5.5: "The player-facing output is a spread of opinion, never a consensus
+   * verdict" — so this is the full list, and on 76.6% of charts every school in it has passed.
+   */
+  council: Verdict[];
 }
 
 /**

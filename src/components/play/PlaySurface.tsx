@@ -46,6 +46,8 @@ import { RankedSummary } from './RankedSummary';
 import { DEFAULT_SPEED, useRevealLoop } from './useRevealLoop';
 import { InstrumentRail, INSTRUMENT_HOWTO, INSTRUMENT_LABEL } from './InstrumentRail';
 import { StudiesPanel } from './StudiesPanel';
+import { Council } from './Council';
+import type { Verdict } from '@/core/engines';
 import { DrawLayer, type Drawing, type DrawTool } from './DrawLayer';
 import { overlaysFor } from '@/lib/toolOverlays';
 import { useStudySettings } from '@/lib/studySettings';
@@ -176,6 +178,8 @@ export function PlaySurface({
   const [result, setResult] = useState<RoundResult | null>(null);
   const [provenance, setProvenance] = useState<ChartProvenance | null>(null);
   const [score, setScore] = useState<ScorePayload | null>(null);
+  /** §5's council, released with the reveal rather than at issuance — see the note on RevealPayload. */
+  const [verdicts, setVerdicts] = useState<Verdict[]>([]);
   const [daily, setDaily] = useState<DailyPayload | null>(null);
   const [ranked, setRanked] = useState<RankedPayload | null>(null);
   const [revealed, setRevealed] = useState(0);
@@ -309,6 +313,7 @@ export function PlaySurface({
     setResult(null);
     setProvenance(null);
     setScore(null);
+    setVerdicts([]);
     resultRef.current = null;
     setRevealed(0);
     setRevealTotal(0);
@@ -497,6 +502,7 @@ export function PlaySurface({
       resultRef.current = payload.result;
       setProvenance(payload.provenance ?? null);
       setScore(payload.score ?? null);
+      setVerdicts(payload.council ?? []);
       reveal.current = payload.revealBars;
       setRevealTotal(payload.revealBars.length);
       railsRef.current =
@@ -961,6 +967,10 @@ export function PlaySurface({
             onNext={() => void load()}
             onReplay={replay}
           />
+        )}
+
+        {phase === 'done' && round && verdicts.length > 0 && (
+          <Council verdicts={verdicts} entry={round.entry} />
         )}
       </section>
 

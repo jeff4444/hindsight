@@ -18,6 +18,7 @@ import { volumeProfile } from '@/core/geometry/volumeProfile';
 import {
   bollinger, chandelier, donchian, ema, keltner, macd, psar, rsi, sma, supertrend, wilder,
 } from '@/core/indicators';
+import { ENGINES, council } from '@/core/engines';
 
 /**
  * The look-ahead suite — §14's exit condition for Phase 0.5.
@@ -317,6 +318,38 @@ describe('every Full Desk indicator is causal', () => {
   it('is not passing for want of anything to compare', () => {
     expect(sma(bars.map((b) => b.c), 20).filter((v) => v !== null).length).toBeGreaterThan(50);
     expect(rsi(bars.map((b) => b.c), 14).filter((v) => v !== null).length).toBeGreaterThan(50);
+  });
+});
+
+describe('every engine is causal', () => {
+  const bars = series(300, 61);
+
+  // An engine reads up to 300 candles while the player may have seen 80, which is history *before*
+  // the window and never after it. The harness holds that to the same standard as every detector:
+  // hand it the bars a viewer had, replace the future wholesale, and the verdict must not move.
+  const cases: [string, (b: TimedBar[]) => unknown][] = ENGINES.map((engine) => [
+    engine.code,
+    (b: TimedBar[]) => engine.read({ bars: b, entry: b[b.length - 1].c, atr: atr(b) ?? 1, seed: 7 }),
+  ]);
+
+  it.each(cases)('%s', (_name, compute) => {
+    assertPrefixCausal(compute, bars, [120, 200, 260, 299]);
+  });
+
+  it('is not passing because every engine simply abstains', () => {
+    // A council that always passed would satisfy any causality test trivially. At least one engine
+    // has to be taking a position somewhere in the fixture for the assertions above to mean
+    // anything.
+    const opinions = [80, 140, 200, 260].flatMap((cut) => {
+      const prefix = bars.slice(0, cut + 1);
+      return council({
+        bars: prefix,
+        entry: prefix[prefix.length - 1].c,
+        atr: atr(prefix) ?? 1,
+        seed: 3,
+      }).filter((verdict) => verdict.direction !== null);
+    });
+    expect(opinions.length).toBeGreaterThan(0);
   });
 });
 

@@ -64,6 +64,20 @@ export const SCORE_MAP_VERSION = 'score-map-1';
 export const GEOMETRY_VERSION = 'geometry-1';
 
 /**
+ * The engine council: the roster, every threshold, and the provenance of each stop and target.
+ *
+ * Bumping this invalidates every stored engine verdict and every published track record, and the
+ * two must move together — §12.4's rule that population statistics are not comparable across a
+ * change of rule applies with particular force here, because a track record is exactly such a
+ * statistic and it is the thing §7.3 promises to publish.
+ *
+ * It is also the family-size anchor for 3b. `src/core/engines/manifest.ts` records a hash of the
+ * thresholds beside this constant, and a test fails if they drift apart, so a silently retuned
+ * threshold cannot inherit an old record.
+ */
+export const ENGINE_VERSION = 'engine-1';
+
+/**
  * The rating system: Glicko-2's constants, the information weight, and the pending policy.
  *
  * Bumping this does not invalidate percentiles — it invalidates *ratings*, which is why it is not
