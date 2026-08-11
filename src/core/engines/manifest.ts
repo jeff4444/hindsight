@@ -131,8 +131,15 @@ export function digest(value: unknown): string {
  * `ENGINE_VERSION` together, in a commit that says what moved and why — the two must never diverge,
  * because a track record stored under one set of numbers is not comparable to a track record stored
  * under another (§12.4).
+ *
+ * > **This was a literal for one release and then, briefly, was not.** 3a shipped it as
+ * > `digest(THRESHOLDS)`, which made the test asserting the two agree *tautological* — it could not
+ * > fail, so it guarded nothing, and any threshold could have moved silently while the old track
+ * > record stayed attached to it. A pre-registration you compute at read time is not a
+ * > pre-registration. It is written out by hand below, and 3c's four engines are the change that
+ * > would have slipped through.
  */
-export const THRESHOLD_HASH = digest(THRESHOLDS);
+export const THRESHOLD_HASH = 'd034e8b2';
 
 /** The registered family, and its size. 3b's corrections are computed against this number. */
 export const REGISTERED = {

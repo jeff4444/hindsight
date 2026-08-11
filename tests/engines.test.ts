@@ -51,7 +51,18 @@ describe('pre-registration is enforced, not promised', () => {
   it('matches the recorded hash', () => {
     // The mechanism that makes 3b's family size honest. If this fails, a threshold moved: bump
     // ENGINE_VERSION and re-run the corpus rather than inheriting the old track record.
+    //
+    // This only means anything because THRESHOLD_HASH is a hand-written literal. 3a shipped it as
+    // `digest(THRESHOLDS)`, under which this assertion compared a value to itself and could never
+    // fail — a guard that cannot fail is decoration, which the next test says out loud.
     expect(digest(THRESHOLDS)).toBe(THRESHOLD_HASH);
+  });
+
+  it('refuses to publish a track record measured under different thresholds', () => {
+    // The other half of the pre-registration, and the half 3a left open. `baseRates.ts` is a set of
+    // numbers measured under one manifest; attaching them to another is how an engine inherits a
+    // record it never earned. Changing THRESHOLDS must invalidate the measurement, not survive it.
+    expect(MEASURED_OVER.thresholdHash).toBe(THRESHOLD_HASH);
   });
 
   it('changes the hash when any threshold moves', () => {
