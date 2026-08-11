@@ -884,3 +884,194 @@ export function Field({
 }
 
 export { INPUT_CLASS };
+
+/* ------------------------------------------------------------- IconBadge */
+
+/**
+ * A tone-carrying disc behind an icon.
+ *
+ * The same 3rem circle was written out twice with different tones — once in `EmptyState` above and
+ * once in `check-email`, which is the screen where it carries the most weight. Two copies of a
+ * shape is how a design system starts drifting, and this one is small enough that nobody would
+ * notice the day they stopped matching.
+ */
+export function IconBadge({
+  icon,
+  tone = 'neutral',
+  size = 'md',
+  className,
+}: {
+  icon: IconName;
+  tone?: Tone;
+  size?: 'sm' | 'md' | 'lg';
+  className?: string;
+}) {
+  const box = size === 'sm' ? 'h-9 w-9' : size === 'lg' ? 'h-14 w-14' : 'h-12 w-12';
+  const glyph = size === 'sm' ? 16 : size === 'lg' ? 26 : 22;
+  return (
+    <span
+      className={cx('grid place-items-center rounded-full ring-1', box, TONE_CHIP[tone], className)}
+    >
+      <Icon name={icon} size={glyph} />
+    </span>
+  );
+}
+
+/* ----------------------------------------------------------------- Alert */
+
+/**
+ * A stated problem, or a stated fact worth interrupting for.
+ *
+ * There were three of these, all hand-rolled, all reaching for the same
+ * `border-short-line bg-short-bg text-short-ink` triple and disagreeing about the rest: the sign-in
+ * error at `rounded-lg p-3.5 text-sm`, the handle picker's at `rounded-md p-3 text-xs`, and
+ * `Field`'s bare inline line. Three sizes of the same sentence.
+ *
+ * `role="alert"` only when it is a failure. An informational callout that announces itself the
+ * moment it renders interrupts a screen reader mid-sentence for something the player did not do.
+ */
+export function Alert({
+  tone = 'short',
+  title,
+  icon,
+  children,
+  action,
+  className,
+}: {
+  tone?: Tone;
+  title?: string;
+  icon?: IconName;
+  children?: React.ReactNode;
+  action?: React.ReactNode;
+  className?: string;
+}) {
+  const failure = tone === 'short' || tone === 'attention';
+  return (
+    <div
+      role={failure ? 'alert' : undefined}
+      className={cx(
+        'flex items-start gap-3 rounded-lg px-3.5 py-3 text-sm ring-1',
+        TONE_CHIP[tone],
+        className,
+      )}
+    >
+      {icon && <Icon name={icon} size={17} className="mt-0.5 shrink-0" />}
+      <div className="min-w-0 flex-1">
+        {title && <p className="font-medium">{title}</p>}
+        {children && <div className={cx('leading-relaxed', title && 'mt-0.5 opacity-90')}>{children}</div>}
+      </div>
+      {action && <div className="shrink-0">{action}</div>}
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------- TextLink */
+
+/**
+ * An inline link inside prose.
+ *
+ * Three different class strings were doing this — `underline-offset-4` in auth, `-2` on the tapes
+ * page, a third in the marketing footer. The offset is the whole legibility question for an
+ * underline on a dark surface, so it is not a detail worth having three opinions about.
+ */
+export function TextLink({
+  href,
+  external,
+  className,
+  children,
+  ...rest
+}: {
+  href: string;
+  external?: boolean;
+  className?: string;
+  children: React.ReactNode;
+} & Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, 'href'>) {
+  return (
+    <a
+      {...rest}
+      href={href}
+      {...(external ? { target: '_blank', rel: 'noreferrer noopener' } : null)}
+      className={cx(
+        'text-ink-lo hover:text-ink-hi rounded-xs underline decoration-from-font underline-offset-4 transition-colors',
+        className,
+      )}
+    >
+      {children}
+    </a>
+  );
+}
+
+/* ---------------------------------------------------------------- Toggle */
+
+/**
+ * An independent on/off, as distinct from `Segmented`'s pick-one.
+ *
+ * The toolbox is the reason this exists. Its overlays were rendering through the same control as
+ * its modal instruments, so "any number of these at once" and "exactly one of these" looked
+ * identical and the difference had to be learned by clicking. A switch reads as a switch.
+ *
+ * `aria-pressed` rather than a checkbox `role`: this is a button that retains state, it takes
+ * effect immediately, and there is no form to submit it with.
+ */
+export function Toggle({
+  on,
+  onChange,
+  label,
+  hint,
+  disabled,
+  swatch,
+  className,
+}: {
+  on: boolean;
+  onChange: (on: boolean) => void;
+  label: React.ReactNode;
+  hint?: React.ReactNode;
+  disabled?: boolean;
+  /** A colour chip tying the row to what it draws on the chart. */
+  swatch?: string;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      disabled={disabled}
+      onClick={() => onChange(!on)}
+      className={cx(
+        'press group flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left transition-colors',
+        'disabled:cursor-not-allowed disabled:opacity-45',
+        'enabled:hover:bg-fill-1',
+        className,
+      )}
+    >
+      <span
+        aria-hidden
+        className={cx(
+          'relative h-5 w-9 shrink-0 rounded-full transition-colors',
+          on ? 'bg-info' : 'bg-fill-3',
+        )}
+      >
+        <span
+          className={cx(
+            'absolute top-0.5 h-4 w-4 rounded-full bg-white transition-[left] duration-150',
+            on ? 'left-[1.125rem]' : 'left-0.5',
+          )}
+        />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="text-ink flex items-center gap-2 text-sm font-medium">
+          {swatch && (
+            <span
+              aria-hidden
+              className="h-2.5 w-2.5 shrink-0 rounded-full"
+              style={{ background: swatch }}
+            />
+          )}
+          {label}
+        </span>
+        {hint && <span className="text-ink-dim mt-0.5 block text-xs leading-relaxed">{hint}</span>}
+      </span>
+    </button>
+  );
+}

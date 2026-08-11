@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MA_LENGTHS, measureReadout, overlaysFor } from '@/lib/toolOverlays';
+import { MA_LENGTHS, TOOL_COLOUR, measureReadout, overlaysFor } from '@/lib/toolOverlays';
 import { TIERS, tierByCode, type ToolCode } from '@/core/tiers';
 import { atr } from '@/core/atr';
 import { walk } from './geometry/fixtures';
@@ -159,5 +159,64 @@ describe('the measure tool speaks in the units the trade is scored in', () => {
     // the ruler, and there is no field that could.
     expect(tierByCode('NTVZ')!.tools).toEqual([]);
     expect(measureReadout(100, 101, 1, 1).atr).toBe(1);
+  });
+});
+
+/**
+ * The overlay palette.
+ *
+ * Colour in this product is rationed to meaning, and the two hues that carry the most meaning are
+ * the candle colours: teal is long, red is short, everywhere, on every screen. An overlay drawn in
+ * one of them is asserting a direction it has no view on — and the shipped set did exactly that
+ * four times over, most damagingly by drawing the volume profile's point of control in a red a
+ * shade off the down candle, straight across the candles themselves.
+ */
+describe('no overlay borrows a colour that already means something', () => {
+  /** oklch(L C H) → its hue in degrees, and its lightness. */
+  function oklch(value: string): { l: number; c: number; h: number } {
+    const match = value.match(/oklch\(([\d.]+)\s+([\d.]+)\s+([\d.]+)\)/);
+    if (!match) throw new Error(`not an oklch colour: ${value}`);
+    return { l: Number(match[1]), c: Number(match[2]), h: Number(match[3]) };
+  }
+
+  const swatches = Object.entries(TOOL_COLOUR).flatMap(([name, value]) =>
+    (Array.isArray(value) ? value : [value]).map((v, i) => ({
+      name: Array.isArray(value) ? `${name}[${i}]` : name,
+      ...oklch(v),
+    })),
+  );
+
+  /** Shortest distance between two hues on the wheel. */
+  const apart = (a: number, b: number) => {
+    const d = Math.abs(a - b) % 360;
+    return d > 180 ? 360 - d : d;
+  };
+
+  // #26a69a and #ef5350, as hues. Kept as numbers rather than converted at runtime so that
+  // retuning a candle colour is a deliberate edit here too.
+  const LONG_HUE = 180;
+  const SHORT_HUE = 25;
+  const CLEARANCE = 28;
+
+  it('keeps every overlay clear of the long and short hues', () => {
+    const offenders = swatches.filter(
+      (s) => apart(s.h, LONG_HUE) < CLEARANCE || apart(s.h, SHORT_HUE) < CLEARANCE,
+    );
+    expect(offenders.map((o) => `${o.name} at ${o.h}°`)).toEqual([]);
+  });
+
+  it('draws nothing too dark to see on the page it is drawn on', () => {
+    // surface-0 is oklch(0.150 …). A stroke below ~0.55 disappears into it; the value area and the
+    // band midline both did.
+    const offenders = swatches.filter((s) => s.l < 0.55);
+    expect(offenders.map((o) => `${o.name} at L${o.l}`)).toEqual([]);
+  });
+
+  it('separates the three moving averages enough to tell them apart', () => {
+    const [a, b, c] = TOOL_COLOUR.ma.map(oklch);
+    expect(apart(a.h, b.h)).toBeGreaterThan(40);
+    expect(apart(b.h, c.h)).toBeGreaterThan(40);
+    expect(apart(a.h, c.h)).toBeGreaterThan(40);
+    expect(TOOL_COLOUR.ma).toHaveLength(MA_LENGTHS.length);
   });
 });

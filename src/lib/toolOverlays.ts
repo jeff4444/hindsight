@@ -33,21 +33,47 @@ import { volumeProfile } from '@/core/geometry/volumeProfile';
  * information.
  */
 
+/**
+ * What each tool draws with.
+ *
+ * Two rules, and the first one is not cosmetic.
+ *
+ * **No overlay may take the long or short hue.** The candles are teal at ~180° and red at ~25°, and
+ * those two hues *mean direction* everywhere else in the product — a rail, an R-multiple, a
+ * percentile tone. An overlay wearing one of them is making a claim it cannot support. The
+ * shipped set broke this four times: the channel and Donchian rails were greens, and the volume
+ * profile's POC was `#ef4444` — within a hair of the down candle's `#ef5350`, drawn straight
+ * across it. `tests/toolOverlays.test.ts` now holds the rule.
+ *
+ * **Everything must clear the page it is drawn on.** `surface-0` is `oklch(0.150 0.014 265)`, so a
+ * dark stroke on it is a stroke nobody can see. The value area was `#7f1d1d` and the band midline
+ * `#0e7490`; both were effectively invisible, which is a strange fate for a feature someone
+ * enabled on purpose. Lightness is held at or above 0.55 for fills and 0.70 for lines.
+ *
+ * Hues therefore live in the three arcs the candles leave free — amber 55–110, blue 210–280,
+ * violet-magenta 290–345 — and are spread inside them so two overlays that are commonly on at once
+ * are never neighbours. Written in oklch, like the rest of the system; lightweight-charts hands
+ * these to a canvas, which parses any CSS colour the browser does.
+ */
 export const TOOL_COLOUR = {
-  ma: ['#60a5fa', '#f59e0b', '#a78bfa'],
-  band: '#22d3ee',
-  bandMid: '#0e7490',
-  donchian: '#84cc16',
-  swingHigh: '#f97316',
-  swingLow: '#38bdf8',
-  trendline: '#a78bfa',
-  channel: '#22c55e',
-  level: '#eab308',
-  poc: '#ef4444',
-  valueArea: '#7f1d1d',
-  oscillator: '#e2e8f0',
-  oscillatorSignal: '#f97316',
-  stop: '#fb7185',
+  /** Three averages, maximally separated so 20/50/200 are never mistaken for each other. */
+  ma: ['oklch(0.74 0.14 250)', 'oklch(0.80 0.13 85)', 'oklch(0.72 0.16 305)'],
+  band: 'oklch(0.76 0.10 220)',
+  /** The band's midline: quieter than its edges, still legible. */
+  bandMid: 'oklch(0.60 0.07 220)',
+  donchian: 'oklch(0.82 0.14 100)',
+  swingHigh: 'oklch(0.76 0.15 62)',
+  swingLow: 'oklch(0.74 0.12 265)',
+  trendline: 'oklch(0.72 0.16 300)',
+  channel: 'oklch(0.70 0.13 275)',
+  level: 'oklch(0.80 0.11 90)',
+  poc: 'oklch(0.72 0.19 330)',
+  /** A fill rather than a line, so it sits lower — but above the floor of visibility. */
+  valueArea: 'oklch(0.55 0.10 330)',
+  oscillator: 'oklch(0.86 0.012 265)',
+  oscillatorSignal: 'oklch(0.78 0.14 60)',
+  /** Sandbox only. §11.4 calls a stop algorithm the answer key, and the panel says so too. */
+  stop: 'oklch(0.76 0.15 320)',
 } as const;
 
 /** Moving-average lengths offered. Three is what every platform ships and what a reader uses. */

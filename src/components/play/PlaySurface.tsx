@@ -634,7 +634,13 @@ export function PlaySurface({
   return (
     <div
       className={[
-        'mx-auto grid min-h-dvh w-full max-w-(--container-stage) grid-rows-[auto_auto_1fr] gap-2 p-2 sm:gap-3 sm:p-4',
+        // A column rather than `grid-rows-[auto_auto_1fr]`. The row list was written for three
+        // children and the toolbox made four, so the console fell into an implicit `auto` track
+        // and lost the bounded row its `min-h-0 overflow-y-auto` needs — it grew instead of
+        // scrolling, and took the page with it. Two of these children are conditional, so
+        // positional row sizing was always going to be wrong for one phase or another; a column
+        // sizes by role instead, and the stage keeps its fixed height because it declares one.
+        'mx-auto flex min-h-dvh w-full max-w-(--container-stage) flex-col gap-2 p-2 sm:gap-3 sm:p-4',
         // A fixed stage per breakpoint. Never per phase — see the note on this component.
         '[--stage-h:clamp(17rem,50dvh,26rem)]',
         'sm:[--stage-h:clamp(20rem,54dvh,30rem)]',
@@ -717,7 +723,9 @@ export function PlaySurface({
           ceremony reads as something that failed to load. The ceremony owns the screen. */}
       {phase !== 'summary' && (
       <ChartFrame
-        className="h-(--stage-h)"
+        // `shrink-0` matters in a column: without it the stage would give height back to a long
+        // console, which is the exact mid-phase resize the fixed height exists to prevent.
+        className="h-(--stage-h) shrink-0"
         chartRef={chart}
         entry={round?.entry ?? null}
         stop={phase === 'placing' ? stop : (result?.stop ?? stop)}
@@ -802,7 +810,7 @@ export function PlaySurface({
       </ChartFrame>
       )}
 
-      <section className="min-h-0 overflow-y-auto">
+      <section className="min-h-0 flex-1 overflow-y-auto">
         {(phase === 'placing' || phase === 'committing') && round && (
           <>
             <OrderConsole
