@@ -179,6 +179,8 @@ export function PlaySurface({
   const [score, setScore] = useState<ScorePayload | null>(null);
   /** §5's council, released with the reveal rather than at issuance — see the note on RevealPayload. */
   const [verdicts, setVerdicts] = useState<Verdict[]>([]);
+  /** §5.12's per-round evidence. Absent on a pass and wherever no school traded, which is most charts. */
+  const [style, setStyle] = useState<RevealPayload['style']>(null);
   const [daily, setDaily] = useState<DailyPayload | null>(null);
   const [ranked, setRanked] = useState<RankedPayload | null>(null);
   const [revealed, setRevealed] = useState(0);
@@ -313,6 +315,7 @@ export function PlaySurface({
     setProvenance(null);
     setScore(null);
     setVerdicts([]);
+    setStyle(null);
     resultRef.current = null;
     setRevealed(0);
     setRevealTotal(0);
@@ -502,6 +505,7 @@ export function PlaySurface({
       setProvenance(payload.provenance ?? null);
       setScore(payload.score ?? null);
       setVerdicts(payload.council ?? []);
+      setStyle(payload.style ?? null);
       reveal.current = payload.revealBars;
       setRevealTotal(payload.revealBars.length);
       railsRef.current =
@@ -940,6 +944,7 @@ export function PlaySurface({
             score={score}
             provenance={provenance}
             verdicts={verdicts}
+            style={style}
             entry={round?.entry ?? 0}
             atr={round?.atr ?? null}
             nextLabel={daily && daily.played + 1 >= daily.total ? 'See your card' : 'Next chart'}

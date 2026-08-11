@@ -1748,3 +1748,58 @@ So `npm run engines` publishes the **marginals** — by efficiency ratio and by 
 its trade count attached — and states that the cross is unmeasurable. That keeps the spirit of §7.3,
 which is that no aggregate stands unqualified, without inventing resolution the sample does not have.
 Even the marginals are thin: only Channel clears 45 trades in every bucket.
+
+### 16.4 Which school you actually trade as
+
+§5.12 wants one sentence: *"you describe yourself as a breakout trader, but 68% of your entries match
+the Reversion engine, and that is the engine you underperform against."* Nobody else says this,
+because nobody else has eight schools reading the same chart you just traded.
+
+**The obvious construction does not work here, and the corpus says so before it is built.** Labelling
+each chart with the *nearest* school is undefined when no school traded and tautological when exactly
+one did:
+
+| on a given chart | |
+| --- | --- |
+| no school took a position | **66.9%** — nothing to be near |
+| exactly one did | 22.2% — "nearest" is trivially that one |
+| two or more did | **10.9%** — a genuine choice exists |
+
+So each engine is scored **on its own charts** instead: of the charts where Channel traded and you
+also traded, on how many did your bracket look like Channel's? That is well defined whenever the
+engine spoke and does not compete for a single label.
+
+**"Looks like" is one rung of the achievable grid.** Two brackets resemble each other when the
+direction matches and both the stop distance and the reward ratio are within a factor of **1.5** —
+which is one step of §1's enumerated ladder, since `STOP_ATR_MULTIPLES` steps by 1.33–1.5. Two
+brackets a rung apart scored in adjacent cells of the same distribution, so calling them different
+systems would be a distinction the scoring itself cannot make. The number is taken from the grid
+rather than invented.
+
+**The sample cost is severe, and it is published rather than discovered later.** An affinity is a
+proportion, and the floor is 30 charts on which that engine traded — the same bar §16.3 applies to
+the regime cells. Because the engines are mostly silent:
+
+| engine | fires on | rounds you must play first |
+| --- | --- | --- |
+| **Channel** | 19.8% | **152** |
+| Reversion (Hindsight) | 8.8% | 341 |
+| Tape | 6.1% | 492 |
+| Sweep | 5.4% | 556 |
+| Pattern | 3.2% | 938 |
+| Reversion | 2.2% | 1,364 |
+| Geometry | 0% | **never** |
+
+For most players this will report Channel and nothing else for a long time. It says so, rather than
+showing six percentages computed from four trades each — and it returns **nothing at all** below the
+floor, because a fingerprint drawn from nine charts is a different claim, not a weaker one.
+
+**Matching a school is not praise.** §14.7 could not tell any engine on this roster apart from a coin
+flip on the charts it chose. "You trade like Channel" is a description; the only comparative claim
+made is the one §5.12 asks for — whether you did better or worse than that engine **on the same
+charts**, which is why both means are computed over the same chart set rather than over each side's
+own history.
+
+Evidence is written to the round as it is played (migration 0019), because the council's verdicts are
+discarded after the reveal and rebuilding a player's history would mean replaying eight engines over
+every chart they have ever seen.

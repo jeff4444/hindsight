@@ -186,6 +186,17 @@ export interface RevealPayload {
    * verdict" — so this is the full list, and on 66.9% of charts every school in it has passed.
    */
   council: Verdict[];
+
+  /**
+   * §5.12's evidence for this one round: which schools traded here, what their own brackets
+   * returned, and which of them yours resembled.
+   *
+   * Null on a pass and on any chart where no school took a position — which is **66.9%** of them,
+   * so this is usually absent and that is the roster rather than a gap. One round is never a
+   * fingerprint; the profile is the accumulation, and `src/core/style.ts` refuses to describe it
+   * until an engine has 30 charts behind it.
+   */
+  style: { available: Record<string, number>; matched: string[] } | null;
 }
 
 /**

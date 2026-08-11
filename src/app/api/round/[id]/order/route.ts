@@ -17,6 +17,7 @@ import {
 } from '@/core/pack';
 import { InvalidOrderError, NO_COSTS, resolve } from '@/core/resolve';
 import { SPOT_COSTS } from '@/core/costs';
+import { resembles, shapeOf } from '@/core/style';
 import {
   ACHIEVABLE_VERSION,
   NORMALIZATION_VERSION,
@@ -109,6 +110,8 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   const committedAt = new Date().toISOString();
   let result: RoundResult;
   let update: Record<string, unknown>;
+  /** The minute path, hoisted so §5.12's engine comparison can reuse it after the update is built. */
+  let enginePath: Bar[] | null = null;
 
   if (body.pass === true) {
     // §4.4: passing is a first-class scored action, evaluated as 0R. Phase 0 has no achievable
@@ -144,6 +147,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     };
 
     const path = unpackPath(fromPgHex(chart.resolution_path as string));
+    enginePath = path;
 
     let resolution;
     let gross;
@@ -232,11 +236,72 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     };
   }
 
+  // §5's council. Engines read the full stored lead-in — up to 300 candles where the chart has them
+  // — while the player may have seen 80. That is history *before* the window and never after it, and
+  // every verdict reports `candlesUsed` so the asymmetry is disclosed rather than hidden.
+  //
+  // Seeded on the round id so Engine Zero's coin flip is stable for this round: a player who
+  // reloads the reveal must not see the null change its mind.
+  let councilSeed = 0;
+  for (const ch of id) councilSeed = (Math.imul(councilSeed, 31) + ch.charCodeAt(0)) >>> 0;
+  const engineBars = [
+    ...((chart.lead_in_extra as Bar[] | null) ?? []),
+    ...(chart.lead_in_bars as Bar[]),
+  ];
+  const verdicts = council({
+    bars: engineBars,
+    entry: chart.entry_price as number,
+    atr: chart.atr14 as number,
+    seed: councilSeed,
+  });
+
+  /*
+   * §5.12's evidence, computed here because everything it needs is already in hand.
+   *
+   * Each engine that took a position is resolved on this same path, so the round carries what the
+   * school's own bracket returned beside what the player's did — and `matched` records which of
+   * them the player's bracket resembled, within one rung of the achievable grid.
+   *
+   * Stored rather than recomputed: the verdicts above are thrown away after this response, and
+   * rebuilding a player's history would mean replaying eight engines over every chart they have
+   * ever seen. See `src/core/style.ts` for why this is per-engine rather than a nearest-school
+   * label, and migration 0019 for the shape.
+   */
+  let style: { available: Record<string, number>; matched: string[] } | null = null;
+  if (!body.pass && result.stop !== null && result.target !== null && enginePath) {
+    const atr = chart.atr14 as number;
+    const entry = chart.entry_price as number;
+    const player = shapeOf(entry, result.stop, result.target, atr);
+    const available: Record<string, number> = {};
+    const matched: string[] = [];
+
+    for (const verdict of verdicts) {
+      if (verdict.direction === null || !verdict.bracket) continue;
+      const shape = shapeOf(entry, verdict.bracket.stop, verdict.bracket.target, atr);
+      if (!shape) continue;
+      try {
+        // Net of costs, like the player's own result — comparing a gross engine to a net player
+        // would hand the engine the whole of §16.1's gradient for free.
+        available[verdict.engine] = resolve(
+          { entry, stop: verdict.bracket.stop, target: verdict.bracket.target },
+          enginePath,
+          PATH_BARS_PER_DISPLAY_BAR,
+          SPOT_COSTS,
+        ).rMultiple;
+      } catch {
+        continue; // an unplaceable bracket is not evidence either way
+      }
+      if (player && resembles(player, shape)) matched.push(verdict.engine);
+    }
+    if (Object.keys(available).length > 0) style = { available, matched };
+  }
+
   // §1.2: the versions that produced this result are pinned to it, in the first commit.
   const { error: updateError } = await supabase
     .from('rounds')
     .update({
       ...update,
+      style,
       committed_at: committedAt,
       normalization_version: NORMALIZATION_VERSION,
       pipeline_version: PIPELINE_VERSION,
@@ -305,25 +370,6 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     sourceNote: (chart.source_note as string | null) ?? null,
   };
 
-  // §5's council. Engines read the full stored lead-in — up to 300 candles where the chart has them
-  // — while the player may have seen 80. That is history *before* the window and never after it, and
-  // every verdict reports `candlesUsed` so the asymmetry is disclosed rather than hidden.
-  //
-  // Seeded on the round id so Engine Zero's coin flip is stable for this round: a player who
-  // reloads the reveal must not see the null change its mind.
-  let councilSeed = 0;
-  for (const ch of id) councilSeed = (Math.imul(councilSeed, 31) + ch.charCodeAt(0)) >>> 0;
-  const engineBars = [
-    ...((chart.lead_in_extra as Bar[] | null) ?? []),
-    ...(chart.lead_in_bars as Bar[]),
-  ];
-  const verdicts = council({
-    bars: engineBars,
-    entry: chart.entry_price as number,
-    atr: chart.atr14 as number,
-    seed: councilSeed,
-  });
-
   const payload: RevealPayload = {
     result,
     revealBars: chart.reveal_bars,
@@ -331,6 +377,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     provenance,
     score,
     council: verdicts,
+    style,
   };
   return NextResponse.json(payload);
 }

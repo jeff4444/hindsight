@@ -52,6 +52,7 @@ export function ResultRail({
   score,
   provenance,
   verdicts,
+  style,
   entry,
   atr,
   nextLabel,
@@ -63,6 +64,8 @@ export function ResultRail({
   score: ScorePayload | null;
   provenance: ChartProvenance | null;
   verdicts: Verdict[];
+  /** §5.12's evidence for this round. Null on a pass, and on the 66.9% of charts no school traded. */
+  style: { available: Record<string, number>; matched: string[] } | null;
   entry: number;
   atr: number | null;
   nextLabel: string;
@@ -294,6 +297,48 @@ export function ResultRail({
             and a player who never sees it cannot learn that. §15 names cost erosion as a project
             risk; this is the line that stops it being invisible. §16.1 has the measurement.
           */}
+          {/*
+            §5.12, for this one chart.
+
+            Deliberately not a verdict about the player. One round cannot be a fingerprint — the
+            profile needs 30 charts per engine and most engines are silent — so this reports what
+            happened here and nothing more. It is also careful not to make resembling a school sound
+            like an achievement: §14.7 could not tell any engine on the roster apart from a coin
+            flip on the charts it chose.
+          */}
+          {!passed && style && Object.keys(style.available).length > 0 && (
+            <Disclosure
+              label="Who else traded this chart"
+              aside={`${style.matched.length}/${Object.keys(style.available).length} like yours`}
+            >
+              <ul className="flex flex-col gap-1.5">
+                {Object.entries(style.available).map(([engine, engineR]) => {
+                  const like = style.matched.includes(engine);
+                  return (
+                    <li key={engine} className="text-ink-lo flex items-baseline gap-2 text-sm">
+                      <span className={cx('numeral text-xs', like ? 'text-ink' : 'text-ink-faint')}>
+                        {like ? '≈' : '·'}
+                      </span>
+                      <span className="text-ink">{engine}</span>
+                      <span className="numeral text-ink-lo text-xs">
+                        {engineR >= 0 ? '+' : ''}
+                        {engineR.toFixed(2)}R
+                      </span>
+                      <span className="text-ink-faint text-xs">
+                        {like ? 'a bracket like yours' : 'a different bracket'}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+              <p className="text-ink-faint mt-2 text-xs leading-relaxed">
+                Resembling a school is a description, not a grade — none of them beat a coin flip on
+                the charts they chose. Your profile builds up over many rounds; one chart is not a
+                style.
+              </p>
+            </Disclosure>
+          )}
+
           {!passed && result.grossR !== null && result.rMultiple !== null && (
             <Disclosure label="What it cost to trade" aside="fees">
               <p className="text-ink-lo text-sm leading-relaxed">
