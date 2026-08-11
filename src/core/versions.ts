@@ -36,8 +36,14 @@ export const SELECTION_VERSION = 'selection-1';
  * ladder, or the oracle's definition, and every percentile ever recorded means something else —
  * §6's promise that "the same chart yields the same distribution forever" only holds within one
  * version of it. Charts record the version they were enumerated under.
+ *
+ * `achievable-2` is the first bump: the grid is now enumerated **net of transaction costs**
+ * (`src/core/costs.ts`). Bajgrowicz & Scaillet's instruction is that frictions belong in the
+ * selection process rather than applied to its output, and `docs/phase-4-research.md` §2.3 measures
+ * the consequence of the alternative — the best cell on the chart is a different cell on 22% of
+ * charts. Every percentile computed under `achievable-1` is incomparable to one computed now.
  */
-export const ACHIEVABLE_VERSION = 'achievable-1';
+export const ACHIEVABLE_VERSION = 'achievable-2';
 
 /**
  * The percentile-to-score map, and the ranked compression built on it.

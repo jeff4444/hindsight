@@ -16,6 +16,7 @@ import {
   unpackPath,
 } from '@/core/pack';
 import { InvalidOrderError, NO_COSTS, resolve } from '@/core/resolve';
+import { SPOT_COSTS } from '@/core/costs';
 import {
   ACHIEVABLE_VERSION,
   NORMALIZATION_VERSION,
@@ -117,6 +118,10 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       outcome: 'pass',
       direction: null,
       rMultiple: 0,
+      // A pass costs nothing because no order was sent, so gross and net are the same zero. That
+      // is not a technicality: it is the one move on the board whose cost is genuinely nil, and
+      // §4.4 already scores it.
+      grossR: 0,
       entryFill: null,
       exitFill: null,
       exitBarIndex: null,
@@ -141,8 +146,14 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const path = unpackPath(fromPgHex(chart.resolution_path as string));
 
     let resolution;
+    let gross;
     try {
-      resolution = resolve(order, path, PATH_BARS_PER_DISPLAY_BAR, NO_COSTS);
+      // Resolved twice on the same path: once net, which is what the player is scored on, and once
+      // with the fees off, which is what the debrief shows beside it. Two passes over 3,600 minute
+      // bars is nothing, and the alternative is deriving one from the other, which is wrong —
+      // costs move the *fills*, so a cost-free run can exit on a different bar entirely.
+      resolution = resolve(order, path, PATH_BARS_PER_DISPLAY_BAR, SPOT_COSTS);
+      gross = resolve(order, path, PATH_BARS_PER_DISPLAY_BAR, NO_COSTS);
     } catch (error) {
       if (error instanceof InvalidOrderError) {
         return NextResponse.json({ error: error.message }, { status: 400 });
@@ -154,6 +165,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       outcome: resolution.outcome,
       direction: resolution.direction,
       rMultiple: resolution.rMultiple,
+      grossR: gross.rMultiple,
       entryFill: resolution.entryFill,
       exitFill: resolution.exitFill,
       exitBarIndex: resolution.exitBarIndex,
@@ -184,8 +196,8 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       window_mfe_r: resolution.windowMfeR,
       window_mae_r: resolution.windowMaeR,
       ambiguous: resolution.ambiguous,
-      spread_bps: NO_COSTS.spreadBps,
-      stop_slippage_bps: NO_COSTS.stopSlippageBps,
+      spread_bps: SPOT_COSTS.spreadBps,
+      stop_slippage_bps: SPOT_COSTS.stopSlippageBps,
       resolver_version: resolution.resolverVersion,
     };
   }

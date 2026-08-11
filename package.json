@@ -24,7 +24,8 @@
     "null": "tsx --env-file-if-exists=.env.local scripts/null.ts",
     "conditional": "tsx --env-file-if-exists=.env.local scripts/conditional.ts",
     "engines": "tsx --env-file-if-exists=.env.local scripts/engines.ts",
-    "leaderboard": "tsx --env-file-if-exists=.env.local scripts/leaderboard.ts"
+    "leaderboard": "tsx --env-file-if-exists=.env.local scripts/leaderboard.ts",
+    "synthesise": "tsx --env-file-if-exists=.env.local scripts/synthesise.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",

@@ -285,6 +285,38 @@ export function ResultRail({
             </>
           )}
 
+          {/*
+            What the fees took, in the units the score is in.
+
+            Shown as a gap rather than as one net figure, because the gap is the lesson. Cost in R is
+            inversely proportional to stop distance — 0.27R at a half-ATR stop on the median chart
+            against 0.03R at four — so this number is a direct consequence of how tight the stop was,
+            and a player who never sees it cannot learn that. §15 names cost erosion as a project
+            risk; this is the line that stops it being invisible. §16.1 has the measurement.
+          */}
+          {!passed && result.grossR !== null && result.rMultiple !== null && (
+            <Disclosure label="What it cost to trade" aside="fees">
+              <p className="text-ink-lo text-sm leading-relaxed">
+                <span className="numeral text-ink">
+                  {result.grossR >= 0 ? "+" : ""}
+                  {result.grossR.toFixed(2)}R
+                </span>{" "}
+                before fees,{" "}
+                <span className="numeral text-ink">
+                  {result.rMultiple >= 0 ? "+" : ""}
+                  {result.rMultiple.toFixed(2)}R
+                </span>{" "}
+                after — the round trip took{" "}
+                <span className="numeral text-loss-ink">
+                  {(result.grossR - result.rMultiple).toFixed(2)}R
+                </span>
+                . Costs scale with how tight your stop was, so this is the price of that choice
+                rather than a flat charge. You are scored on the number after fees, against a grid
+                enumerated the same way.
+              </p>
+            </Disclosure>
+          )}
+
           {!passed &&
             result.windowMfeR !== null &&
             result.windowMaeR !== null && (

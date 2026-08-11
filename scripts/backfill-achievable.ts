@@ -30,6 +30,7 @@ import {
   toPgHex,
   unpackPath,
 } from '../src/core/pack';
+import { SPOT_COSTS } from '../src/core/costs';
 import { ACHIEVABLE_VERSION } from '../src/core/versions';
 
 const RECOMPUTE = process.argv.includes('--recompute');
@@ -51,11 +52,14 @@ export function achievableFor(row: {
   resolution_path: string;
 }) {
   const path = unpackPath(fromPgHex(row.resolution_path));
+  // Net of costs, per `src/core/costs.ts`. The grid a player is scored against has to be the grid
+  // they could actually have traded, or the oracle is the best bracket in a game nobody plays.
   const cells = enumerateAchievable(
     row.entry_price,
     row.atr14,
     path,
     PATH_BARS_PER_DISPLAY_BAR,
+    SPOT_COSTS,
   );
   const distribution = cells.map((cell) => cell.rMultiple);
 
@@ -67,6 +71,8 @@ export function achievableFor(row: {
   return {
     achievable_r: toPgHex(packFloats(distribution)),
     achievable_outcome: toPgHex(outcomes),
+    // The oracle is a bound on the *path*, not a tradeable bracket, so it carries no costs. It is
+    // therefore slightly optimistic against a net grid, which is the honest direction for a bound.
     oracle_r: oracleBound(row.entry_price, path, row.tick_size),
     par_r: median(distribution),
     pass_percentile: percentileOf(0, distribution),
