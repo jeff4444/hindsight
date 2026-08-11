@@ -25,9 +25,19 @@ export default async function TapesPage() {
       <Eyebrow>Practice, unlimited and unmetered</Eyebrow>
       <h1 className="text-ink-max mt-1 text-2xl font-semibold">Tapes</h1>
       <p className="text-ink-lo mt-3 max-w-prose text-base leading-relaxed">
-        A tape is a slice of the corpus defined by a published rule over the regime tags — never
-        hand-picked, because curating for &ldquo;interesting&rdquo; charts changes the difficulty
-        distribution and invalidates every statistic computed on it.
+        A tape is a slice of the corpus defined by a published rule over the regime tags and the
+        theme tags — never hand-picked, because curating for &ldquo;interesting&rdquo; charts
+        changes the difficulty distribution and invalidates every statistic computed on it.
+      </p>
+      <p className="text-ink-lo mt-3 max-w-prose text-base leading-relaxed">
+        Both rules are written out in the{' '}
+        <a className="text-ink underline underline-offset-2" href="/rules">
+          ruleset
+        </a>
+        , thresholds and all. There is no canonical definition of a liquidity sweep or a failed
+        break — the two most-used open implementations disagree by up to thirteenfold on the same
+        words — so the choice is not between the right definition and ours. It is between an
+        undisclosed one and a published one.
       </p>
 
       <section className="mt-10">
