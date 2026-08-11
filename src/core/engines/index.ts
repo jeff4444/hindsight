@@ -18,7 +18,7 @@ export { THRESHOLDS, PROVENANCE, THRESHOLD_HASH, REGISTERED, digest } from './ma
 export { CHANNEL } from './channel';
 export { REVERSION, REVERSION_H } from './reversion';
 export { ZERO } from './zero';
-export { BRACKET, NATIVE, COUNCIL_COVERAGE, MEASURED_OVER, convictionFor, type BaseRate } from './baseRates';
+export { BRACKET, NATIVE, COUNCIL_COVERAGE, MEASURED_OVER, EDGE, convictionFor, type BaseRate } from './baseRates';
 
 /**
  * Ordered as they appear to the player: the two schools whose rules are published, our control on

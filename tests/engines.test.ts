@@ -6,6 +6,8 @@ import {
   CHANNEL,
   ENGINES,
   BRACKET,
+  EDGE,
+  MEASURED_OVER,
   REGISTERED,
   REVERSION,
   REVERSION_H,
@@ -251,6 +253,22 @@ describe('the council is a spread of opinion, never a consensus', () => {
       expect(verdict.conviction!.value).toBeGreaterThan(0);
       expect(verdict.conviction!.value).toBeLessThanOrEqual(1);
     }
+  });
+
+  it('keeps the published headline true of the published numbers', () => {
+    // §14.7's headline — "the only thing on this roster that beats a coin flip is not trading" — is
+    // rendered as prose in Council.tsx, and prose does not fail a build when the measurement moves.
+    // This is what fails instead. Re-run `npm run leaderboard` and rewrite both if it does.
+    for (const paired of Object.values(EDGE.paired)) {
+      expect(paired.delta).toBeLessThanOrEqual(0);
+    }
+    expect(EDGE.spa.pValue).toBeGreaterThan(0.05);
+    // Doing nothing clears Engine Zero by as much as any school does, which is the whole finding.
+    expect(EDGE.abstain.beatsZero).toBe(true);
+    // A PBO near a half means the ordering carries no information, so nothing is ranked.
+    expect(Math.abs(EDGE.pbo - 0.5)).toBeLessThan(0.15);
+    expect(EDGE.observedBestSharpe).toBeLessThan(EDGE.deflationFloor);
+    expect(EDGE.charts).toBe(MEASURED_OVER.charts);
   });
 
   it('says so when an engine is indistinguishable from a coin flip', () => {
