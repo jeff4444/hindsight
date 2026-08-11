@@ -1,5 +1,7 @@
-import Link from 'next/link';
-import { Button, Divider, Eyebrow, Field, INPUT_CLASS } from '@/components/ui';
+import { Alert, Divider, Eyebrow, Field, TextLink } from '@/components/ui';
+import { Icon } from '@/components/ui/icons';
+import { SubmitButton } from '@/components/auth/SubmitButton';
+import { authError } from '@/lib/auth-errors';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,6 +22,7 @@ export default async function SignInPage({
   searchParams: Promise<{ error?: string; next?: string }>;
 }) {
   const { error, next = '/home' } = await searchParams;
+  const failure = authError(error);
 
   return (
     <div data-stagger>
@@ -33,45 +36,50 @@ export default async function SignInPage({
         </p>
       </div>
 
-      {error && (
-        <div
-          className="border-short-line bg-short-bg text-short-ink mt-5 rounded-lg border p-3.5 text-sm"
-          style={{ '--i': 1 } as React.CSSProperties}
-          role="alert"
-        >
-          {error}
+      {failure && (
+        <div style={{ '--i': 1 } as React.CSSProperties}>
+          <Alert tone="short" icon="alert" title={failure.title} className="mt-5">
+            {failure.body}
+          </Alert>
         </div>
       )}
 
       <form action="/api/auth/oauth" method="post" className="mt-7" style={{ '--i': 2 } as React.CSSProperties}>
         <input type="hidden" name="provider" value="google" />
         <input type="hidden" name="next" value={next} />
-        <Button type="submit" variant="primary" size="lg" block>
+        <SubmitButton variant="primary" size="lg" block pendingLabel="Taking you to Google…">
           Continue with Google
-        </Button>
+        </SubmitButton>
       </form>
 
       <Divider label="or" className="my-6" />
 
       <form action="/api/auth/magic-link" method="post" className="space-y-3" style={{ '--i': 3 } as React.CSSProperties}>
-        <label className="block">
-          <span className="text-ink-lo mb-1.5 block text-sm font-medium">Email</span>
-          <input
-            type="email"
-            name="email"
-            required
-            autoComplete="email"
-            placeholder="you@example.com"
-            className={INPUT_CLASS}
-          />
-        </label>
-        <Button type="submit" variant="secondary" size="lg" block>
+        {/* Was a hand-rolled label/span/input — `Field` reimplemented eleven lines above two
+            correct uses of it, and without the id and aria-describedby wiring. */}
+        <Field
+          id="magic-email"
+          label="Email"
+          type="email"
+          name="email"
+          required
+          autoComplete="email"
+          placeholder="you@example.com"
+        />
+        <SubmitButton variant="secondary" size="lg" block pendingLabel="Sending…">
           Email me a link
-        </Button>
+        </SubmitButton>
       </form>
 
       <details className="group mt-6" style={{ '--i': 4 } as React.CSSProperties}>
+        {/* `list-none` removed the marker and nothing replaced it, so the one disclosure on the
+            screen read as a sentence that happened to be clickable. */}
         <summary className="text-ink-dim hover:text-ink-hi hover:bg-fill-1 press inline-flex cursor-pointer list-none items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm transition-colors">
+          <Icon
+            name="chevron-down"
+            size={14}
+            className="transition-transform group-open:rotate-180"
+          />
           Use a password instead
         </summary>
         {/* Visible labels rather than placeholders. A placeholder disappears the moment you type,
@@ -89,20 +97,20 @@ export default async function SignInPage({
             autoComplete="current-password"
           />
           <div className="flex gap-2">
-            <Button type="submit" name="intent" value="sign-in" variant="secondary" size="lg" block>
+            <SubmitButton name="intent" value="sign-in" variant="secondary" size="lg" block pendingLabel="Signing in…">
               Sign in
-            </Button>
-            <Button type="submit" name="intent" value="sign-up" variant="ghost" size="lg" block>
+            </SubmitButton>
+            <SubmitButton name="intent" value="sign-up" variant="ghost" size="lg" block pendingLabel="Creating…">
               Create account
-            </Button>
+            </SubmitButton>
           </div>
         </form>
       </details>
 
       <p className="text-ink-dim mt-10 text-sm" style={{ '--i': 5 } as React.CSSProperties}>
-        <Link href={`/play${next && next !== '/home' ? `?next=${encodeURIComponent(next)}` : ''}`} className="text-ink-lo hover:text-ink-hi underline underline-offset-4 transition-colors">
+        <TextLink href={`/play${next && next !== '/home' ? `?next=${encodeURIComponent(next)}` : ''}`}>
           Or just play
-        </Link>{' '}
+        </TextLink>{' '}
         — the daily and every tape are open without an account.
       </p>
     </div>

@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import { ACCENTS, ACCENT_HEX, ACCENT_LABEL, randomSeed, type Accent } from '@/lib/avatar';
 import { MarketSignature } from '../ui/MarketSignature';
-import { Button, Eyebrow, cx } from '../ui';
+import { Alert, Button, Eyebrow, INPUT_CLASS, cx } from '../ui';
 
 /**
  * Choose a handle and a signature.
@@ -107,7 +107,11 @@ export function SignaturePicker({
             autoCorrect="off"
             spellCheck={false}
             placeholder="tapereader"
-            className="border-line bg-surface-1 text-ink placeholder:text-ink-faint h-11 w-full rounded-md border px-3 font-mono text-sm"
+            // `INPUT_CLASS` plus the mono face, rather than a second opinion about what an input
+            // is. The hand-written one was 44px against the system's 48, `rounded-md` against
+            // `rounded-lg`, and — the part that mattered — had no `focus:border-focus`, making it
+            // the only text field in the whole sign-in flow with no visible focus ring.
+            className={cx(INPUT_CLASS, 'font-mono')}
           />
         </div>
         <p className={cx('mt-1.5 text-xs', localError && handle ? 'text-short-ink' : 'text-ink-faint')}>
@@ -116,9 +120,9 @@ export function SignaturePicker({
       </label>
 
       {error && (
-        <div className="border-short-line bg-short-bg text-short-ink mt-4 rounded-md border p-3 text-xs" role="alert">
+        <Alert tone="short" icon="alert" className="mt-4">
           {error}
-        </div>
+        </Alert>
       )}
 
       <Button

@@ -85,12 +85,11 @@ export function RankedSummary({ ranked }: { ranked: RankedPayload }) {
           <>
             Traded {result.entries} of {ranked.total}, passed {result.passes}. Your rating moved on
             each chart against that chart&rsquo;s own rating — the total above is a scoreboard line,
-            not the ladder. §4.3 keeps standing in the rating precisely so a lottery ticket cannot
-            buy it.
+            not the ladder. Standing lives in the rating precisely so a lottery ticket cannot buy it.
           </>
         ) : (
           <span className="text-attention-ink">
-            Only {result.entries} entries. §4.4 requires three out of five — a session that passes
+            Only {result.entries} entries. Ranked requires three out of five — a session that passes
             its way through is not a reading of anything, and the missing entries scored as
             forfeits.
           </span>

@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { cache } from 'react';
 import { marked } from 'marked';
 import { Eyebrow } from '@/components/ui';
+import { RulesNav, type RulesSection } from '@/components/rules/RulesNav';
 
 /**
  * The published ruleset.
@@ -18,21 +19,73 @@ import { Eyebrow } from '@/components/ui';
  * a player consults *during* a session — "what does NTZ actually forbid" is a mid-round question.
  * Under the marketing group its only navigation was a back link to the landing page, which meant
  * checking a rule cost you your place.
+ *
+ * ## Why it needed a table of contents
+ *
+ * A mid-round question is only answerable if the answer is findable. The document has grown to
+ * fourteen top-level sections and well over a thousand lines — Layer 2's geometry alone runs four
+ * hundred — and the page offered one continuous scroll with no way in. `globals.css` has been
+ * setting `scroll-margin-top: 5rem` on `.rules h2` since the redesign, which is a hash-link
+ * affordance for hash links that did not exist yet.
+ *
+ * The headings come from `marked.lexer()` rather than from a regex over the source, so a `##` in a
+ * fenced code block cannot become a phantom entry.
  */
 const ruleset = cache(async () => {
   const source = readFileSync(join(process.cwd(), 'docs/rules.md'), 'utf8');
-  return marked.parse(source);
+
+  /**
+   * The ids, ours.
+   *
+   * `marked` stopped emitting heading ids by default at v5 — they moved out to a GFM extension —
+   * so `.rules h2 { scroll-margin-top }` had been styling an anchor target that did not exist, and
+   * the first version of this nav linked to fourteen hashes that resolved to nothing. Generated
+   * here and rendered by the override below, so the list and the document cannot disagree about
+   * what a section is called.
+   */
+  const slug = (text: string) =>
+    text
+      .toLowerCase()
+      .trim()
+      .replace(/<[^>]*>/g, '')
+      .replace(/[^\w\- ]+/g, '')
+      .replace(/\s+/g, '-');
+
+  const renderer = new marked.Renderer();
+  renderer.heading = function heading({ tokens, depth }) {
+    const text = this.parser.parseInline(tokens);
+    const id = slug(this.parser.parseInline(tokens).replace(/<[^>]*>/g, ''));
+    return `<h${depth} id="${id}">${text}</h${depth}>\n`;
+  };
+
+  const sections: RulesSection[] = marked
+    .lexer(source)
+    .flatMap((token) =>
+      token.type === 'heading' && token.depth === 2
+        ? [{ id: slug(token.text), title: token.text }]
+        : [],
+    );
+
+  return { html: await marked.parse(source, { renderer }), sections };
 });
 
-export const metadata = { title: 'Ruleset' };
+export const metadata = {
+  title: 'Ruleset',
+  description:
+    'The whole ruleset, published: the tiers, the scoring, the achievable set, and the parts that are uncomfortable to state.',
+};
 
 export default async function RulesPage() {
-  const html = await ruleset();
+  const { html, sections } = await ruleset();
 
   return (
-    <div className="mx-auto max-w-prose">
-      <Eyebrow>Published in full</Eyebrow>
-      <article className="rules mt-4" dangerouslySetInnerHTML={{ __html: html }} />
+    <div className="mx-auto max-w-6xl lg:grid lg:grid-cols-[minmax(0,1fr)_15rem] lg:items-start lg:gap-10">
+      <div className="mx-auto w-full max-w-prose lg:mx-0">
+        <Eyebrow>Published in full</Eyebrow>
+        <article className="rules mt-4" dangerouslySetInnerHTML={{ __html: html }} />
+      </div>
+
+      <RulesNav sections={sections} />
     </div>
   );
 }

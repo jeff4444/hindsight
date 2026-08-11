@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
 import { Chart, type ChartHandle, type Overlay } from '@/components/Chart';
 import type { Bar } from '@/core/bars';
 import { PATH_BARS_PER_DISPLAY_BAR } from '@/core/config';
@@ -17,6 +18,9 @@ import { candidates, selected } from '@/core/geometry/trendlines';
 import { fitChannel, railsAt } from '@/core/geometry/channels';
 import { levelsFrom } from '@/core/geometry/levels';
 import { volumeProfile } from '@/core/geometry/volumeProfile';
+import { TOOL_COLOUR } from '@/lib/toolOverlays';
+import { cx } from '@/components/ui';
+import { Select } from '@/components/ui/client';
 
 /**
  * The eye test for Layer 2.
@@ -35,15 +39,24 @@ import { volumeProfile } from '@/core/geometry/volumeProfile';
  * Including it here "just for development" is exactly how that boundary would erode.
  */
 
+/**
+ * The lab draws the same things the toolbox does, so it draws them in the same colours.
+ *
+ * It had its own eight hex values, which is how the two drifted: the lab kept a green channel and a
+ * red point of control long after the toolbox learned that teal means long and red means short, and
+ * its candidate trendlines were `#4c1d95` — a violet so dark it was very nearly invisible against
+ * `surface-0`, on a screen whose entire job is looking at them.
+ */
 const COLOUR = {
-  swingHigh: '#f97316',
-  swingLow: '#38bdf8',
-  trendline: '#a78bfa',
-  candidate: '#4c1d95',
-  channel: '#22c55e',
-  level: '#eab308',
-  poc: '#ef4444',
-  valueArea: '#7f1d1d',
+  swingHigh: TOOL_COLOUR.swingHigh,
+  swingLow: TOOL_COLOUR.swingLow,
+  trendline: TOOL_COLOUR.trendline,
+  /** Rejected candidates: the same hue as a selected trendline, stepped down rather than blacked out. */
+  candidate: '#6b5a9e',
+  channel: TOOL_COLOUR.channel,
+  level: TOOL_COLOUR.level,
+  poc: TOOL_COLOUR.poc,
+  valueArea: TOOL_COLOUR.valueArea,
 } as const;
 
 interface LabChart {
@@ -57,6 +70,31 @@ interface LabChart {
 }
 
 type Layer = 'swings' | 'trendlines' | 'candidates' | 'channel' | 'levels' | 'profile';
+
+/**
+ * Prose, and the colour each layer draws in.
+ *
+ * The toggles were labelled with the internal identifiers — `swings`, `candidates`, `profile` —
+ * which is fine for the person who wrote them and opaque to anyone else looking at the same screen
+ * a month later, including its author.
+ */
+const LAYER_LABEL: Record<Layer, string> = {
+  swings: 'Swings',
+  trendlines: 'Trendlines',
+  candidates: 'Rejected candidates',
+  channel: 'Channel',
+  levels: 'Levels',
+  profile: 'Volume profile',
+};
+
+const LAYER_COLOUR: Record<Layer, string> = {
+  swings: COLOUR.swingHigh,
+  trendlines: COLOUR.trendline,
+  candidates: COLOUR.candidate,
+  channel: COLOUR.channel,
+  levels: COLOUR.level,
+  profile: COLOUR.poc,
+};
 
 export function GeometryLab({ chart, ids }: { chart: LabChart; ids: string[] }) {
   const handle = useRef<ChartHandle>(null);
@@ -212,7 +250,7 @@ export function GeometryLab({ chart, ids }: { chart: LabChart; ids: string[] }) 
     index >= 0 && ids[index + offset] ? `/lab/geometry?id=${ids[index + offset]}` : undefined;
 
   return (
-    <main className="flex h-screen flex-col gap-3 bg-surface-0 p-4 font-mono text-xs text-ink">
+    <main className="bg-surface-0 text-ink flex h-dvh flex-col gap-3 p-4 font-mono text-xs">
       <header className="flex flex-wrap items-center gap-4">
         <h1 className="text-sm text-ink-max">Geometry lab</h1>
         <span className="text-ink-dim">
@@ -220,55 +258,67 @@ export function GeometryLab({ chart, ids }: { chart: LabChart; ids: string[] }) 
           {chart.minutes.length} minute bars
         </span>
         <nav className="ml-auto flex gap-3">
-          {link(-1) && <a className="underline" href={link(-1)}>← previous</a>}
+          {link(-1) && <Link className="underline" href={link(-1)!}>← previous</Link>}
           <span className="text-ink-faint">
             {index >= 0 ? `${index + 1} / ${ids.length}` : chart.id.slice(0, 8)}
           </span>
-          {link(1) && <a className="underline" href={link(1)}>next →</a>}
+          {link(1) && <Link className="underline" href={link(1)!}>next →</Link>}
         </nav>
       </header>
 
       <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-y border-line py-2">
+        {/* Chips rather than six browser-default checkboxes, which rendered as system-blue boxes
+            on a near-black surface — the only unstyled controls left in the product. Each carries
+            the colour it draws in, so the legend is the control. */}
         {(Object.keys(layers) as Layer[]).map((layer) => (
-          <label key={layer} className="flex cursor-pointer items-center gap-1.5">
-            <input
-              type="checkbox"
-              checked={layers[layer]}
-              onChange={() => setLayers((prev) => ({ ...prev, [layer]: !prev[layer] }))}
+          <button
+            key={layer}
+            type="button"
+            aria-pressed={layers[layer]}
+            onClick={() => setLayers((prev) => ({ ...prev, [layer]: !prev[layer] }))}
+            className={cx(
+              'press ring-line inline-flex items-center gap-1.5 rounded-md px-2 py-1 ring-1 transition-colors',
+              layers[layer] ? 'bg-surface-3 text-ink-max' : 'text-ink-dim hover:text-ink',
+            )}
+          >
+            <span
+              aria-hidden
+              className="h-2 w-2 rounded-full"
+              style={{ background: LAYER_COLOUR[layer], opacity: layers[layer] ? 1 : 0.4 }}
             />
-            {layer}
-          </label>
+            {LAYER_LABEL[layer]}
+          </button>
         ))}
 
-        <label className="flex items-center gap-1.5">
-          grade
-          <select
-            className="bg-surface-1 px-1 py-0.5"
-            value={grade}
-            onChange={(event) => setGrade(event.target.value as SwingGrade)}
-          >
-            {SWING_GRADES.map((option) => (
-              <option key={option.name} value={option.name}>
-                {option.name} ({option.atrMultiple}× ATR)
-              </option>
-            ))}
-          </select>
-        </label>
+        <Select
+          label="Swing grade"
+          size="sm"
+          value={grade}
+          options={SWING_GRADES.map((option) => ({
+            value: option.name,
+            label: `${option.name} (${option.atrMultiple}× ATR)`,
+          }))}
+          onChange={(value) => setGrade(value as SwingGrade)}
+        />
 
-        <label className="flex cursor-pointer items-center gap-1.5" title="Resolve intrabar ordering from the stored one-minute path instead of the close-direction convention">
-          <input
-            type="checkbox"
-            checked={useMinutes}
-            disabled={chart.minutes.length === 0}
-            onChange={() => setUseMinutes((prev) => !prev)}
-          />
+        <button
+          type="button"
+          aria-pressed={useMinutes}
+          disabled={chart.minutes.length === 0}
+          onClick={() => setUseMinutes((prev) => !prev)}
+          title="Resolve intrabar ordering from the stored one-minute path instead of the close-direction convention"
+          className={cx(
+            'press ring-line rounded-md px-2 py-1 ring-1 transition-colors disabled:opacity-40',
+            useMinutes ? 'bg-surface-3 text-ink-max' : 'text-ink-dim enabled:hover:text-ink',
+          )}
+        >
           minute path
-        </label>
+        </button>
 
         <label className="flex flex-1 items-center gap-2" title="Applies visibleAt: nothing may appear before its knownAt">
           visible at bar {visibleTo}
           <input
-            className="flex-1"
+            className="accent-info flex-1"
             type="range"
             min={1}
             max={chart.bars.length - 1}

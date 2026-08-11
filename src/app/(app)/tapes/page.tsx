@@ -57,9 +57,11 @@ export default async function TapesPage() {
             the reveal path would announce the answer in the tape&rsquo;s own name — which is why
             the one below is locked rather than shipped.
           </p>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {locked.map((tape) => (
-              <TapeCard key={tape.slug} tape={tape} />
+          {/* The open grid above staggers its cards in and this one did not, so the locked tapes
+              snapped into place while the ones above them were still arriving. */}
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" data-stagger>
+            {locked.map((tape, index) => (
+              <TapeCard key={tape.slug} tape={tape} index={index} />
             ))}
           </div>
         </section>

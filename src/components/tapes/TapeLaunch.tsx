@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { MODS, TIERS, xpMultiplier, type ModCode, type TierCode } from '@/core/tiers';
 import { Button, Eyebrow, cx } from '../ui';
+import { Icon } from '../ui/icons';
 
 /**
  * Choose a ruleset and mods, then play.
@@ -66,27 +67,23 @@ export function TapeLaunch({ slug, locked }: { slug: string; locked: boolean }) 
                 </div>
                 <div className="text-ink-hi mt-0.5 text-sm">{option.name}</div>
                 <p className="text-ink-dim mt-1 text-xs leading-relaxed">{option.blurb}</p>
+                {/* The toolbox, as a count. Full Desk's whole reason for existing is the fourteen,
+                    and the ladder was describing every rung without once saying how many tools it
+                    hands you — which is now the axis the top two rungs differ on. */}
+                <p className="text-ink-faint mt-1.5 inline-flex items-center gap-1 text-micro">
+                  <Icon name="activity" size={11} />
+                  {option.tools.length === 0
+                    ? 'No tools'
+                    : `${option.tools.length} tools`}
+                  <span aria-hidden>·</span>
+                  <Icon name="ruler" size={11} />
+                  Ruler always
+                </p>
               </button>
             );
           })}
         </div>
 
-        <div className="border-line-faint mt-2 grid gap-2 rounded-md border border-dashed p-3 opacity-55 sm:grid-cols-2">
-          {[
-            ['FD', 'Full Desk', 'Pre-trade news headlines, indicators, drawing tools.'],
-            ['NN', 'News Blind', 'Full Desk without the headlines.'],
-          ].map(([code, name, blurb]) => (
-            <div key={code}>
-              <div className="text-ink-faint font-mono text-xs font-semibold">{code}</div>
-              <div className="text-ink-faint mt-0.5 text-sm">{name}</div>
-              <p className="text-ink-faint mt-1 text-xs leading-relaxed">{blurb}</p>
-            </div>
-          ))}
-          <p className="text-ink-faint text-micro sm:col-span-2">
-            Both wait on the news panel. Until it exists Full Desk is News Blind wearing a different
-            name, and a ladder with two rungs that are one rung is not a ladder.
-          </p>
-        </div>
       </div>
 
       <div>
@@ -136,7 +133,7 @@ export function TapeLaunch({ slug, locked }: { slug: string; locked: boolean }) 
           })}
         </div>
         <p className="text-ink-dim mt-2 text-xs leading-relaxed">
-          Multipliers are XP only. §3.4 refuses them in ranked on principle — &ldquo;every attempt
+          Multipliers are XP only. The ruleset refuses them in ranked on principle — &ldquo;every attempt
           to assert a conversion generates an argument that consumes the community&rdquo; — and the
           tier multiplier is meant to be derived from the achieved percentile per tier once there is
           volume, not chosen.

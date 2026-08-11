@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { codeForAuthMessage } from '@/lib/auth-errors';
 import { authClient } from '@/lib/supabase/auth-server';
 
 export const runtime = 'nodejs';
@@ -10,7 +11,7 @@ export async function POST(request: Request) {
   const origin = new URL(request.url).origin;
 
   if (!email) {
-    return NextResponse.redirect(new URL('/sign-in?error=Enter%20an%20email', origin), { status: 303 });
+    return NextResponse.redirect(new URL('/sign-in?error=missing-fields', origin), { status: 303 });
   }
 
   const auth = await authClient();
@@ -21,7 +22,7 @@ export async function POST(request: Request) {
 
   if (error) {
     return NextResponse.redirect(
-      new URL(`/sign-in?error=${encodeURIComponent(error.message)}`, origin),
+      new URL(`/sign-in?error=${codeForAuthMessage(error.message)}`, origin),
       { status: 303 },
     );
   }
