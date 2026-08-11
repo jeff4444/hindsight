@@ -138,6 +138,47 @@ export const COUNCIL_COVERAGE = {
 } as const;
 
 /**
+ * The corrected answer, from `npm run leaderboard` (§14.7).
+ *
+ * `BRACKET` above is a set of raw base rates, and raw base rates cannot say whether anything works.
+ * These are the numbers that can, and they are committed here for the same reason as the rest of
+ * this file: the UI must not be able to drift from the script that produced them.
+ *
+ * ## The result, which is not the one the roster was hoping for
+ *
+ * Measured two ways, because the two answer different questions and only one of them is about skill:
+ *
+ * - **Portfolio** — every engine against Engine Zero over all 1,000 charts, a pass scored as zero.
+ *   All three schools clear the null. **So does a strategy that never trades**, by the same margin
+ *   (+0.091R, t = 2.20), because Engine Zero loses money and anything trading less than it wins.
+ * - **Paired** — every engine against Engine Zero's own outcome *on the charts the engine chose*.
+ *   Coverage cancels; only selection is left. Every engine is **negative**, and Hansen's SPA over the
+ *   whole roster returns p = 1.00.
+ *
+ * The ordering is noise too: PBO = 0.473 over all 12,870 balanced splits, and no engine holds any
+ * rank in the bootstrap except Engine Zero holding last. So nothing here is ranked.
+ */
+export const EDGE = {
+  charts: 1000,
+  symbols: 314,
+  resamples: 4000,
+  /** The control: a strategy that never trades, tested in the same family as the schools. */
+  abstain: { deltaVsZero: 0.0907, t: 2.199, beatsZero: true },
+  /** Paired against a coin flip on the same charts. Negative for every engine on the roster. */
+  paired: {
+    CHANNEL: { delta: -0.007, t: -0.278, trades: 198 },
+    REVERSION: { delta: -0.0006, t: -0.068, trades: 22 },
+    REVERSION_H: { delta: -0.002, t: -0.13, trades: 88 },
+  },
+  /** One test for the whole roster, asked once. */
+  spa: { pValue: 1.0, best: 'Reversion' },
+  pbo: 0.473,
+  /** Best of four skill-free engines is expected to reach this Sharpe. Observed best: 0.0177. */
+  deflationFloor: 0.0429,
+  observedBestSharpe: 0.0177,
+} as const;
+
+/**
  * Conviction, and the sentence that says where it came from.
  *
  * §5.5 requires "a conviction level, **and a statement of where that conviction number comes

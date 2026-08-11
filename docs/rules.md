@@ -1222,9 +1222,7 @@ decides every bar that touches both. It came out at 32.7%.
 
 These are raw base rates and **they are not evidence of an edge in either direction**. Four engines
 against a band is still four comparisons, and §13.9 showed what happens without correction: twelve
-comparisons, one hit at 95%, gone once corrected. The machinery that could turn these into a claim —
-Romano–Wolf StepM, Hansen's SPA against Engine Zero, and the probability of backtest overfitting — is
-3b's job and is not built.
+comparisons, one hit at 95%, gone once corrected. §14.7 applies the correction.
 
 ### 14.6 What the engines see
 
@@ -1236,14 +1234,99 @@ how many candles it used and the debrief prints it.
 It is also necessary rather than convenient: Connors' 200-period regime filter is Rule 3, it is
 load-bearing, and it cannot exist in an 80-candle window at all.
 
+### 14.7 Does any of it work? The leaderboard, corrected
+
+Reproduce with `npm run leaderboard`. 1,000 charts, 314 symbols, four pre-registered engines,
+thresholds `d034e8b2`. Every bootstrap resamples **whole symbols** — up to eight windows come from
+one instrument and two windows of the same instrument are not independent draws.
+
+Each engine gets one number per chart: its R where it traded, **zero where it passed**. That is a
+portfolio, and it is deliberately not the mean over an engine's own trades — which is a much easier
+question, and the one under which a system that trades twice a decade looks superb.
+
+| engine | fired | per-chart R | Sharpe |
+| --- | --- | --- | --- |
+| Channel | 198 | −0.0053 | −0.0093 |
+| Reversion | 22 | +0.0034 | +0.0177 |
+| Reversion (Hindsight) | 88 | +0.0061 | +0.0159 |
+| Engine Zero | 1000 | −0.0907 | −0.0695 |
+| **Never trade** | 0 | 0.0000 | — |
+
+**The last row is the control, and it decides how the rest is read.** Engine Zero *loses money*: a 2R
+target on a 2 ATR stop inside sixty candles is a negative-expectancy bet, measured at −0.091R per
+chart. So anything that trades less than it beats it, skill or no skill.
+
+**Question one — which would you rather have been running?** Romano–Wolf StepM against Engine Zero,
+4,000 cluster resamples, α = 0.05, one-sided. StepM rather than Bonferroni because the engines read
+the same charts, so their statistics are correlated, and Bonferroni assumes they are not.
+
+| | Δ vs Engine Zero | t | |
+| --- | --- | --- | --- |
+| Channel | +0.0855 | 1.93 | beats Engine Zero |
+| Reversion | +0.0942 | 2.25 | beats Engine Zero |
+| Reversion (Hindsight) | +0.0969 | 2.29 | beats Engine Zero |
+| **Never trade** | **+0.0907** | **2.20** | **beats Engine Zero** |
+
+Three schools clear the null — and so does doing nothing, by the same margin. The gap is abstention.
+
+**Question two — on the charts it chose, did it beat a coin flip on those same charts?** Paired per
+chart against Engine Zero's own outcome on that chart: same entry, same window, a rule against a
+guess. Charts an engine passed contribute zero to both sides and cancel exactly, so coverage is held
+fixed and only trade selection is left.
+
+| | Δ vs a coin flip on its own charts | t | over |
+| --- | --- | --- | --- |
+| Channel | −0.0070 | −0.28 | 198 trades |
+| Reversion | −0.0006 | −0.07 | 22 trades |
+| Reversion (Hindsight) | −0.0020 | −0.13 | 88 trades |
+
+Every one is negative. Hansen's SPA — one test for the whole roster, asked once, so that reporting
+the smallest of three p-values is not on the table — returns **p = 1.00**. There is no evidence of
+superior predictive ability anywhere on this roster.
+
+**Is the ordering real?** No. PBO by combinatorially symmetric cross-validation, all 12,870 balanced
+splits of sixteen blocks, exhaustive: **0.473**. The in-sample winner lands below median out of
+sample about half the time, which is what a leaderboard with no information in it looks like. The
+rank distribution says the same thing directly — the share of 4,000 resamples each engine spends in
+each place:
+
+| | #1 | #2 | #3 | #4 | #5 |
+| --- | --- | --- | --- | --- | --- |
+| Channel | 22.6% | 9.3% | 11.2% | 54.8% | 2.1% |
+| Reversion | 20.0% | 47.6% | 26.3% | 6.0% | 0.1% |
+| Reversion (Hindsight) | 48.6% | 18.6% | 14.8% | 17.5% | 0.5% |
+| Engine Zero | 0.4% | 0.4% | 0.5% | 1.7% | 96.9% |
+| Never trade | 8.4% | 24.0% | 47.1% | 20.1% | 0.4% |
+
+Only one row on that table is stable, and it is Engine Zero finishing last. Nothing else holds a
+place, so **no ranking is published** — this table is published instead, because printing a single
+ordering over these numbers would be the most misleading thing on the page.
+
+**Deflation.** With four pre-registered trials, the best of four *skill-free* engines is expected to
+reach a Sharpe of 0.0429 by luck alone (Bailey & López de Prado; E[max] = 1.052 against a
+cross-engine spread of 0.0407). The observed best is **0.0177** — below the noise floor. That floor
+is only honest because the family was frozen before the corpus was touched, which is what the
+manifest hash enforces.
+
+**The headline, stated plainly: the only thing on this roster that beats a coin flip is not trading.**
+The schools do not pick better than chance on the charts they choose; they win on the portfolio
+purely by staying out of most of them. That is a real and useful result — restraint is the edge, and
+§4.4 already scores it as a move the player can make — but it is not the result of any published
+school having an edge here, and this project does not get to round it up into one.
+
+**What n = 1,000 can and cannot resolve.** A per-trade edge of about 0.1R on 198 trades sits at the
+edge of detection here; Reversion's 22 trades cannot resolve anything at all, and it is published as
+unmeasurable rather than quietly dropped. So "no edge found" is not "no edge exists" — it is the
+strongest statement this corpus supports, and the corpus is the thing to grow if a stronger one is
+wanted.
+
 ## 15. What is not built yet
 
 Recorded so nothing here is mistaken for the finished product.
 
 **Not built:** the four remaining engines — Liquidity, Pattern, Geometry, Tape (§14 has the two whose
-rules are actually published, plus a control and the null); the statistics that would turn an engine
-track record into a claim; the per-theme ratings
-that depend on them; the Full Desk and News Blind tiers; the Fog mod; ranked sessions, divisions and
+rules are actually published, plus a control and the null); the per-theme ratings; the News Blind
+tier; the Fog mod; ranked sessions, divisions and
 seasons; Manage, Storm, Duel, Racer and Calibration; creator maps and cohort dashboards; the cost
 model; synthetic controls in the corpus; news.
 
@@ -1254,6 +1337,14 @@ three phases that built them. Themes are visible as tapes, which is a filter ove
 a drawing on one. Two pieces are deferred outright with reasons in §13.6, round-number levels are
 measured-and-withheld in §13.5, and news-spike is dropped outright rather than named after a cause
 we cannot observe — §9 news has been dropped from the plan, so its deferral had no target left.
+
+**The engine council is measured, and the answer is no.** §14.7 applies the corrections: Romano–Wolf
+StepM over the pre-registered family, Hansen's SPA asked once, PBO over all 12,870 balanced splits,
+and bootstrap rank distributions — all resampling whole symbols. Paired against a coin flip on the
+same charts, every engine on the roster is negative; the ordering has PBO 0.473; the best Sharpe is
+below the deflation floor for four trials. The only thing that beats Engine Zero is not trading, and
+all three schools do most of the time. **No engine is ranked**, and the council says so on screen.
+This is the second independent route to the same answer §13.8 got from the themes.
 
 **And §13.8 is the part to read first.** One detector of ten beats a shuffle of the same charts;
 seven fire *less* often on real data than on noise. That is published rather than filed, because it

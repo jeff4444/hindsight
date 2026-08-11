@@ -1,6 +1,6 @@
 'use client';
 
-import { COUNCIL_COVERAGE, disagreement, type Verdict } from '@/core/engines';
+import { COUNCIL_COVERAGE, EDGE, disagreement, type Verdict } from '@/core/engines';
 import { cx } from '../ui';
 
 /**
@@ -119,17 +119,20 @@ export function Council({ verdicts, entry }: { verdicts: Verdict[]; entry: numbe
       </ul>
 
       {/*
-        The null, stated rather than implied. Every engine above sits inside Engine Zero's band at
-        its own sample size — an engine firing on 88 charts has 3.4x the sampling error of one
-        firing on 1,000, so the band is drawn to match. Without this line a 39% win rate reads as
-        skill.
+        The null, stated rather than implied — and now the corrected version of it (§14.7).
+
+        Each engine's mean R sits inside Engine Zero's band at its own sample size, and the full
+        measurement says why: paired chart by chart against a coin flip on the *same* charts, every
+        engine on this roster is negative. What beats Engine Zero is not trading, which all three
+        schools do most of the time. Without this line a 39% win rate reads as skill.
       */}
       <p className="text-ink-faint mt-4 max-w-prose text-xs leading-relaxed">
-        Every conviction figure above is measured over 1,000 charts, and every one of them sits{' '}
-        <strong className="text-ink-dim">inside a coin flip’s range</strong> at that engine’s own
-        sample size. Engine Zero is on the list for exactly that reason. The statistics that could
-        turn these into a claim — and the corrections that would survive four comparisons — are not
-        built yet.
+        Every conviction figure above is measured over {EDGE.charts.toLocaleString()} charts, and
+        every one of them sits <strong className="text-ink-dim">inside a coin flip’s range</strong>{' '}
+        at that engine’s own sample size. Corrected for testing all four at once, and paired chart by
+        chart against a coin flip on the same charts, no school here picks better than chance —{' '}
+        <strong className="text-ink-dim">the only thing on this roster that beats a coin flip is not
+        trading</strong>. Which is why the rows above are not ranked, and why passing is scored.
       </p>
     </section>
   );

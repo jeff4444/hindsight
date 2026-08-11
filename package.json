@@ -23,7 +23,8 @@
     "themes": "tsx --env-file-if-exists=.env.local scripts/themes.ts",
     "null": "tsx --env-file-if-exists=.env.local scripts/null.ts",
     "conditional": "tsx --env-file-if-exists=.env.local scripts/conditional.ts",
-    "engines": "tsx --env-file-if-exists=.env.local scripts/engines.ts"
+    "engines": "tsx --env-file-if-exists=.env.local scripts/engines.ts",
+    "leaderboard": "tsx --env-file-if-exists=.env.local scripts/leaderboard.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",
