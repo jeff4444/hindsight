@@ -21,7 +21,6 @@ import type {
 } from '@/lib/api-types';
 import { CAMERA_TAU_MS, DEFAULT_WINDOW, placementView, type Window } from '@/lib/camera';
 import { type ChartHandle } from '../Chart';
-import { ResultConsole } from './ResultConsole';
 import { type Rail } from '../TradeOverlay';
 import { Chip, cx } from '../ui';
 import { Dialog, Live } from '../ui/client';
@@ -46,7 +45,7 @@ import { RankedSummary } from './RankedSummary';
 import { DEFAULT_SPEED, useRevealLoop } from './useRevealLoop';
 import { InstrumentRail, INSTRUMENT_HOWTO, INSTRUMENT_LABEL } from './InstrumentRail';
 import { StudiesPanel } from './StudiesPanel';
-import { Council } from './Council';
+import { ResultRail } from './ResultRail';
 import type { Verdict } from '@/core/engines';
 import { DrawLayer, type Drawing, type DrawTool } from './DrawLayer';
 import { overlaysFor } from '@/lib/toolOverlays';
@@ -802,7 +801,17 @@ export function PlaySurface({
           `InstrumentRail`. Either way they are outside the frame, so nothing here is an ancestor of
           the rail layer and `tests/stacking.test.ts` stays green. */}
       {phase !== 'summary' && (
-      <div className="flex shrink-0 flex-col gap-2 lg:flex-row lg:items-start lg:gap-3">
+      <div
+        className={cx(
+          'flex flex-col gap-2 lg:flex-row lg:items-start lg:gap-3',
+          // The row holds the result rail once the round is over, and only *above* `lg` does it
+          // become the bounded region the rail scrolls inside — that is where the rail has an
+          // explicit height to be bounded by. Below `lg` the rail stacks under the chart at its
+          // natural height and the page scrolls, because a nested scroll region on a touch screen
+          // is a worse answer than the one the platform already has.
+          phase === 'done' ? 'shrink-0 lg:min-h-0 lg:flex-1' : 'shrink-0',
+        )}
+      >
         {round && (
           <div className="flex items-center gap-2 lg:flex-col lg:items-stretch">
             <InstrumentRail
@@ -921,6 +930,24 @@ export function PlaySurface({
           />
         )}
       </ChartFrame>
+
+        {/* The result, beside the chart at `lg` and stacked under it below — one mount either way,
+            because the row is already a column at narrow widths. It appears only once the reveal
+            has settled, so the frame is narrowed exactly once and never mid-animation. */}
+        {phase === 'done' && result && (
+          <ResultRail
+            result={result}
+            score={score}
+            provenance={provenance}
+            verdicts={verdicts}
+            entry={round?.entry ?? 0}
+            atr={round?.atr ?? null}
+            nextLabel={daily && daily.played + 1 >= daily.total ? 'See your card' : 'Next chart'}
+            onNext={() => void load()}
+            onReplay={replay}
+            className="min-h-0 w-full lg:h-(--stage-h) lg:w-[26rem] lg:shrink-0"
+          />
+        )}
       </div>
       )}
 
@@ -957,21 +984,6 @@ export function PlaySurface({
         {phase === 'summary' && daily && <DailyCeremony daily={daily} />}
         {phase === 'summary' && ranked && <RankedSummary ranked={ranked} />}
 
-        {phase === 'done' && result && (
-          <ResultConsole
-            result={result}
-            provenance={provenance}
-            score={score}
-            atr={round?.atr ?? null}
-            nextLabel={daily && daily.played + 1 >= daily.total ? 'See your card' : 'Next chart'}
-            onNext={() => void load()}
-            onReplay={replay}
-          />
-        )}
-
-        {phase === 'done' && round && verdicts.length > 0 && (
-          <Council verdicts={verdicts} entry={round.entry} />
-        )}
       </section>
 
       <Live message={announcement} />
