@@ -678,10 +678,40 @@ export function detectThemes(input: ThemeInput): Causal<ThemeTag>[] {
  * hold. The graded tags stay available from `detectThemes` for anything that wants them.
  */
 export function themesOf(input: ThemeInput, decisionBar: number): Theme[] {
+  return taggedThemes(input, decisionBar).map((tag) => tag.theme);
+}
+
+/**
+ * The same tags, keeping the **direction** each one points.
+ *
+ * `themesOf` throws the direction away because a chart row stores membership and a tape filters on
+ * membership. That is the right shape for a filter and the wrong shape for a question, and the
+ * question is the one that matters: *did the side the theme named turn out to be the side that
+ * paid?*
+ *
+ * Aggregating without it silently answers nothing. A liquidity sweep points down on some charts and
+ * up on others; pooling them and measuring "long minus short" averages the two together, and the
+ * cancellation looks exactly like an absence of information. `scripts/conditional.ts` needs this,
+ * and it needed it before it could produce a number worth believing.
+ *
+ * Strongest first, and at most one entry per theme — where a theme fires more than once in the
+ * window the strongest tag is the one that describes the chart.
+ */
+export function taggedThemes(
+  input: ThemeInput,
+  decisionBar: number,
+): { theme: Theme; direction: 'up' | 'down' | null; strength: number }[] {
   const earliest = decisionBar - THEME_SPEC.recencyBars;
-  const seen = new Set<Theme>();
+  const best = new Map<Theme, ThemeTag>();
+
   for (const tag of detectThemes(input)) {
-    if (tag.knownAt <= decisionBar && tag.knownAt > earliest) seen.add(tag.value.theme);
+    if (tag.knownAt > decisionBar || tag.knownAt <= earliest) continue;
+    const current = best.get(tag.value.theme);
+    if (!current || tag.value.strength > current.strength) best.set(tag.value.theme, tag.value);
   }
-  return THEMES.filter((theme) => seen.has(theme));
+
+  return THEMES.filter((theme) => best.has(theme)).map((theme) => {
+    const tag = best.get(theme) as ThemeTag;
+    return { theme, direction: tag.direction, strength: tag.strength };
+  });
 }

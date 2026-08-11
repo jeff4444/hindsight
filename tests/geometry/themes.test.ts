@@ -11,6 +11,7 @@ import {
   THEME_SPEC,
   detectThemes,
   isTheme,
+  taggedThemes,
   themesOf,
   type Theme,
   type ThemeInput,
@@ -292,6 +293,40 @@ describe('what gets stored, and what does not', () => {
           tag.knownAt > decision - THEME_SPEC.recencyBars,
       );
       expect(recent.length, `${theme} was stored but nothing recent supports it`).toBeGreaterThan(0);
+    }
+  });
+
+  it('keeps the direction that themesOf throws away', () => {
+    // The distinction that made the conditional test possible. A chart row stores membership,
+    // because that is what a tape filters on — but a liquidity sweep points down on some charts
+    // and up on others, so pooling them and asking "did long beat short" averages the two together
+    // and the cancellation looks exactly like an absence of information.
+    const tags = taggedThemes(input, bars.length - 1);
+    expect(tags.map((tag) => tag.theme)).toEqual(themesOf(input, bars.length - 1));
+    for (const tag of tags) {
+      expect(['up', 'down', null]).toContain(tag.direction);
+      expect(tag.strength).toBeGreaterThanOrEqual(MIN_STRENGTH);
+    }
+  });
+
+  it('reports one entry per theme, the strongest', () => {
+    const tags = taggedThemes(input, bars.length - 1);
+    expect(new Set(tags.map((tag) => tag.theme)).size).toBe(tags.length);
+
+    // Where a theme fires more than once in the window, the strongest tag is the one that
+    // describes the chart — anything else would let a marginal late instance overwrite a decisive
+    // one purely by arriving second.
+    const all = detectThemes(input);
+    for (const tag of tags) {
+      const candidates = all
+        .filter(
+          (candidate) =>
+            candidate.value.theme === tag.theme &&
+            candidate.knownAt <= bars.length - 1 &&
+            candidate.knownAt > bars.length - 1 - THEME_SPEC.recencyBars,
+        )
+        .map((candidate) => candidate.value.strength);
+      expect(tag.strength).toBe(Math.max(...candidates));
     }
   });
 

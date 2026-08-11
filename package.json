@@ -21,7 +21,8 @@
     "ladder": "tsx --env-file-if-exists=.env.local scripts/ladder.ts",
     "leak": "tsx --env-file-if-exists=.env.local scripts/round-number-leak.ts",
     "themes": "tsx --env-file-if-exists=.env.local scripts/themes.ts",
-    "null": "tsx --env-file-if-exists=.env.local scripts/null.ts"
+    "null": "tsx --env-file-if-exists=.env.local scripts/null.ts",
+    "conditional": "tsx --env-file-if-exists=.env.local scripts/conditional.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",

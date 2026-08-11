@@ -1023,7 +1023,84 @@ argument for running two nulls: against normal returns it looks like a discovery
 real return distribution it disappears. What it was detecting was fat tails, which markets have and
 Brownian motion does not. Anyone publishing only the GBM column would have reported an effect.
 
-### 13.9 How it is tested
+### 13.9 Do the themes predict anything?
+
+§13.8 asked whether these patterns are *more common* in markets than in noise. This asks the
+question that actually matters for the product: **conditional on a theme at the decision bar, does
+what was achievable afterwards differ?**
+
+The two come apart. A formation could occur at exactly the shuffle rate and still be informative.
+Lo, Mamaysky & Wang measured both; §13.8 was the first, this is the second. `npm run conditional`
+reproduces it over all 1,000 charts.
+
+A theme is computed from the **lead-in alone**. The achievable set is computed from the **reveal**.
+So nothing here can be circular.
+
+#### Difficulty — is a tagged chart easier or harder?
+
+| theme | n | par (tagged) | par (others) | Δ | 95% CI | |
+| --- | --- | --- | --- | --- | --- | --- |
+| liquidity-sweep | 640 | −0.741 | −0.773 | +0.032 | [−0.023, +0.086] | no difference |
+| failed-breakout | 517 | −0.763 | −0.742 | −0.020 | [−0.072, +0.032] | no difference |
+| v-reversal | 458 | −0.735 | −0.768 | +0.032 | [−0.019, +0.083] | no difference |
+| compression-expansion | 71 | −0.809 | −0.749 | −0.061 | [−0.146, +0.029] | no difference |
+| range-reversion | 67 | −0.775 | −0.751 | −0.024 | [−0.119, +0.076] | no difference |
+| trend-continuation | 38 | −0.766 | −0.752 | −0.013 | [−0.150, +0.143] | no difference |
+
+**Six of six: no difference.** That is a good result for the tapes — a theme tape is a fair slice of
+the library rather than a stealth difficulty setting, so the ratings computed on it stay comparable.
+
+#### Direction — did the side the theme named actually pay?
+
+The sharp test. Five themes name a side; the grid is direction-major, so for each chart we can
+compare what the named side achieved against the other side. A positive Δ means the named side beat
+the other by more than it does on charts without the theme.
+
+| theme | n | edge (tagged) | edge (others) | Δ | 95% CI | |
+| --- | --- | --- | --- | --- | --- | --- |
+| liquidity-sweep | 640 | +0.060 | +0.049 | +0.011 | [−0.195, +0.220] | no difference |
+| failed-breakout | 517 | −0.071 | −0.120 | +0.048 | [−0.150, +0.256] | no difference |
+| v-reversal | 458 | +0.100 | −0.096 | +0.196 | [−0.012, +0.402] | no difference |
+| compression-expansion | 71 | −0.144 | −0.054 | −0.090 | [−0.452, +0.277] | no difference |
+| range-reversion | 67 | −1.444 | −1.365 | −0.079 | [−0.306, +0.148] | no difference *(symmetry)* |
+| **trend-continuation** | **38** | **+0.519** | **−0.076** | **+0.595** | **[+0.061, +1.123]** | **higher at 95% — gone once corrected** |
+
+**Twelve comparisons. Zero survive.**
+
+The one row that clears zero at 95% is the smallest group in the table, and it is one of twelve
+tests: at that rate roughly 0.6 false positives are expected by chance. Correcting for the family
+— Bonferroni at 1 − 0.05/12 — its interval covers zero comfortably. Park & Irwin (2007) reviewed 95
+studies of technical analysis and named this exact failure, "data snooping, ex post selection of
+trading rules", so the correction is applied and the uncorrected number is printed beside it rather
+than in place of it.
+
+The most *interesting* row is not that one. It is **v-reversal at +0.196 on n=458** — a near-miss on
+the third-largest sample, which is a better candidate for a real effect than a marginal hit on 38
+charts. It is still a near-miss, and it is recorded here so that if it is ever chased it is chased
+knowingly rather than discovered afresh.
+
+#### What this does and does not settle
+
+**It does not make Layer 2 useless.** §6 already says the layer "predicts nothing. It draws." A
+theme tape is a filter — "these charts share a stated property" — and they verifiably do. Nothing on
+that page claims the property is profitable, and after this table nothing should.
+
+**It does change what the engine council can claim.** §5's six engines read Layer 2 and nothing
+else. Any engine asserting an edge from these themes would now be contradicted by our own published
+table, on our own corpus. What survives is the thing §2 actually promises: *"markets are noisy,
+edges are thin, and competent people disagree. Hindsight demonstrates that empirically instead of
+asserting it."* This table is that demonstration, arriving a phase earlier than expected.
+
+**It is an upper bound, not an edge.** No costs, no slippage, no sizing — and the achievable set is
+the *best available* bracket rather than one anybody would have chosen in advance. Every number
+above flatters the pattern, and they still come out at zero. Bajgrowicz & Scaillet (2012) found
+transaction costs of 16–70bp erased every detected outperformance from 1897–1962 and found none at
+all after 1962.
+
+**One corpus, one asset class, one window.** Crypto spot, 80 candles. A different market or a
+different horizon is a different question, and this says nothing about either.
+
+### 13.10 How it is tested
 
 Stability is measured in **price space** — Hausdorff distance on swing prices — never on index sets.
 That is a correction to the scope document as first drafted: persistence theory gives stability of
