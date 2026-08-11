@@ -8,6 +8,10 @@
 import type { Verdict } from './contract';
 import { CHANNEL } from './channel';
 import { REVERSION, REVERSION_H } from './reversion';
+import { SWEEP } from './sweep';
+import { PATTERN } from './pattern';
+import { GEOMETRY } from './geometry';
+import { TAPE } from './tape';
 import { ZERO } from './zero';
 import { REGISTERED } from './manifest';
 import { convictionFor } from './baseRates';
@@ -17,6 +21,10 @@ export * from './contract';
 export { THRESHOLDS, PROVENANCE, THRESHOLD_HASH, REGISTERED, digest } from './manifest';
 export { CHANNEL } from './channel';
 export { REVERSION, REVERSION_H } from './reversion';
+export { SWEEP } from './sweep';
+export { PATTERN } from './pattern';
+export { GEOMETRY } from './geometry';
+export { TAPE } from './tape';
 export { ZERO } from './zero';
 export { BRACKET, NATIVE, COUNCIL_COVERAGE, MEASURED_OVER, EDGE, convictionFor, type BaseRate } from './baseRates';
 
@@ -25,7 +33,7 @@ export { BRACKET, NATIVE, COUNCIL_COVERAGE, MEASURED_OVER, EDGE, convictionFor, 
  * one of them, then the null. Engine Zero is last because it is the reference, not a peer — but it
  * is on the list, because a benchmark kept off the leaderboard is a benchmark nobody checks.
  */
-export const ENGINES: Engine[] = [CHANNEL, REVERSION, REVERSION_H, ZERO];
+export const ENGINES: Engine[] = [CHANNEL, REVERSION, REVERSION_H, SWEEP, PATTERN, GEOMETRY, TAPE, ZERO];
 
 export function engineByCode(code: string): Engine | null {
   return ENGINES.find((engine) => engine.code === code) ?? null;

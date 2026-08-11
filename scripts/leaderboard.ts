@@ -268,11 +268,13 @@ async function run() {
     const s = sd(engine.returns);
     return s > 0 ? mean(engine.returns) / s : 0;
   });
-  const trials = REGISTERED.engines.length;
+  // Specifications tried, not engines shipped — see REGISTERED.trials. Using the roster size here
+  // would price the search as if no threshold had ever been reconsidered.
+  const trials = REGISTERED.trials;
   const floor = sd(sharpes) * expectedMaxSharpe(trials);
 
   console.log('');
-  console.log(`DEFLATION — ${trials} pre-registered trials`);
+  console.log(`DEFLATION — ${trials} pre-registered trials over ${REGISTERED.engines.length} engines`);
   console.log(`  Best of ${trials} SKILL-FREE engines is expected to reach a Sharpe of ${floor.toFixed(4)}`);
   console.log(`  (E[max] = ${expectedMaxSharpe(trials).toFixed(4)} cross-engine sd of ${sd(sharpes).toFixed(4)}).`);
   console.log(`  Observed best: ${Math.max(...sharpes).toFixed(4)} — ${Math.max(...sharpes) > floor ? 'above' : 'below'} the floor.`);

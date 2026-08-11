@@ -48,7 +48,7 @@ export interface BaseRate {
 }
 
 /** The corpus this was measured on. A record does not transfer to a different one. */
-export const MEASURED_OVER = { charts: 1000, thresholdHash: 'd034e8b2' } as const;
+export const MEASURED_OVER = { charts: 1000, thresholdHash: '7e7c197a' } as const;
 
 /** The static bracket — the record comparable to a player's, and to the 98-cell achievable set. */
 export const BRACKET: Record<EngineCode, BaseRate> = {
@@ -78,6 +78,69 @@ export const BRACKET: Record<EngineCode, BaseRate> = {
     meanR: 0.07,
     targetRate: 0.273,
     nullBand: { low: -0.29, high: 0.224 },
+  },
+  /**
+   * Re-registered twice, and the sequence is the most instructive thing on the page.
+   *
+   * | | coverage | win | mean R |
+   * | --- | --- | --- | --- |
+   * | `engine-2` — 0.05 ATR sweep, intermediate pools, 60-bar lookback | 400 | 58.3% | −0.008 |
+   * | `engine-3` — sweep tightened to 0.25 ATR | 184 | **63.0%** | −0.127 |
+   * | `engine-4` — pools major-grade only, lookback tied to the ranked window | **54** | 40.7% | **−0.179** |
+   *
+   * Every change was argued from the spec — internal consistency, then the engine's own thesis that
+   * stops rest beyond levels *other traders marked*. None was chosen from a measurement.
+   *
+   * **Expectancy fell monotonically and the win rate did not.** 58.3% → 63.0% → 40.7% while mean R
+   * went −0.008 → −0.127 → −0.179. Whatever a stricter definition of a stop run is selecting for, it
+   * is not profitability, and it is not even consistently selecting for hit rate. Three defensible
+   * specifications of one idea produced three different engines and one unchanged answer.
+   */
+  SWEEP: {
+    n: 54,
+    coverage: 0.054,
+    winRate: 0.407,
+    meanR: -0.179,
+    targetRate: 0.407,
+    nullBand: { low: -0.383, high: 0.318 },
+  },
+  PATTERN: {
+    n: 32,
+    coverage: 0.032,
+    winRate: 0.469,
+    meanR: -0.037,
+    targetRate: 0.469,
+    nullBand: { low: -0.429, high: 0.49 },
+  },
+  /**
+   * **Zero.** Not a rounding, not a low number — the harmonics never completed.
+   *
+   * Carney's ratios at our published ±5% matched on **one** chart in 1,000, and that one was
+   * rejected because its own AD retracement pointed the wrong way. The tolerance is not the cause: a
+   * diagnostic sweep over the corpus found the median chart's best-fitting XABC misses by **82%**,
+   * and even at ±20% — four times the published tolerance — only 17 charts in 1,000 would admit a
+   * pattern at all.
+   *
+   * It stays on the roster and in the registered family. Dropping an engine because it returned an
+   * unwelcome answer is the file-drawer problem, and the whole point of pre-registering the family
+   * before the corpus was touched is that the family does not change afterwards. Its slot costs the
+   * other engines a slightly more conservative correction, and that cost is part of having asked.
+   */
+  GEOMETRY: {
+    n: 0,
+    coverage: 0,
+    winRate: 0,
+    meanR: 0,
+    targetRate: 0,
+    nullBand: { low: 0, high: 0 },
+  },
+  TAPE: {
+    n: 61,
+    coverage: 0.061,
+    winRate: 0.344,
+    meanR: 0.048,
+    targetRate: 0.344,
+    nullBand: { low: -0.358, high: 0.327 },
   },
   ZERO: {
     n: 1000,
@@ -129,12 +192,22 @@ export const NATIVE: Partial<Record<EngineCode, BaseRate>> = {
   },
 };
 
-/** How often the council has anything to say at all. */
+/**
+ * How often the council has anything to say at all.
+ *
+ * **56.5% → 66.9% silent, and not one chart changed.** The only thing that moved between those two
+ * numbers was Sweep's definition of which levels count as pools and how far back it may look.
+ *
+ * The full sequence, all on the same 1,000 charts: 76.6% silent at a roster of two schools, 39.7% at
+ * six, 56.5% after Sweep's first re-registration, 66.9% after its second. **A coverage figure is a
+ * statement about our thresholds before it is a statement about the market**, and that is the whole
+ * argument for publishing the thresholds rather than the figure alone.
+ */
 export const COUNCIL_COVERAGE = {
   /** No school took a position. Engine Zero is excluded — it always speaks, so it would mask this. */
-  silent: 0.766,
-  twoOrMoreSpoke: 0.067,
-  disagreed: 0.052,
+  silent: 0.669,
+  twoOrMoreSpoke: 0.109,
+  disagreed: 0.071,
 } as const;
 
 /**
@@ -162,20 +235,56 @@ export const EDGE = {
   charts: 1000,
   symbols: 314,
   resamples: 4000,
+  /**
+   * **Specifications tried, not engines shipped.** Ten, over eight engines — Sweep was replayed
+   * under three. See `REGISTERED.trials`: the deflation floor prices the search, and a search that
+   * reconsidered a threshold twice after seeing results is a larger search than the roster suggests.
+   */
+  trials: 10,
   /** The control: a strategy that never trades, tested in the same family as the schools. */
   abstain: { deltaVsZero: 0.0907, t: 2.199, beatsZero: true },
-  /** Paired against a coin flip on the same charts. Negative for every engine on the roster. */
+  /**
+   * Paired against a coin flip on the same charts. No engine on the roster clears it.
+   *
+   * GEOMETRY's row is exactly zero because it never traded — it is, on this corpus, literally the
+   * same object as the "never trade" control, and the two produce identical statistics everywhere.
+   */
   paired: {
     CHANNEL: { delta: -0.007, t: -0.278, trades: 198 },
     REVERSION: { delta: -0.0006, t: -0.068, trades: 22 },
     REVERSION_H: { delta: -0.002, t: -0.13, trades: 88 },
+    SWEEP: { delta: 0.0063, t: 0.503, trades: 54 },
+    PATTERN: { delta: 0.0026, t: 0.269, trades: 32 },
+    GEOMETRY: { delta: 0, t: 0, trades: 0 },
+    TAPE: { delta: -0.0166, t: -1.019, trades: 61 },
   },
   /** One test for the whole roster, asked once. */
-  spa: { pValue: 1.0, best: 'Reversion' },
-  pbo: 0.473,
-  /** Best of four skill-free engines is expected to reach this Sharpe. Observed best: 0.0177. */
-  deflationFloor: 0.0429,
+  spa: { pValue: 0.854, best: 'Sweep' },
+  /**
+   * 0.752 — above a half, so the in-sample winner lands *below* median out of sample more often
+   * than chance. Picking the leader on past performance is worse than useless here, not merely
+   * uninformative. Its median out-of-sample finish is 7th of 9.
+   */
+  pbo: 0.752,
+  /** Best of ten skill-free specifications is expected to reach this Sharpe. Observed: 0.0177. */
+  deflationFloor: 0.0466,
   observedBestSharpe: 0.0177,
+  /**
+   * What three specifications of one engine did, with the corpus, the code and the seeds unchanged.
+   *
+   * Sweep has been registered three times. Each change was argued from the spec rather than chosen
+   * from a measurement, and each was defensible on its own terms. Between them the engine went from
+   * firing on 40% of charts to 5.4%, from beating Engine Zero to failing to and back, and from first
+   * place in a fifth of bootstrap resamples to second-to-last in two fifths.
+   *
+   * **Nothing about the market changed across any of it.** This is the most direct evidence in the
+   * project for why the family has to be counted, and it is why `trials` is 10 rather than 8.
+   */
+  reregistrations: [
+    { version: 'engine-2', sweepCoverage: 0.4, sweepWinRate: 0.583, sweepMeanR: -0.008, beatsZero: true },
+    { version: 'engine-3', sweepCoverage: 0.184, sweepWinRate: 0.63, sweepMeanR: -0.127, beatsZero: false },
+    { version: 'engine-4', sweepCoverage: 0.054, sweepWinRate: 0.407, sweepMeanR: -0.179, beatsZero: true },
+  ],
 } as const;
 
 /**
@@ -187,10 +296,13 @@ export const EDGE = {
  *
  * The value is the engine's measured win rate. It is deliberately *not* rescaled, curved or
  * confidence-weighted into something that looks more decisive: a 39% win rate should read as 39%.
+ *
+ * An engine with no trades has no conviction to report and returns null rather than 0%, which would
+ * read as "certain it loses" instead of "never fired". GEOMETRY is that engine.
  */
 export function convictionFor(engine: EngineCode): { value: number; source: string } | null {
   const rate = BRACKET[engine];
-  if (!rate) return null;
+  if (!rate || rate.n === 0) return null;
 
   const inside = rate.meanR >= rate.nullBand.low && rate.meanR <= rate.nullBand.high;
   return {

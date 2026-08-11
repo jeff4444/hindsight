@@ -29,6 +29,7 @@
  * and marked as ours in `PROVENANCE` below.
  */
 
+import { LEAD_IN_BARS } from '../config';
 import { ENGINE_VERSION } from '../versions';
 
 /**
@@ -85,6 +86,188 @@ export const THRESHOLDS = {
     /** The one change. */
     useRegimeFilter: false,
   },
+  /**
+   * SWEEP — the engine that could not ship under the name it arrived with.
+   *
+   * §5.2 called this LIQUIDITY and credited it to ICT. The research found the target rule fatal:
+   * defining "the next liquidity pool" deterministically needs six rules — a pivot definition, an
+   * equal-level tolerance, a minimum touch count, which side of entry counts, a tie-break among
+   * qualifying pools, and precedence between internal and external liquidity — and **none is
+   * published anywhere authoritative**. The doctrine explicitly makes the target *revisable*:
+   * choose "the most obvious" pool and update as structure changes. A rule containing "most
+   * obvious" is a discretionary loop, and the discretion is what the school considers the skill.
+   *
+   * So every number here is **ours**, the engine carries our name rather than the school's, and it
+   * is written in the ICT idiom without claiming to be ICT. Same bargain §13.7 struck for the
+   * themes: the choice is not between the right definition and ours, it is between an undisclosed
+   * definition and a published one.
+   *
+   * One deliberate omission. §5.2 specified a "minimum 1:2" reward filter; the research established
+   * that **this is not an ICT rule at all** and that it silently overrides the pool choice whenever
+   * the nearest pool sits closer than 2R — making the output not-ICT by the school's own lights.
+   * There is no minimum-R rule here. The nearest opposing pool is the target whatever R it implies,
+   * and where there is no opposing pool the engine passes rather than inventing one.
+   */
+  sweep: {
+    /**
+     * Which swings count as pools. Ours — `SWING_GRADES` from §13.1.
+     *
+     * **Re-registered to `major` from `intermediate` at `engine-4`, from the engine's own thesis.**
+     * The entire premise is that *other traders' stops rest beyond this level*. That only holds for
+     * a level other traders actually marked. §13.1 grades swings by persistence in ATR — minor at
+     * 0.5, intermediate at 1.0, major at 2.0 — and `intermediate` admits levels half the chart would
+     * never have drawn. Claiming a stop run at a high nobody marked is claiming a crowd that is not
+     * there.
+     */
+    poolGrade: 'major',
+    /**
+     * How far back a pool may sit, in bars. Ours.
+     *
+     * **Re-registered to the ranked window at `engine-4`.** 60 was arbitrary. §14.6 already
+     * discloses the one asymmetry in this design — engines read up to 300 candles while a Naked
+     * player sees 80 — and the levels an engine *trades against* are the one place that asymmetry
+     * can be removed at no cost. A sweep of a level from 200 bars back is not a claim the player
+     * could have evaluated, whatever its merits.
+     *
+     * Deliberately `LEAD_IN_BARS` rather than the number 80, so that changing the ranked window
+     * moves this with it instead of silently decoupling.
+     */
+    lookbackBars: LEAD_IN_BARS,
+    /**
+     * Minimum penetration beyond the pool, in ATR, before a wick counts as a sweep.
+     *
+     * **Re-registered at 0.25 from 0.05 (`engine-2` → `engine-3`), and the reason is internal
+     * consistency rather than anything measured.** The engine already treated 0.25 ATR as the
+     * distance that counts as "clearly beyond a level" — that is what `stopBufferAtr` is — while
+     * asking only 0.05 ATR of the sweep itself. Two notions of "beyond" differing fivefold inside
+     * one engine is a spec defect, and 0.05 ATR is a twentieth of a typical bar's range: inside the
+     * noise, so it made "swept" mean "touched".
+     *
+     * A stop run has to actually run the stops. Stops rest a little way beyond a swing, so the bar
+     * must clear the level by a distance a trader would recognise as clearing it.
+     */
+    minPenetrationAtr: 0.25,
+    /** The close must return this far back inside the pool, in ATR. Ours; 0.25 for the same reason. */
+    minRejectionAtr: 0.25,
+    /** Stop buffer beyond the sweep wick, in ATR. Ours; the "beyond the wick" part is the idiom's. */
+    stopBufferAtr: 0.25,
+  },
+  /**
+   * PATTERN — Bulkowski. The best arithmetic on the roster, in the worst window for it.
+   *
+   * The measuring rule is genuinely 5/5 *given a pattern*, and it is the only school-published
+   * **target** on this roster. All the determinism risk sits in detection, and the window decides it:
+   *
+   * > **Correction to the research as first gathered.** The finding was reported as "80 hourly
+   * > candles ≈ 13 trading days", which assumes a 6.5-hour equity session. This corpus is **24/7
+   * > crypto**: 80 candles is **3.3 calendar days** and 300 is **12.5**. The window problem is
+   * > roughly four times worse than reported.
+   *
+   * A double top needing peaks "usually several weeks apart" cannot exist at either tier. So this
+   * engine is restricted to the formations the window actually admits — flags and pennants, the
+   * short continuation patterns — and Bulkowski's percentages are **not** used as conviction. They
+   * are daily-bar priors measured over decades and applied out of domain; conviction comes from our
+   * own replay like every other engine's.
+   */
+  pattern: {
+    /** Bars the impulse leg may span. Ours — the window admits nothing longer. */
+    poleMaxBars: 12,
+    /** How far the pole must travel, in ATR, to be an impulse rather than drift. Ours. */
+    poleMinAtr: 2,
+    /** Bars of consolidation after the pole. Ours. */
+    flagMinBars: 3,
+    flagMaxBars: 12,
+    /** The consolidation may retrace at most this share of the pole. Ours. */
+    maxRetrace: 0.5,
+    /** …and must be at most this fraction of the pole's height, so a flag is not a reversal. Ours. */
+    maxFlagHeight: 0.5,
+    /**
+     * The measuring rule's scaling factor. **Theirs, and the correction that matters.**
+     *
+     * Bulkowski's headline percentage is *"percentage meeting price target"*, and he is explicit
+     * that the naive full-height projection "doesn't work well". The number is therefore a
+     * **scaling factor, not a hit probability** — projecting a fraction of pattern height produces
+     * a target that roughly half of patterns reach, by construction. Edwards & Magee's measuring
+     * implication for flags is the full pole; this discounts it, which is the school's own advice.
+     */
+    projection: 0.6,
+    /** Stop the other side of the consolidation, plus this buffer in ATR. Ours. */
+    stopBufferAtr: 0.25,
+  },
+  /**
+   * GEOMETRY — harmonics. Mechanical, once we supply what Carney did not.
+   *
+   * He publishes exact ratios and **no tolerances**. Vendors invent them: a typical scanner exposes
+   * an "error percent" defaulting to 8 on a 0–20 range, so ±5% turns 0.618 into 0.587–0.649. Two
+   * faithful implementers reading the same book produce different patterns. Determinism is 3/5 as
+   * written and 5/5 once the tolerance is published, so it is published here.
+   *
+   * **The Crab contradiction, resolved explicitly.** Carney's own site states B = 0.886 XA for the
+   * Crab, against the near-universal secondary statement of 0.382–0.618 — 0.886 is normally the
+   * *Deep* Crab. We take the secondary consensus, because taking 0.886 would make the Crab and the
+   * Deep Crab the same pattern and leave the Deep Crab undefined. The disagreement is disclosed
+   * rather than silently picked, and a reader who prefers the originator's page can say so.
+   *
+   * Evidence is weak: no peer-reviewed support was located, and the strongest empirical claim also
+   * reports occurrence low enough to erode profitability. This engine is on the roster to be
+   * *measured*, which is the only defensible reason to ship it.
+   */
+  geometry: {
+    /** Relative tolerance on every ratio below. **Ours**, and the number that makes this 5/5. */
+    tolerance: 0.05,
+    /** Which swings may serve as X, A, B, C, D. Ours. */
+    pivotGrade: 'minor',
+    /** Carney's ratios. Theirs, except where the comment says otherwise. */
+    gartley: { b: 0.618, d: 0.786, bcMin: 1.27, bcMax: 1.618 },
+    bat: { bMin: 0.382, bMax: 0.5, d: 0.886, bcMin: 1.618, bcMax: 2.618 },
+    butterfly: { b: 0.786, d: 1.27, bcMin: 1.618, bcMax: 2.24 },
+    /** `bMin`/`bMax` are the secondary consensus, not Carney's page. See the header. */
+    crab: { bMin: 0.382, bMax: 0.618, d: 1.618, bcMin: 2.618, bcMax: 3.618 },
+    /** The D point must be within this many bars of the decision bar. Ours. */
+    dWithinBars: 3,
+    /** Stop beyond X by this buffer in ATR. The "beyond X" is Carney's; the buffer is ours. */
+    stopBufferAtr: 0.25,
+    /** Carney's first target: a retracement of the AD leg. Theirs. */
+    targetRetrace: 0.618,
+  },
+  /**
+   * TAPE — Volume Spread Analysis, after two corrections.
+   *
+   * **"Neither stop nor target is native" is half wrong.** The stop *is* native — beyond the extreme
+   * of the signal bar. The target genuinely is not: VSA exits on an opposing signal, which is a
+   * condition evaluated per bar and not a price.
+   *
+   * **"A veto rather than a direction" is our invention.** VSA signals are explicitly directional.
+   * What is defensible is a large native abstain rate and background-conditionality, so this ships
+   * as a directional engine that passes often — not as a veto, which Williams never proposed.
+   *
+   * **Only one rule in the school is numeric**: "volume lower than each of the previous two bars".
+   * "Narrow", "wide" and "ultra-high" are qualitative, and the numbers in circulation come from
+   * vendors and coders rather than from Williams. So the determinism here is **manufactured, not
+   * inherited** — it is exactly as good as the frozen percentiles below, and no better.
+   *
+   * Volume and spread are read as **percentile ranks within the lead-in**, not as multiples of a
+   * median. Median-scaling equalises location but not dispersion, so a fixed "2× median" threshold
+   * would fire at different rates across instruments; a percentile fires at the same rate by
+   * construction. Rebasing is safe either way — every VSA volume test is comparative, and dividing
+   * by a positive constant preserves orderings and ratios.
+   */
+  tape: {
+    /** Percentile below which a spread is "narrow". Ours. */
+    narrowSpreadPct: 0.3,
+    /** …and above which it is "wide". Ours. */
+    wideSpreadPct: 0.7,
+    /** Percentile above which volume is "high". Ours. */
+    highVolumePct: 0.8,
+    /** Close must sit within this share of the bar's low (spring) or high (upthrust). Ours. */
+    closeThird: 1 / 3,
+    /** Bars of lead-in needed before a percentile means anything. Ours. */
+    rankWindow: 40,
+    /** Stop beyond the signal bar's extreme by this buffer in ATR. The "beyond" is the school's. */
+    stopBufferAtr: 0.25,
+    /** Target in R. Ours — VSA exits on an opposing signal, not a price. */
+    targetR: 2,
+  },
   zero: {
     /** Ours by construction — it is the null. */
     stopAtr: 2,
@@ -92,11 +275,22 @@ export const THRESHOLDS = {
   },
 } as const;
 
-/** Which numbers belong to the school and which are ours. Printed in `docs/rules.md` §14. */
+/**
+ * Which numbers belong to the school and which are ours. Printed in `docs/rules.md` §14.
+ *
+ * §14.2 was written when the roster was four and read *"no school on this roster has a price
+ * target"*. With eight it is **four of eight** — PATTERN and GEOMETRY both publish one, and they are
+ * the only two that do. That is a correction to the claim, not to the practice: every target below
+ * still says whose it is.
+ */
 export const PROVENANCE = {
   CHANNEL: { stop: 'school', target: 'ours' },
   REVERSION: { stop: 'ours', target: 'ours' },
   REVERSION_H: { stop: 'ours', target: 'ours' },
+  SWEEP: { stop: 'ours', target: 'ours' },
+  PATTERN: { stop: 'ours', target: 'school' },
+  GEOMETRY: { stop: 'school', target: 'school' },
+  TAPE: { stop: 'school', target: 'ours' },
   ZERO: { stop: 'ours', target: 'ours' },
 } as const;
 
@@ -131,10 +325,22 @@ export function digest(value: unknown): string {
  * `ENGINE_VERSION` together, in a commit that says what moved and why — the two must never diverge,
  * because a track record stored under one set of numbers is not comparable to a track record stored
  * under another (§12.4).
+ *
+ * > **This was a literal for one release and then, briefly, was not.** 3a shipped it as
+ * > `digest(THRESHOLDS)`, which made the test asserting the two agree *tautological* — it could not
+ * > fail, so it guarded nothing, and any threshold could have moved silently while the old track
+ * > record stayed attached to it. A pre-registration you compute at read time is not a
+ * > pre-registration. It is written out by hand below, and 3c's four engines are the change that
+ * > would have slipped through.
+ *
+ * `engine-3` was the first deliberate re-registration and `engine-4` the second, both of Sweep,
+ * both after the corpus had been replayed. Everything downstream was re-measured rather than
+ * inherited each time, and `REGISTERED.trials` counts **every** discarded specification — which is
+ * why it reads 10 against a roster of 8.
  */
-export const THRESHOLD_HASH = digest(THRESHOLDS);
+export const THRESHOLD_HASH = '7e7c197a';
 
-/** The registered family, and its size. 3b's corrections are computed against this number. */
+/** The registered family, and its size. §14.7's corrections are computed against these numbers. */
 export const REGISTERED = {
   version: ENGINE_VERSION,
   hash: THRESHOLD_HASH,
@@ -144,5 +350,42 @@ export const REGISTERED = {
    * Counts every engine whose record is published, Engine Zero included — it is the benchmark, but
    * it is also on the leaderboard, and a family that excludes its own control is undercounted.
    */
-  engines: ['CHANNEL', 'REVERSION', 'REVERSION_H', 'ZERO'] as const,
+  engines: [
+    'CHANNEL',
+    'REVERSION',
+    'REVERSION_H',
+    'SWEEP',
+    'PATTERN',
+    'GEOMETRY',
+    'TAPE',
+    'ZERO',
+  ] as const,
+
+  /**
+   * **Specifications tried on this corpus — which is larger than the roster, and has to be.**
+   *
+   * The deflation floor asks how high the best of N *skill-free* strategies is expected to reach by
+   * luck. N is not the number of engines shipped; it is the number of things tried. Every
+   * specification that has ever been replayed over these 1,000 charts counts, including the ones
+   * that were replaced, because the replacement was chosen by somebody who had seen the first
+   * result. That is the whole mechanism Bailey & López de Prado's deflation exists to price.
+   *
+   * The manifest header states the rule: a threshold may move, but the honest response is to bump
+   * `ENGINE_VERSION`, re-run everything, and **treat the family as larger** — not to keep the old
+   * track record. This is the counter that makes "treat the family as larger" a number rather than
+   * a sentiment.
+   *
+   * | version | what was tried |
+   * | --- | --- |
+   * | `engine-1` | CHANNEL, REVERSION, REVERSION_H, ZERO |
+   * | `engine-2` | …plus SWEEP, PATTERN, GEOMETRY, TAPE |
+   * | `engine-3` | SWEEP re-specified: penetration and rejection 0.05 → 0.25 ATR |
+   * | `engine-4` | SWEEP re-specified again: pools major-grade only, lookback tied to the ranked window |
+   *
+   * Eight engines, **ten** specifications. Two of those trials are Sweep attempts that were
+   * discarded, and they count against every engine's result exactly as the surviving ones do — that
+   * is the cost of having looked. A change touching two constants at once is still **one**
+   * specification: the unit is a replay of the corpus, not a diff hunk.
+   */
+  trials: 10,
 } as const;

@@ -10,7 +10,8 @@
  *
  * ## The unit of observation, decided before anything else
  *
- * Engines abstain on different charts — the council is silent on 76.6% of them — so there is no
+ * Engines abstain on different charts — the council is silent on 66.9% of them, and one engine
+ * abstains on every single one — so there is no
  * common set of trades to compare. **Every engine is therefore given a full-length vector over all
  * charts: its R where it traded, and zero where it passed.**
  *
@@ -353,7 +354,7 @@ export function inverseNormal(p: number): number {
  *
  * Bailey & López de Prado. `E[max] ≈ (1−γ)·Z⁻¹(1−1/N) + γ·Z⁻¹(1−1/(Ne))` with γ the Euler–Mascheroni
  * constant. The number belongs on the leaderboard because it is the honest reading of a top row:
- * with four engines, the best of four *pure noise* engines is expected to clear zero by this much.
+ * with eight engines, the best of eight *pure noise* engines is expected to clear zero by this much.
  */
 export const EULER_MASCHERONI = 0.5772156649015329;
 
