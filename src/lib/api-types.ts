@@ -77,8 +77,23 @@ export interface OrderRequest {
 export interface RoundResult {
   outcome: Outcome;
   direction: Direction | null;
-  /** Null for a pass, which has no risk denominator. */
+  /**
+   * The result, **net of transaction costs**, and the number everything is scored on.
+   *
+   * §15 names cost erosion as a project risk and Bajgrowicz & Scaillet's finding is that frictions
+   * belong inside the measurement rather than beside it, so the achievable set is enumerated net
+   * too (`src/core/costs.ts`) and this is comparable to it.
+   */
   rMultiple: number | null;
+  /**
+   * The same trade with the fees switched off.
+   *
+   * Shown beside the net figure rather than instead of it, because the *gap* is the lesson: cost in
+   * R is inversely proportional to stop distance, so a 0.5 ATR stop pays 0.27R on the median chart
+   * against 0.03R at 4 ATR. Reporting only net would hide how much the stop choice cost; reporting
+   * only gross is what makes tight stops look free.
+   */
+  grossR: number | null;
   entryFill: number | null;
   exitFill: number | null;
   /** Index into `revealBars` at which the trade closed, for drawing the fill marker. */

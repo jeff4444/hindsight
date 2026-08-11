@@ -60,6 +60,9 @@ interface Row {
 
 const RESAMPLES = 4000;
 
+/** Opt in to replaying over the synthetic controls instead of the real corpus. */
+const SYNTHETIC_ONLY = process.argv.includes('--synthetic');
+
 function supabaseClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -97,9 +100,15 @@ async function run() {
 
   const rows: Row[] = [];
   for (let from = 0; ; from += 200) {
+    // Real charts only. §7.2's synthetic controls are in the corpus now, and a published track
+    // record that quietly averaged real and fabricated markets together would be describing
+    // neither. `--synthetic` runs the same replay over the controls instead.
     const { data, error } = await supabase
       .from('charts')
       .select('id, symbol, lead_in_bars, lead_in_extra, atr14, entry_price, resolution_path')
+      // Real charts only. §7.2's synthetic controls live in the corpus now, and a published
+      // statistic that quietly averaged real and fabricated markets would describe neither.
+      .eq('synthetic', SYNTHETIC_ONLY)
       .order('symbol')
       .order('id')
       .range(from, from + 199);

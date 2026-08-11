@@ -61,6 +61,9 @@ interface Outcome {
   hitTarget: boolean;
 }
 
+/** Opt in to replaying over the synthetic controls instead of the real corpus. */
+const SYNTHETIC_ONLY = process.argv.includes('--synthetic');
+
 function supabaseClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -161,9 +164,15 @@ async function run() {
 
   const rows: Row[] = [];
   for (let from = 0; ; from += 200) {
+    // Real charts only. §7.2's synthetic controls are in the corpus now, and a published track
+    // record that quietly averaged real and fabricated markets together would be describing
+    // neither. `--synthetic` runs the same replay over the controls instead.
     const { data, error } = await supabase
       .from('charts')
       .select('id, lead_in_bars, lead_in_extra, atr14, entry_price, resolution_path, regime_er_bucket, regime_vol_bucket')
+      // Real charts only. §7.2's synthetic controls live in the corpus now, and a published
+      // statistic that quietly averaged real and fabricated markets would describe neither.
+      .eq('synthetic', SYNTHETIC_ONLY)
       .order('id')
       .range(from, from + 199);
     if (error) throw new Error(error.message);
@@ -185,6 +194,7 @@ async function run() {
   const paths = new Map<string, Bar[]>();
   const bracket = new Map<string, Outcome[]>(ENGINES.map((e) => [e.code, []]));
   const native = new Map<string, Outcome[]>(ENGINES.map((e) => [e.code, []]));
+  const byRegime = new Map<string, number[]>();
   let bothSpoke = 0;
   let disagreed = 0;
   let silent = 0;
@@ -224,7 +234,17 @@ async function run() {
 
     for (const verdict of verdicts) {
       const b = resolveBracket(verdict, row.entry_price, path);
-      if (b) bracket.get(verdict.engine)!.push(b);
+      if (b) {
+        bracket.get(verdict.engine)!.push(b);
+        for (const [key, bucket] of [
+          ['regime_er_bucket', row.regime_er_bucket],
+          ['regime_vol_bucket', row.regime_vol_bucket],
+        ] as const) {
+          if (!bucket) continue;
+          const id = `${verdict.engine}|${key}|${bucket}`;
+          byRegime.set(id, [...(byRegime.get(id) ?? []), b.r]);
+        }
+      }
       const n = resolveNative(verdict, row.entry_price, reveal);
       if (n) native.get(verdict.engine)!.push(n);
     }
@@ -245,6 +265,39 @@ async function run() {
     }
     console.log(summarise(engine.name, outcomes, rows.length));
   }
+
+  /* ------------------------------------------------- the regime breakdown */
+
+  // §7.3: "Never publish an aggregate engine number without the regime breakdown next to it."
+  //
+  // The rule is right and the corpus cannot satisfy its letter. 8 engines x 16 regime cells is 128
+  // cells, and `docs/phase-4-research.md` §3.2 measured the result: **no school engine reaches 30
+  // trades in any single cell** — Channel's largest is 22, Reversion's is 3, Geometry's is 0.
+  // Printing 128 cells of noise would satisfy §7.3 while doing the opposite of what it is for.
+  //
+  // So the marginals are published instead, with their counts attached, and the cross is reported
+  // as unmeasurable. That keeps the spirit — no aggregate stands unqualified — without inventing
+  // resolution the sample does not have.
+  console.log('');
+  console.log('BY REGIME — marginals only. The 16-cell cross is not measurable at this n; see §14.10.');
+  const marginal = (key: 'regime_er_bucket' | 'regime_vol_bucket', label: string) => {
+    const buckets = [...new Set(rows.map((r) => r[key]).filter(Boolean))].sort() as string[];
+    console.log(`  ${label.padEnd(24)} ${buckets.map((b) => b.padStart(12)).join('')}`);
+    for (const engine of ENGINES) {
+      const cells = buckets.map((bucket) => {
+        const rs = byRegime.get(`${engine.code}|${key}|${bucket}`) ?? [];
+        return rs.length === 0
+          ? '—'.padStart(12)
+          : `${rs.length}: ${(mean(rs) >= 0 ? '+' : '') + mean(rs).toFixed(2)}`.padStart(12);
+      });
+      console.log(`  ${engine.name.padEnd(24)} ${cells.join('')}`);
+    }
+    console.log('');
+  };
+  marginal('regime_er_bucket', 'efficiency ratio');
+  marginal('regime_vol_bucket', 'volatility');
+  console.log('  n and mean R per bucket. Anything under ~30 trades resolves nothing — §14.7 needed');
+  console.log('  198 trades to fail to resolve a 0.1R edge, and most cells here are a fraction of that.');
 
   console.log('');
   console.log('COUNCIL');

@@ -1554,8 +1554,14 @@ then nobody can say what N was.
 Recorded so nothing here is mistaken for the finished product.
 
 **Not built:** the per-theme ratings; the News Blind tier; the Fog mod; ranked sessions, divisions and
-seasons; Manage, Storm, Duel, Racer and Calibration; creator maps and cohort dashboards; the cost
-model; synthetic controls in the corpus; news.
+seasons; Manage, Storm, Duel, Racer and Calibration; creator maps and cohort dashboards; style
+fingerprinting; news.
+
+**Built, and waiting on players to mean anything.** §16 has the cost model, the synthetic controls
+and the regime marginals. What none of them can answer yet is §7.2's actual question — whether
+players score higher on real charts than on fabricated ones — because that needs volume. The
+controls are in the corpus accumulating from the first round played; the answer is not claimed in
+any direction until there is a sample.
 
 **Layer 2 geometry: computed, published, and measured against noise.** §13 covers what exists. The
 primitives are pure, causal and tested, the six themes are specified and stored, and **no annotation
@@ -1608,3 +1614,137 @@ cannot work: five of the ten — failed-breakout, liquidity-sweep, v-reversal, d
 compression-expansion — are geometric and need swing points and levels. Tagging them now with a
 hand-rolled heuristic would mean per-theme ratings built on labels that Phase 2 replaces, which
 invalidates every rating computed against them. They wait.
+
+## 16. Costs, controls, and what the corpus cannot say
+
+Phase 4's honesty programme, minus everything that needs players. Three pieces: the cost model, the
+synthetic controls, and an admission about the regime breakdown.
+
+### 16.1 Every score is now net of costs
+
+The corpus is Binance spot, so a round trip is **20 basis points** — 0.1% maker and taker at VIP 0 —
+before slippage. We add **5 bps of stop slippage**, which is **ours**: a stop is a market order on a
+trigger and does not fill at the trigger, and no published figure exists. It is the only number here
+without a source and is labelled accordingly.
+
+**Cost in R is inversely proportional to stop distance**, because R *is* the stop distance. ATR(14)
+is 1.505% of price at the median chart, so:
+
+| stop | cost, median chart | cost, quietest 5% of charts |
+| --- | --- | --- |
+| **0.5 ATR** | **0.266R** | **0.571R** |
+| 1 ATR | 0.133R | 0.285R |
+| 2 ATR | 0.066R | 0.143R |
+| 4 ATR | 0.033R | 0.071R |
+
+On the quietest charts a half-ATR stop pays **more than half its own risk in fees**.
+
+**What that does to the 98 brackets**, measured over 250 charts enumerated twice:
+
+| stop | mean R gross | mean R net |
+| --- | --- | --- |
+| 0.5 ATR | −0.026 | **−0.215** |
+| 1 ATR | −0.020 | −0.119 |
+| 1.5 ATR | **+0.002** | −0.065 |
+| 2 ATR | −0.014 | −0.064 |
+| 4 ATR | −0.012 | **−0.035** |
+
+Read the columns against each other. **Gross, stop distance does not matter** — every row sits within
+0.03R of every other and the best is 1.5 ATR by a margin indistinguishable from noise. **Net, it is
+the largest single determinant of expectancy in the grid, and it is monotone.**
+
+§15 lists as a risk that *"percentile scoring rewards lottery tickets"*. This is the mechanism,
+measured: gross scoring makes tight stops look free. They are the most expensive choice on the board,
+and a player optimising against a gross percentile is being trained toward the one decision that
+costs the most money.
+
+**So costs are inside the enumeration, not beside it.** Bajgrowicz & Scaillet, revisiting technical
+trading rules on the Dow, are explicit about why:
+
+> We explain why break-even transaction costs are not a satisfactory indicator, and why it is
+> important to consider transaction costs already during the selection process.
+
+With costs outside the grid, **the best bracket on the chart is a different bracket on 22% of
+charts** — so the oracle you are measured against would be the best trade in a game nobody plays.
+The oracle itself falls 6.2% once fees are in.
+
+**The price of this was paid deliberately.** `ACHIEVABLE_VERSION` is now `achievable-2`, all 1,000
+charts were re-enumerated, and **every percentile, chart rating and retirement verdict computed under
+`achievable-1` is invalid** — §12.4's rule that population statistics do not survive a change of
+rule. It was done now because there are no players yet, and it will never be cheaper.
+
+The debrief shows **both numbers and the gap between them**, because the gap is the lesson and a
+single net figure would hide what the stop choice cost.
+
+### 16.2 Some of these charts are not real
+
+§7.2's synthetic controls are in the corpus and are **issued exactly like any other chart**. Nothing
+about issuance changed: the round payload is a closed allowlist and `synthetic` is not in it, so the
+blinding holds by construction rather than by care — `tests/api-leak.test.ts` asserts the field set.
+The flag is released **on the reveal**, with the rest of the chart's identity, and the debrief says
+plainly that the chart was not a market. A product that told you a fabricated chart was real trading
+would be doing the one thing this document exists to prevent.
+
+**Currently 111 of 1,111 charts (10%).**
+
+**The generator the scope named first is not used.** Measured on this corpus, against the two
+properties that make a chart look like a market:
+
+| | volatility clustering, ACF(&#124;r&#124;) | kurtosis |
+| --- | --- | --- |
+| **real** | **0.183** | **13.02** |
+| permutation | −0.004 | 12.96 |
+| block bootstrap, 16 hours | 0.151 | 11.21 |
+| **GBM** | **−0.001** | **2.98** |
+
+GBM has no fat tails at all — no gaps, no shocks, nothing resembling a cascade. It is not a hard
+control, it is an obviously fake chart.
+
+**Two generators ship, half the charts each, because they answer different questions.**
+
+*Permutation* is the cleanest null: it destroys exactly the serial structure technical analysis
+claims to read and preserves the marginal distribution perfectly. It is also **known to be
+detectable** — Hasanhodzic, Lo & Viola ran precisely this experiment, cumulating randomly permuted
+returns, and subjects distinguished them from real series with p-values of at most 0.503% across
+eight datasets. The paper names immediate feedback as a key feature, and subjects could practise
+first. That is a description of this product, so the effect should be expected here.
+
+*Block bootstrap* is the least detectable and a **weaker null**: structure survives inside each
+16-hour block, so a player profiting on one may be reading real structure that was resampled rather
+than removed. Disagreement between the two generators is itself the finding.
+
+**What the engines do on them**, free and available now — the council replayed over the controls
+(`npm run engines -- --synthetic`):
+
+| | real (1,000) | synthetic (111) |
+| --- | --- | --- |
+| Channel fires | 19.8% | 26.1% |
+| Sweep fires | 5.4% | **11.7%** |
+| council silent | 66.9% | 56.8% |
+
+**The engines fire more often on the fake charts than on the real ones.** At n = 111 the R figures
+resolve nothing and are not reported as findings, but the coverage difference is large enough to
+note — and it points the same way §13.8 did, where seven detectors of ten fired *more* on shuffled
+data than on real data.
+
+The comparison that matters — whether *players* score higher on real charts — needs players, and is
+not claimed here in any direction.
+
+### 16.3 The regime breakdown §7.3 asks for cannot be published
+
+§7.3: *"Never publish an aggregate engine number without the regime breakdown next to it."* The rule
+is right. The corpus cannot satisfy its letter.
+
+Eight engines across the 16 regime cells of §11.1 is 128 cells. **Not one school engine reaches 30
+trades in any single cell** — Channel's largest is 22, Reversion's is 3, Geometry's is 0. §14.7
+needed 198 trades to *fail* to resolve a 0.1R edge; 22 trades resolve nothing at all, and 128 of them
+would be a multiple-comparison problem dwarfing the eight-engine family §14.7 was built to correct.
+
+The corpus is also not balanced, and cannot be: twelve cells hold ~78 charts each, but the whole
+**trend** row holds 63 between them, because a high efficiency ratio is genuinely uncommon and the
+selection rule cannot manufacture what the market did not do.
+
+So `npm run engines` publishes the **marginals** — by efficiency ratio and by volatility, each with
+its trade count attached — and states that the cross is unmeasurable. That keeps the spirit of §7.3,
+which is that no aggregate stands unqualified, without inventing resolution the sample does not have.
+Even the marginals are thin: only Channel clears 45 trades in every bucket.

@@ -111,6 +111,9 @@ async function run() {
     const { data, error } = await supabase
       .from('charts')
       .select('id, symbol, index_factor')
+      // Real charts only. §7.2's synthetic controls live in the corpus now, and a published
+      // statistic that quietly averaged real and fabricated markets would describe neither.
+      .eq('synthetic', false)
       .range(from, from + 999);
     if (error) throw new Error(error.message);
     if (!data || data.length === 0) break;
