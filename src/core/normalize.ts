@@ -94,6 +94,22 @@ export function denormalizePrice(
   return unmirrored / factor;
 }
 
+/**
+ * The forward transform: a real instrument price, as the player sees it.
+ *
+ * The exact inverse of `denormalizePrice`, and it exists for one caller — round-number levels,
+ * which are a property of the *real* price lattice and have to be computed there and mapped
+ * forward. See `src/core/geometry/roundNumbers.ts`, which also carries the §12.2 analysis of what
+ * that mapping costs.
+ *
+ * Order matters and is not symmetric: the pipeline scales first and mirrors second, so this does
+ * the same, and `denormalizePrice` undoes them in the opposite order.
+ */
+export function normalizePrice(real: number, factor: number, mirrored: boolean): number {
+  const scaled = real * factor;
+  return mirrored ? mirrorPrice(scaled) : scaled;
+}
+
 /** Median of a numeric array. Does not mutate the input. */
 export function median(values: number[]): number {
   if (values.length === 0) return 0;

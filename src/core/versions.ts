@@ -51,6 +51,19 @@ export const ACHIEVABLE_VERSION = 'achievable-1';
 export const SCORE_MAP_VERSION = 'score-map-1';
 
 /**
+ * Layer 2 geometry: the swing thresholds, the trendline selection rule, the channel containment,
+ * the kernel bandwidth, the round-number grid and the volume-profile bins.
+ *
+ * Separate from everything above because of what it does *not* invalidate. Geometry feeds display,
+ * the engine council and the theme tags; it never feeds the achievable set, so a bump here leaves
+ * every stored percentile, every rating and every retirement verdict exactly where they were. What
+ * it does invalidate is any stored annotation and any theme tag derived from one — §12.4's rule
+ * that population statistics are not comparable across a change of rule, applied to the one
+ * statistic that is a drawing.
+ */
+export const GEOMETRY_VERSION = 'geometry-1';
+
+/**
  * The rating system: Glicko-2's constants, the information weight, and the pending policy.
  *
  * Bumping this does not invalidate percentiles — it invalidates *ratings*, which is why it is not

@@ -18,7 +18,8 @@
     "extend": "tsx --env-file-if-exists=.env.local scripts/extend-corpus.ts",
     "retire": "tsx --env-file-if-exists=.env.local scripts/retire.ts",
     "fairness": "tsx --env-file-if-exists=.env.local scripts/fairness.ts",
-    "ladder": "tsx --env-file-if-exists=.env.local scripts/ladder.ts"
+    "ladder": "tsx --env-file-if-exists=.env.local scripts/ladder.ts",
+    "leak": "tsx --env-file-if-exists=.env.local scripts/round-number-leak.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",

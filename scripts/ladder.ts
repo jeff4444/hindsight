@@ -175,7 +175,7 @@ async function run() {
   }
   console.log('');
 
-  console.log('docs/rules.md §13 records what is unvalidated. Update it when a gate opens.');
+  console.log('docs/rules.md §14 records what is unvalidated. Update it when a gate opens.');
 }
 
 if (process.argv[1] && process.argv[1].endsWith('ladder.ts')) {
