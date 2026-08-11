@@ -3,7 +3,9 @@ import { z } from 'zod';
 import { serviceClient } from '@/lib/supabase/server';
 import { applyRating } from '@/lib/apply-rating';
 import { readSession } from '@/lib/session';
+import type { Bar } from '@/core/bars';
 import { LEAD_IN_BARS, PATH_BARS_PER_DISPLAY_BAR } from '@/core/config';
+import { council } from '@/core/engines';
 import { decodeCells, scoreAgainst, type PlayerTrade } from '@/core/achievable';
 import { denormalizePrice, toTick } from '@/core/normalize';
 import {
@@ -94,7 +96,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     .from('charts')
     // One literal, not a concatenation: supabase-js parses this string to type the row, and a
     // concatenated one degrades every field to an error type.
-    .select('reveal_bars, resolution_path, detail_path, entry_price, symbol, window_start, decision_at, mirrored, index_factor, synthetic, source_note, achievable_r, achievable_outcome, oracle_r, atr14')
+    .select('reveal_bars, resolution_path, detail_path, entry_price, symbol, window_start, decision_at, mirrored, index_factor, synthetic, source_note, achievable_r, achievable_outcome, oracle_r, atr14, lead_in_bars, lead_in_extra')
     .eq('id', round.chart_id)
     .single();
 
@@ -291,12 +293,32 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     sourceNote: (chart.source_note as string | null) ?? null,
   };
 
+  // §5's council. Engines read the full stored lead-in — up to 300 candles where the chart has them
+  // — while the player may have seen 80. That is history *before* the window and never after it, and
+  // every verdict reports `candlesUsed` so the asymmetry is disclosed rather than hidden.
+  //
+  // Seeded on the round id so Engine Zero's coin flip is stable for this round: a player who
+  // reloads the reveal must not see the null change its mind.
+  let councilSeed = 0;
+  for (const ch of id) councilSeed = (Math.imul(councilSeed, 31) + ch.charCodeAt(0)) >>> 0;
+  const engineBars = [
+    ...((chart.lead_in_extra as Bar[] | null) ?? []),
+    ...(chart.lead_in_bars as Bar[]),
+  ];
+  const verdicts = council({
+    bars: engineBars,
+    entry: chart.entry_price as number,
+    atr: chart.atr14 as number,
+    seed: councilSeed,
+  });
+
   const payload: RevealPayload = {
     result,
     revealBars: chart.reveal_bars,
     detail,
     provenance,
     score,
+    council: verdicts,
   };
   return NextResponse.json(payload);
 }

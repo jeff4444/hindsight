@@ -99,7 +99,7 @@ function runSimulated() {
   console.log(`${passed}/${cases.length} recovered.`);
   console.log('');
   console.log('This says the measurement works. It says nothing about Naked versus Blackout, and');
-  console.log('docs/rules.md §14 records that no tier is validated until --live can run.');
+  console.log('docs/rules.md §15 records that no tier is validated until --live can run.');
   return passed === cases.length;
 }
 
@@ -161,7 +161,7 @@ async function runLive() {
     console.log('one-rated-attempt-per-chart-and-tier rule permits, because the tiers are separate');
     console.log('entities.');
     console.log('');
-    console.log('Until then docs/rules.md §14 stands: no tier is validated.');
+    console.log('Until then docs/rules.md §15 stands: no tier is validated.');
     return false;
   }
 
@@ -186,7 +186,7 @@ async function runLive() {
   console.log('');
   console.log(`verdict: ${tierB} is ${result.verdict}`);
   console.log('');
-  console.log('§3.5 says to publish this. Put it in docs/rules.md §14 and replace the line saying');
+  console.log('§3.5 says to publish this. Put it in docs/rules.md §15 and replace the line saying');
   console.log('no tier is validated.');
   return true;
 }

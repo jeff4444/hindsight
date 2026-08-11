@@ -1126,11 +1126,123 @@ shipped in `smartmoneyconcepts`, where appending bars takes the liquidity pools 
 be **computed on the prefix, never filtered from a whole-series result**; the two disagree, and the
 test says so.
 
-## 14. What is not built yet
+## 14. The engine council
+
+Four engines read every chart under their own published rules and tell you what they would have
+done. §5.5: *"The player-facing output is a spread of opinion, never a consensus verdict."* There is
+no majority here and no aggregate — every engine gets a row, including every engine that passed.
+
+### 14.1 The roster
+
+| engine | school | fires on | stop | target |
+| --- | --- | --- | --- | --- |
+| **Channel** | Donchian / Turtle — Dennis & Eckhardt 1983, rules published by Faith | 19.8% | 2N, **theirs** | **ours** |
+| **Reversion** | Connors & Alvarez, *Short Term Trading Strategies That Work* (2008) | **2.2%** | **ours** | **ours** |
+| **Reversion (Hindsight)** | **Ours** — Connors without Rule 3, as a control on the regime filter | 8.8% | ours | ours |
+| **Engine Zero** | The null — a seeded coin flip, 2 ATR stop, 2R target | 100% | ours | ours |
+
+Every threshold is a named constant in `src/core/engines/manifest.ts`, hashed as **`d034e8b2`**, and a
+test fails if any of them moves. That is not tidiness: 3b asks whether any engine beats the null, and
+that question has a family size. Pre-registering the numbers is what keeps it at four rather than
+*every threshold we tried*.
+
+### 14.2 No school on this roster has a price target
+
+Verified rather than assumed, and it changes what the product may claim. The Turtles exit on a
+trailing breakout; Connors exits on a close above the 5-bar mean. Both are **conditions evaluated
+per bar**, not prices — so at the decision bar there is no take-profit to report.
+
+§5.5 demands one anyway, because you place a static bracket and the two have to be comparable. So
+**most targets on this screen are ours**, and each verdict says which side is whose.
+
+Every engine also emits its *native* exit, resolved by walking the reveal path minute by minute. Both
+records are kept, and the gap between them is the measured cost of forcing a school into a bracket:
+
+| | bracket win / mean R | native exit win / mean R |
+| --- | --- | --- |
+| Channel | 39.4% / −0.027 | 27.3% / −0.074 |
+| Reversion | 50.0% / +0.156 | 54.5% / −0.067 |
+| Reversion (Hindsight) | 42.0% / +0.070 | 54.5% / −0.026 |
+
+It does not go the way intuition suggests. Channel's trailing exit wins *less* often than our fixed
+target — the Turtle exit is built for a position held for months, and sixty candles is not months.
+Both Reversion variants invert: their native exit wins **more** often while making **less**, which is
+what taking many small profits looks like measured in R.
+
+### 14.3 Connors says our stop makes it worse, and we show that
+
+**Rule 5 of *Short Term Trading Strategies That Work* is titled "Stops Hurt."** Connors and Alvarez
+tested stops from 1% to 50% across fifteen years of liquid US equities and reported: *"In every
+single case, the use of stops lowered the performance."* Risk is controlled by position sizing.
+
+This product measures stop placement. So this is not an inconvenient gap quietly filled — it is a
+school whose own published research says the thing we measure makes results worse. The stop is
+marked **ours**, and the objection is printed beside it.
+
+### 14.4 Silence is a verdict
+
+**No school takes a position on 76.6% of charts.** Two or more speak on 6.7%, and when they do they
+disagree on 5.2% — which is to say, **when both schools have an opinion they have never yet agreed**.
+
+§14 chose Channel and Liquidity as "the pair guaranteed to disagree"; Channel and Reversion turn out
+to be that pair, and the guarantee holds. But it holds on a twentieth of the corpus, so
+disagreement-as-a-difficulty-signal has a 5% coverage rate and is reported with that number attached.
+
+The silence is not a defect. §4.4 already scores restraint as a move *you* can make; an engine
+passing is the same move for the same reason. "No school on this roster had a trade here" is a
+useful sentence, and a council that could not say it would be lying by construction.
+
+Two things were rejected in getting here. **Loosening the entries** until the engines speak more
+often would be data snooping performed in advance and in public — the thresholds *are* the school.
+**Serving only charts where engines fire** would change the selection rule, and §12.4 is emphatic
+that population statistics do not survive that: every chart rating and every percentile would stop
+being comparable.
+
+### 14.5 Nothing here beats a coin flip
+
+Every engine's mean R sits **inside Engine Zero's band**, measured at that engine's own sample size:
+
+| engine | n | mean R | Engine Zero at the same n | |
+| --- | --- | --- | --- | --- |
+| Channel | 198 | −0.027 | [−0.210, +0.165] | inside |
+| Reversion | 22 | +0.156 | [−0.572, +0.492] | inside |
+| Reversion (Hindsight) | 88 | +0.070 | [−0.290, +0.224] | inside |
+| Engine Zero | 1000 | −0.091 | [−0.103, +0.064] | inside |
+
+**The band is drawn at each engine's own n, and that is not a refinement.** An engine firing on 88
+charts has 3.4× the sampling error of a band computed over 1,000; one firing on 22 has 6.7×. The
+first version of this measurement printed n=88 estimates beside an n=1000 band, under which two
+engines appeared to beat the null. They do not. The band also resamples *which charts* are drawn,
+because choosing where to trade is part of what an engine does and the null it is measured against
+has to be allowed to choose too.
+
+Engine Zero's own win rate is **measured, never assumed**. A 2R target on a 2 ATR stop is not a 33.3%
+proposition: drift moves it, the 60-candle timeout truncates it, and §12.3.2's stop-first convention
+decides every bar that touches both. It came out at 32.7%.
+
+These are raw base rates and **they are not evidence of an edge in either direction**. Four engines
+against a band is still four comparisons, and §13.9 showed what happens without correction: twelve
+comparisons, one hit at 95%, gone once corrected. The machinery that could turn these into a claim —
+Romano–Wolf StepM, Hansen's SPA against Engine Zero, and the probability of backtest overfitting — is
+3b's job and is not built.
+
+### 14.6 What the engines see
+
+Engines read the full stored lead-in — **up to 300 candles** — while you may have seen 80. That is
+history *before* the window and never after it, so it is not a look-ahead, and every engine passes
+the same causality suite as every detector in §13. But it is an asymmetry, so each verdict reports
+how many candles it used and the debrief prints it.
+
+It is also necessary rather than convenient: Connors' 200-period regime filter is Rule 3, it is
+load-bearing, and it cannot exist in an 80-candle window at all.
+
+## 15. What is not built yet
 
 Recorded so nothing here is mistaken for the finished product.
 
-**Not built:** the engine council and every engine in it; the per-theme ratings
+**Not built:** the four remaining engines — Liquidity, Pattern, Geometry, Tape (§14 has the two whose
+rules are actually published, plus a control and the null); the statistics that would turn an engine
+track record into a claim; the per-theme ratings
 that depend on them; the Full Desk and News Blind tiers; the Fog mod; ranked sessions, divisions and
 seasons; Manage, Storm, Duel, Racer and Calibration; creator maps and cohort dashboards; the cost
 model; synthetic controls in the corpus; news.
