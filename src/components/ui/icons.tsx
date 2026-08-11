@@ -51,7 +51,17 @@ export type IconName =
   | 'keyboard'
   | 'alert'
   | 'sparkle'
-  | 'dice';
+  | 'dice'
+  // the toolbox
+  | 'ruler'
+  | 'trendline'
+  | 'level'
+  | 'channel'
+  | 'fib'
+  | 'magnet'
+  | 'activity'
+  | 'log-scale'
+  | 'trash';
 
 /** `s` is the stroke width, so a caller can thin the set down without redrawing it. */
 const GLYPHS: Record<IconName, (s: number) => ReactElement> = {
@@ -172,6 +182,75 @@ const GLYPHS: Record<IconName, (s: number) => ReactElement> = {
     <>
       <rect x="3" y="3" width="18" height="18" rx="3.5" strokeWidth={s} />
       <path d="M8 8h.01M16 8h.01M12 12h.01M8 16h.01M16 16h.01" strokeWidth={s} />
+    </>
+  ),
+
+  /* ---------------------------------------------------------- the toolbox */
+
+  /**
+   * Drawing instruments, and they are product vocabulary rather than UI mechanics — so they are
+   * drawn here rather than borrowed. Every one of them is *the mark it makes*: the line tool is a
+   * line with its two anchors, the channel is two parallel rails, the fib is unevenly spaced levels
+   * because uneven spacing is the whole tell. A player should be able to read the palette without
+   * the labels, which is the test an icon has to pass to be worth using at all.
+   */
+
+  // A ruler, ticks down. Universal at every rung, so it is the one instrument that is never locked.
+  ruler: (s) => (
+    <>
+      <rect x="2.5" y="8.5" width="19" height="7" rx="1.6" strokeWidth={s} />
+      <path d="M7 8.5v3M11.75 8.5v4.25M16.5 8.5v3" strokeWidth={s} />
+    </>
+  ),
+
+  // A line and the two points that define it. The anchors are filled, matching `rail`'s handle.
+  trendline: (s) => (
+    <>
+      <path d="M5.6 17.4 18.4 6.6" strokeWidth={s} />
+      <circle cx="4.6" cy="18.4" r="2.1" fill="currentColor" stroke="none" />
+      <circle cx="19.4" cy="5.6" r="2.1" fill="currentColor" stroke="none" />
+    </>
+  ),
+
+  // A horizontal level. Anchors at the ends, unlike `rail`, whose handle is in the middle.
+  level: (s) => (
+    <>
+      <path d="M6 12h12" strokeWidth={s} />
+      <circle cx="4" cy="12" r="2.1" fill="currentColor" stroke="none" />
+      <circle cx="20" cy="12" r="2.1" fill="currentColor" stroke="none" />
+    </>
+  ),
+
+  channel: (s) => <path d="M3.5 16.2 16.2 4.5M7.8 19.5 20.5 7.8" strokeWidth={s} />,
+
+  // Deliberately uneven: 0, .382, .5, .618, 1 is what a retracement looks like.
+  fib: (s) => <path d="M3.5 4.5h17M3.5 10.4h17M3.5 12.9h17M3.5 15.4h17M3.5 19.5h17" strokeWidth={s} />,
+
+  magnet: (s) => (
+    <>
+      <path d="M7 3.5v8.5a5 5 0 0 0 10 0V3.5" strokeWidth={s} />
+      <path d="M4.5 3.5h5M14.5 3.5h5" strokeWidth={s} />
+    </>
+  ),
+
+  // A trace with a spike. Stands for the studies as a group, where `distribution` is a histogram.
+  activity: (s) => <path d="M2.5 12.5h4l3-7.5 4 14 3-6.5h5" strokeWidth={s} />,
+
+  // Steep then flattening, against an axis: the shape a log scale imposes.
+  'log-scale': (s) => (
+    <>
+      <path d="M4 3.5v17h17" strokeWidth={s} />
+      <path d="M7 17.5c5.5 0 5-10 12-10.5" strokeWidth={s} />
+    </>
+  ),
+
+  trash: (s) => (
+    <>
+      <path
+        d="M3.5 6.5h17M9 6.5V5a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 5v1.5M17.5 6.5v13A1.5 1.5 0 0 1 16 21H8a1.5 1.5 0 0 1-1.5-1.5v-13"
+        strokeWidth={s}
+      />
+      <path d="M10.25 10.5v6M13.75 10.5v6" strokeWidth={s} />
     </>
   ),
 };

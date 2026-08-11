@@ -23,7 +23,7 @@ import { CAMERA_TAU_MS, DEFAULT_WINDOW, placementView, type Window } from '@/lib
 import { type ChartHandle } from '../Chart';
 import { ResultConsole } from './ResultConsole';
 import { type Rail } from '../TradeOverlay';
-import { Chip } from '../ui';
+import { Chip, cx } from '../ui';
 import { Dialog, Live } from '../ui/client';
 import { Icon } from '../ui/icons';
 import { ChartFrame } from './ChartFrame';
@@ -44,9 +44,11 @@ import {
 } from './layers';
 import { RankedSummary } from './RankedSummary';
 import { DEFAULT_SPEED, useRevealLoop } from './useRevealLoop';
-import { Toolbar } from './Toolbar';
+import { InstrumentRail, INSTRUMENT_HOWTO, INSTRUMENT_LABEL } from './InstrumentRail';
+import { StudiesPanel } from './StudiesPanel';
 import { DrawLayer, type Drawing, type DrawTool } from './DrawLayer';
 import { overlaysFor } from '@/lib/toolOverlays';
+import { useStudySettings } from '@/lib/studySettings';
 import type { ToolCode } from '@/core/tiers';
 
 export type Phase =
@@ -92,6 +94,46 @@ const EMPTY_RUNNING: Running = { r: null, mfe: 0, mae: 0, frozen: null };
  * at the exact moment the reveal camera cut, which is the one frame in the product that must not
  * stutter. The console scrolls inside its own row instead.
  */
+/**
+ * The way into the studies, and the count of what is on.
+ *
+ * A button rather than nine chips on the stage. The count is the part that matters: with the panel
+ * closed, this is the only thing telling a player that four indicators are drawn over the chart
+ * they are reading, so it is a badge and not a dot.
+ */
+function StudiesButton({
+  count,
+  onClick,
+  disabled,
+}: {
+  count: number;
+  onClick: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={count > 0 ? `Studies, ${count} on` : 'Studies'}
+      className={cx(
+        'press bg-surface-1 border-line text-ink-lo relative flex h-11 shrink-0 items-center justify-center gap-1.5',
+        'rounded-xl border px-3 text-sm font-medium transition-colors lg:h-auto lg:flex-col lg:gap-1 lg:py-2.5',
+        'focus-visible:ring-focus focus-visible:ring-2 focus-visible:outline-none',
+        'enabled:hover:text-ink-hi enabled:hover:border-line-strong disabled:cursor-not-allowed disabled:opacity-45',
+      )}
+    >
+      <Icon name="activity" size={18} />
+      <span className="lg:sr-only">Studies</span>
+      {count > 0 && (
+        <span className="bg-info text-ink-inv numeral grid h-4 min-w-4 place-items-center rounded-full px-1 text-[0.625rem] font-semibold lg:absolute lg:top-1 lg:right-1">
+          {count}
+        </span>
+      )}
+    </button>
+  );
+}
+
 /** The issuance query for a tape round: the tape, plus whatever ruleset the launcher was set to. */
 function tapeQuery(tape: string, ruleset: { tier?: string; mods?: string }) {
   const query = new URLSearchParams({ tape });
@@ -162,7 +204,11 @@ export function PlaySurface({
   const [drawings, setDrawings] = useState<Drawing[]>([]);
   const [magnet, setMagnet] = useState(true);
   const [logScale, setLogScale] = useState(false);
+  const [studiesOpen, setStudiesOpen] = useState(false);
   const nextDrawingId = useRef(1);
+
+  // Periods persist across rounds — a preference, not round state. See `lib/studySettings.ts`.
+  const [studySettings, setStudySettings, resetStudySettings] = useStudySettings();
 
   // Mutable mirrors for the animation loop, which must not re-subscribe every frame.
   const reveal = useRef<Bar[]>([]);
@@ -521,6 +567,42 @@ export function PlaySurface({
       s: () => {
         if (phase === 'revealing') skip();
       },
+      /**
+       * Put the instrument down.
+       *
+       * The one hotkey the toolbox could not do without. While an instrument is armed the draw
+       * layer covers the frame and the rails genuinely cannot be grabbed — so a player who picks up
+       * the fib to check a leg, then reaches for their stop, finds the drag dead and no obvious way
+       * back. Escape is the way back, and the frame now says so while a tool is held.
+       */
+      Escape: () => {
+        if (studiesOpen) return; // the dialog owns Escape while it is open
+        if (tool) setTool(null);
+      },
+      /**
+       * Undo the last drawing.
+       *
+       * Drawings are append-only within a round, so this is "drop the last one" and needs no
+       * history stack. It is the fix for the real complaint about the old bulk clear: the mark a
+       * player wants gone is nearly always the one they just made, and undo removes it without
+       * having to aim at anything.
+       */
+      'mod+z': (event) => {
+        if (phase !== 'placing' || drawings.length === 0) return;
+        event.preventDefault();
+        setDrawings((current) => current.slice(0, -1));
+      },
+      // Digits pick an instrument, in rail order. Ignored where the ruleset does not grant it.
+      ...Object.fromEntries(
+        (['measure', 'trendline', 'level', 'channel', 'fib'] as DrawTool[]).map((code, i) => [
+          String(i + 1),
+          () => {
+            if (phase !== 'placing') return;
+            if (code !== 'measure' && !round?.tools.includes(code as ToolCode)) return;
+            setTool((current) => (current === code ? null : code));
+          },
+        ]),
+      ),
     },
     true,
   );
@@ -610,9 +692,10 @@ export function PlaySurface({
         atr: round.atr,
         minutes: minutes.current.slice(0, round.bars.length * 60),
         minutesPerBar: 60,
+        settings: studySettings,
       }),
     );
-  }, [round, activeTools]);
+  }, [round, activeTools, studySettings]);
 
   useEffect(() => {
     chart.current?.setLogScale(logScale);
@@ -629,12 +712,25 @@ export function PlaySurface({
     setDrawnFor(round?.roundId);
     setDrawings([]);
     setTool(null);
+    // Studies were surviving the round *and the ruleset*. A Sandbox player who switched on the stop
+    // algorithms and then loaded a Naked round kept them in `activeTools`: the chip vanished with
+    // the grant, so nothing said they were still selected, but `overlaysFor` was still handed them
+    // and the only thing standing between a rated rung and its answer key was the filter on the
+    // toolbar. Narrowed to what this round actually grants.
+    setActiveTools((current) => current.filter((code) => round?.tools.includes(code) ?? false));
+    setStudiesOpen(false);
   }
 
   return (
     <div
       className={[
-        'mx-auto grid min-h-dvh w-full max-w-(--container-stage) grid-rows-[auto_auto_1fr] gap-2 p-2 sm:gap-3 sm:p-4',
+        // A column rather than `grid-rows-[auto_auto_1fr]`. The row list was written for three
+        // children and the toolbox made four, so the console fell into an implicit `auto` track
+        // and lost the bounded row its `min-h-0 overflow-y-auto` needs — it grew instead of
+        // scrolling, and took the page with it. Two of these children are conditional, so
+        // positional row sizing was always going to be wrong for one phase or another; a column
+        // sizes by role instead, and the stage keeps its fixed height because it declares one.
+        'mx-auto flex min-h-dvh w-full max-w-(--container-stage) flex-col gap-2 p-2 sm:gap-3 sm:p-4',
         // A fixed stage per breakpoint. Never per phase — see the note on this component.
         '[--stage-h:clamp(17rem,50dvh,26rem)]',
         'sm:[--stage-h:clamp(20rem,54dvh,30rem)]',
@@ -693,31 +789,35 @@ export function PlaySurface({
         )}
       </header>
 
-      {round && phase !== 'summary' && (
-        <Toolbar
-          granted={round.tools}
-          tool={tool}
-          onTool={setTool}
-          active={activeTools}
-          onToggle={(code) =>
-            setActiveTools((current) =>
-              current.includes(code) ? current.filter((c) => c !== code) : [...current, code],
-            )
-          }
-          magnet={magnet}
-          onMagnet={setMagnet}
-          logScale={logScale}
-          onLogScale={setLogScale}
-          // The reveal drives the camera frame by frame; a pointer tool would be fighting it.
-          disabled={phase !== 'placing'}
-        />
-      )}
-
       {/* No stage on the summary: there is no round to draw, and an empty chart frame above the
-          ceremony reads as something that failed to load. The ceremony owns the screen. */}
+          ceremony reads as something that failed to load. The ceremony owns the screen.
+
+          The instruments sit *beside* the stage above `lg` and above it below — see the note on
+          `InstrumentRail`. Either way they are outside the frame, so nothing here is an ancestor of
+          the rail layer and `tests/stacking.test.ts` stays green. */}
       {phase !== 'summary' && (
+      <div className="flex shrink-0 flex-col gap-2 lg:flex-row lg:items-start lg:gap-3">
+        {round && (
+          <div className="flex items-center gap-2 lg:flex-col lg:items-stretch">
+            <InstrumentRail
+              granted={round.tools}
+              tool={tool}
+              onTool={setTool}
+              // The reveal drives the camera frame by frame; a pointer tool would be fighting it.
+              disabled={phase !== 'placing'}
+            />
+            <StudiesButton
+              count={activeTools.length}
+              disabled={phase !== 'placing'}
+              onClick={() => setStudiesOpen(true)}
+            />
+          </div>
+        )}
+
       <ChartFrame
-        className="h-(--stage-h)"
+        // `shrink-0` in the column, `flex-1 min-w-0` in the row: the stage never gives height back
+        // to a long console, and never overflows the row the rail shares with it.
+        className="h-(--stage-h) w-full shrink-0 lg:min-w-0 lg:flex-1"
         chartRef={chart}
         entry={round?.entry ?? null}
         stop={phase === 'placing' ? stop : (result?.stop ?? stop)}
@@ -727,10 +827,16 @@ export function PlaySurface({
         showRails={Boolean(round) && phase !== 'loading' && phase !== 'error'}
         onDrag={onDrag}
         hitFlash={hitFlash}
+        armed={phase === 'placing' && tool !== null}
         hint={
-          phase === 'placing' && hintShown
-            ? 'drag the rails to set your bracket · scroll to zoom · drag to pan'
-            : null
+          // While an instrument is held the rails are genuinely inert, so the hint stops offering
+          // to drag them and says how to get them back instead. It is the same line either way,
+          // which keeps one place on the frame as the thing that explains the current mode.
+          phase === 'placing' && tool !== null
+            ? `${INSTRUMENT_LABEL[tool]} · ${INSTRUMENT_HOWTO[tool]} · Esc to put it down`
+            : phase === 'placing' && hintShown
+              ? 'drag the rails to set your bracket · scroll to zoom · drag to pan'
+              : null
         }
         loading={phase === 'loading'}
         error={phase === 'error' ? error : null}
@@ -797,12 +903,22 @@ export function PlaySurface({
         )}
 
         {(phase === 'placing' || phase === 'done') && (
-          <FrameControls onResetView={resetView} onHelp={() => setHelpOpen(true)} />
+          <FrameControls
+            onResetView={resetView}
+            onHelp={() => setHelpOpen(true)}
+            magnet={round?.tools.includes('magnet') ? magnet : undefined}
+            onMagnet={round?.tools.includes('magnet') ? setMagnet : undefined}
+            logScale={round?.tools.includes('logScale') ? logScale : undefined}
+            onLogScale={round?.tools.includes('logScale') ? setLogScale : undefined}
+            onClear={phase === 'placing' ? () => setDrawings([]) : undefined}
+            drawings={drawings.length}
+          />
         )}
       </ChartFrame>
+      </div>
       )}
 
-      <section className="min-h-0 overflow-y-auto">
+      <section className="min-h-0 flex-1 overflow-y-auto">
         {(phase === 'placing' || phase === 'committing') && round && (
           <>
             <OrderConsole
@@ -858,6 +974,23 @@ export function PlaySurface({
       >
         <HotkeyLegend />
       </Dialog>
+
+      {round && (
+        <StudiesPanel
+          open={studiesOpen}
+          onClose={() => setStudiesOpen(false)}
+          granted={round.tools}
+          active={activeTools}
+          onToggle={(code) =>
+            setActiveTools((current) =>
+              current.includes(code) ? current.filter((c) => c !== code) : [...current, code],
+            )
+          }
+          settings={studySettings}
+          onSettings={setStudySettings}
+          onResetSettings={resetStudySettings}
+        />
+      )}
     </div>
   );
 }

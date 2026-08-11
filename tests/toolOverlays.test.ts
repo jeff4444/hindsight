@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MA_LENGTHS, measureReadout, overlaysFor } from '@/lib/toolOverlays';
+import { MA_LENGTHS, TOOL_COLOUR, measureReadout, overlaysFor } from '@/lib/toolOverlays';
 import { TIERS, tierByCode, type ToolCode } from '@/core/tiers';
 import { atr } from '@/core/atr';
 import { walk } from './geometry/fixtures';
@@ -159,5 +159,96 @@ describe('the measure tool speaks in the units the trade is scored in', () => {
     // the ruler, and there is no field that could.
     expect(tierByCode('NTVZ')!.tools).toEqual([]);
     expect(measureReadout(100, 101, 1, 1).atr).toBe(1);
+  });
+});
+
+/**
+ * The overlay palette.
+ *
+ * Colour in this product is rationed to meaning, and the two hues that carry the most meaning are
+ * the candle colours: teal is long, red is short, everywhere, on every screen. An overlay drawn in
+ * one of them is asserting a direction it has no view on — and the shipped set did exactly that
+ * four times over, most damagingly by drawing the volume profile's point of control in a red a
+ * shade off the down candle, straight across the candles themselves.
+ */
+describe('no overlay borrows a colour that already means something', () => {
+  /**
+   * `#rrggbb` → OKLCH.
+   *
+   * The palette ships as hex because lightweight-charts parses colour strings itself and its
+   * parser predates oklch — it throws rather than drawing. But hue and lightness are the rules,
+   * and they are meaningless in sRGB, so the check converts back into the space the choice was
+   * actually made in.
+   */
+  function oklch(value: string): { l: number; c: number; h: number } {
+    const match = value.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+    if (!match) throw new Error(`not a hex colour: ${value}`);
+    const lin = (n: number) => {
+      const v = n / 255;
+      return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+    };
+    const [r, g, b] = [1, 2, 3].map((i) => lin(parseInt(match[i], 16)));
+    const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+    const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+    const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+    const L = 0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s;
+    const A = 1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s;
+    const B = 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s;
+    const h = (Math.atan2(B, A) * 180) / Math.PI;
+    return { l: L, c: Math.hypot(A, B), h: h < 0 ? h + 360 : h };
+  }
+
+  const swatches = Object.entries(TOOL_COLOUR).flatMap(([name, value]) =>
+    (Array.isArray(value) ? value : [value]).map((v, i) => ({
+      name: Array.isArray(value) ? `${name}[${i}]` : name,
+      ...oklch(v),
+    })),
+  );
+
+  /** Shortest distance between two hues on the wheel. */
+  const apart = (a: number, b: number) => {
+    const d = Math.abs(a - b) % 360;
+    return d > 180 ? 360 - d : d;
+  };
+
+  // #26a69a and #ef5350, as hues. Kept as numbers rather than converted at runtime so that
+  // retuning a candle colour is a deliberate edit here too.
+  const LONG_HUE = 180;
+  const SHORT_HUE = 25;
+  const CLEARANCE = 28;
+
+  it('keeps every overlay clear of the long and short hues', () => {
+    // A near-neutral is exempt, and not as a loophole: at chroma this low there is no hue to
+    // confuse — the player's own marks are deliberately white for exactly that reason, and the
+    // hue a converter reports for #ffffff is an artefact of dividing by nothing.
+    const offenders = swatches
+      .filter((s) => s.c >= 0.04)
+      .filter((s) => apart(s.h, LONG_HUE) < CLEARANCE || apart(s.h, SHORT_HUE) < CLEARANCE);
+    expect(offenders.map((o) => `${o.name} at ${o.h}°`)).toEqual([]);
+  });
+
+  it('draws the player their own marks in something no overlay uses', () => {
+    // Colour is the app talking; white is you. If a mark ever took a hue it would be competing
+    // with the studies for the same meaning.
+    for (const name of ['mark', 'markLive'] as const) {
+      const swatch = swatches.find((s) => s.name === name)!;
+      expect(swatch.c).toBeLessThan(0.04);
+      expect(swatch.l).toBeGreaterThan(0.9);
+    }
+  });
+
+  it('draws nothing too dark to see on the page it is drawn on', () => {
+    // surface-0 is oklch(0.150 …). A stroke below ~0.55 disappears into it; the value area and the
+    // band midline both did.
+    const offenders = swatches.filter((s) => s.l < 0.55);
+    expect(offenders.map((o) => `${o.name} at L${o.l}`)).toEqual([]);
+  });
+
+  it('separates the three moving averages enough to tell them apart', () => {
+    const [a, b, c] = TOOL_COLOUR.ma.map(oklch);
+    expect(apart(a.h, b.h)).toBeGreaterThan(40);
+    expect(apart(b.h, c.h)).toBeGreaterThan(40);
+    expect(apart(a.h, c.h)).toBeGreaterThan(40);
+    expect(TOOL_COLOUR.ma).toHaveLength(MA_LENGTHS.length);
   });
 });

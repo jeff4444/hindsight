@@ -42,29 +42,42 @@ export function TimeframeControl({
     );
   }
 
+  /**
+   * Each engine is hidden by a *wrapper*, not by a class handed to the component.
+   *
+   * `Segmented` sets `inline-flex` on itself, so passing it `hidden lg:inline-flex` put two
+   * `display` utilities on one element — and which of them wins is decided by their order in the
+   * generated stylesheet, not by their order in the class attribute. `inline-flex` won, so on a
+   * phone the resolution control rendered **twice**: a segmented row of tiers and, directly beside
+   * it, the native picker that was supposed to replace it.
+   *
+   * A wrapper cannot lose that argument, because the class it carries is the only `display` on it.
+   */
   return (
     <>
-      <Segmented
-        className="hidden lg:inline-flex"
-        options={options.map((t) => ({
-          value: t.minutes,
-          label: t.label,
-          title: t.minutes === DECISION_TF ? 'The decision timeframe' : `Draw ${t.label} candles`,
-        }))}
-        value={timeframe}
-        onChange={onTimeframe}
-      />
-      <Select
-        className="lg:hidden"
-        label="Chart resolution"
-        value={timeframe}
-        options={options.map((t) => ({
-          value: t.minutes,
-          label: t.minutes === DECISION_TF ? `${t.label} · decision` : t.label,
-        }))}
-        onChange={onTimeframe}
-        tone={timeframe === DECISION_TF ? 'neutral' : 'restraint'}
-      />
+      <span className="hidden lg:inline-flex">
+        <Segmented
+          options={options.map((t) => ({
+            value: t.minutes,
+            label: t.label,
+            title: t.minutes === DECISION_TF ? 'The decision timeframe' : `Draw ${t.label} candles`,
+          }))}
+          value={timeframe}
+          onChange={onTimeframe}
+        />
+      </span>
+      <span className="contents lg:hidden">
+        <Select
+          label="Chart resolution"
+          value={timeframe}
+          options={options.map((t) => ({
+            value: t.minutes,
+            label: t.minutes === DECISION_TF ? `${t.label} · decision` : t.label,
+          }))}
+          onChange={onTimeframe}
+          tone={timeframe === DECISION_TF ? 'neutral' : 'restraint'}
+        />
+      </span>
     </>
   );
 }

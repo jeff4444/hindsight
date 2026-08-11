@@ -28,7 +28,7 @@ export async function POST(request: Request) {
 
   if (error || !data?.url) {
     return NextResponse.redirect(
-      new URL(`/sign-in?error=${encodeURIComponent(error?.message ?? 'Could not start sign-in')}`, origin),
+      new URL('/sign-in?error=provider-failed', origin),
       { status: 303 },
     );
   }

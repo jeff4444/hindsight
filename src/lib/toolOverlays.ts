@@ -33,25 +33,101 @@ import { volumeProfile } from '@/core/geometry/volumeProfile';
  * information.
  */
 
+/**
+ * What each tool draws with.
+ *
+ * Two rules, and the first one is not cosmetic.
+ *
+ * **No overlay may take the long or short hue.** The candles are teal at ~180° and red at ~25°, and
+ * those two hues *mean direction* everywhere else in the product — a rail, an R-multiple, a
+ * percentile tone. An overlay wearing one of them is making a claim it cannot support. The
+ * shipped set broke this four times: the channel and Donchian rails were greens, and the volume
+ * profile's POC was `#ef4444` — within a hair of the down candle's `#ef5350`, drawn straight
+ * across it. `tests/toolOverlays.test.ts` now holds the rule.
+ *
+ * **Everything must clear the page it is drawn on.** `surface-0` is `oklch(0.150 0.014 265)`, so a
+ * dark stroke on it is a stroke nobody can see. The value area was `#7f1d1d` and the band midline
+ * `#0e7490`; both were effectively invisible, which is a strange fate for a feature someone
+ * enabled on purpose. Lightness is held at or above 0.55 for fills and 0.70 for lines.
+ *
+ * Hues therefore live in the three arcs the candles leave free — amber 55–110, blue 210–280,
+ * violet-magenta 290–345 — and are spread inside them so two overlays that are commonly on at once
+ * are never neighbours.
+ *
+ * **Hex, not oklch, and not by preference.** These were authored in oklch like the rest of the
+ * system and had to be converted: lightweight-charts parses colour strings itself rather than
+ * handing them to the canvas, and its parser predates oklch — it throws `Failed to parse color`
+ * and the overlay silently never draws. `palette.ts` pins the candle colours as hex for the same
+ * reason. The rules above are still the rules; `tests/toolOverlays.test.ts` converts these back to
+ * oklch and checks them there, so the design is enforced in the space it was designed in.
+ */
 export const TOOL_COLOUR = {
-  ma: ['#60a5fa', '#f59e0b', '#a78bfa'],
-  band: '#22d3ee',
-  bandMid: '#0e7490',
-  donchian: '#84cc16',
-  swingHigh: '#f97316',
-  swingLow: '#38bdf8',
-  trendline: '#a78bfa',
-  channel: '#22c55e',
-  level: '#eab308',
-  poc: '#ef4444',
-  valueArea: '#7f1d1d',
-  oscillator: '#e2e8f0',
-  oscillatorSignal: '#f97316',
-  stop: '#fb7185',
+  /** Three averages, maximally separated so 20/50/200 are never mistaken for each other. */
+  ma: ['#60b0ff', '#e4b750', '#bc88f4'],
+  band: '#5fc0dd',
+  /** The band's midline: quieter than its edges, still legible. */
+  bandMid: '#4c8a9d',
+  donchian: '#d9c64d',
+  swingHigh: '#f4993c',
+  swingLow: '#86a9f7',
+  trendline: '#b58bf9',
+  channel: '#8797ef',
+  level: '#d9bb66',
+  poc: '#e472dc',
+  /** A fill rather than a line, so it sits lower — but above the floor of visibility. */
+  valueArea: '#9d6398',
+  oscillator: '#cdd1d9',
+  oscillatorSignal: '#f8a052',
+  /** Sandbox only. §11.4 calls a stop algorithm the answer key, and the panel says so too. */
+  stop: '#db90ec',
+
+  /**
+   * The player's own marks, and the one being drawn.
+   *
+   * Deliberately near-neutral rather than a hue, and that *is* the legend: every coloured line on
+   * the chart is the app talking — an average, a channel, something Layer 2 computed — and white is
+   * you. The shipped set drew committed drawings in the same violet as the Layer 2 hull trendline,
+   * so a mark you made and a mark the product inferred were the same colour on the same chart.
+   */
+  mark: '#e8ecf5',
+  markLive: '#ffffff',
 } as const;
 
 /** Moving-average lengths offered. Three is what every platform ships and what a reader uses. */
 export const MA_LENGTHS = [20, 50, 200] as const;
+
+/**
+ * The periods a player may change, and what they start at.
+ *
+ * §11.4 argues at length that a player "who reads an RSI of 71 and places a stop on it is entitled
+ * to know which RSI" — and then the toolbox shipped with every period hardcoded and no way to see
+ * or set one. `TOOLS` even describes the moving averages as "three configurable lengths". These are
+ * those lengths.
+ *
+ * The defaults are the published ones, so a player who never opens the settings gets exactly the
+ * indicator the ruleset documents.
+ */
+export interface StudySettings {
+  ma: [number, number, number];
+  bollinger: number;
+  keltner: number;
+  donchian: number;
+  rsi: number;
+}
+
+export const DEFAULT_STUDY_SETTINGS: StudySettings = {
+  ma: [...MA_LENGTHS] as [number, number, number],
+  bollinger: 20,
+  keltner: 20,
+  donchian: 20,
+  rsi: 14,
+};
+
+/** Periods are whole bars, and a one-bar average is not an average. Clamped, never rejected. */
+export function clampPeriod(value: number, max = 400): number {
+  if (!Number.isFinite(value)) return 2;
+  return Math.min(max, Math.max(2, Math.round(value)));
+}
 
 /** Turn an aligned series into a polyline, dropping the warm-up. */
 function line(series: Series, colour: string, options: Partial<Overlay> = {}): Overlay | null {
@@ -69,6 +145,8 @@ export interface ToolContext {
   /** The one-minute detail, when the tier ships it. Only the volume profile wants it. */
   minutes?: Bar[];
   minutesPerBar?: number;
+  /** The player's periods. Omitted means the published defaults. */
+  settings?: StudySettings;
 }
 
 /**
@@ -86,6 +164,7 @@ export function overlaysFor(active: readonly ToolCode[], context: ToolContext): 
   const closes = bars.map((bar) => bar.c);
   const out: (Overlay | null)[] = [];
   const last = bars.length - 1;
+  const set = context.settings ?? DEFAULT_STUDY_SETTINGS;
 
   const span = (price: number, colour: string, options: Partial<Overlay> = {}): Overlay => ({
     points: [
@@ -99,26 +178,26 @@ export function overlaysFor(active: readonly ToolCode[], context: ToolContext): 
   /* ------------------------------------------------------------- indicators */
 
   if (has('ma')) {
-    MA_LENGTHS.forEach((length, i) => {
-      out.push(line(ema(closes, length), TOOL_COLOUR.ma[i], { width: 1 }));
+    set.ma.forEach((length, i) => {
+      out.push(line(ema(closes, clampPeriod(length)), TOOL_COLOUR.ma[i], { width: 1 }));
     });
   }
 
   if (has('bollinger')) {
-    const band = bollinger(closes);
+    const band = bollinger(closes, clampPeriod(set.bollinger));
     out.push(line(band.upper, TOOL_COLOUR.band));
     out.push(line(band.lower, TOOL_COLOUR.band));
     out.push(line(band.mid, TOOL_COLOUR.bandMid, { dashed: true }));
   }
 
   if (has('keltner')) {
-    const band = keltner(bars);
+    const band = keltner(bars, clampPeriod(set.keltner));
     out.push(line(band.upper, TOOL_COLOUR.band, { dashed: true }));
     out.push(line(band.lower, TOOL_COLOUR.band, { dashed: true }));
   }
 
   if (has('donchian')) {
-    const band = donchian(bars);
+    const band = donchian(bars, clampPeriod(set.donchian));
     out.push(line(band.upper, TOOL_COLOUR.donchian));
     out.push(line(band.lower, TOOL_COLOUR.donchian));
   }
@@ -200,7 +279,7 @@ export function overlaysFor(active: readonly ToolCode[], context: ToolContext): 
   /* ------------------------------------------------------------- oscillators */
 
   if (has('rsi')) {
-    out.push(line(rsi(closes), TOOL_COLOUR.oscillator, { pane: 1 }));
+    out.push(line(rsi(closes, clampPeriod(set.rsi)), TOOL_COLOUR.oscillator, { pane: 1 }));
     // The 30 and 70 rails, drawn in the same pane so the reading has a reference.
     for (const level of [30, 70]) {
       out.push({

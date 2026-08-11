@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { codeForAuthMessage } from '@/lib/auth-errors';
 import { authClient } from '@/lib/supabase/auth-server';
 import { serviceClient } from '@/lib/supabase/server';
 import { ensureSession, SESSION_COOKIE, SESSION_COOKIE_OPTIONS } from '@/lib/session';
@@ -28,20 +29,20 @@ export async function GET(request: Request) {
 
   if (code) {
     const { error } = await auth.exchangeCodeForSession(code);
-    if (error) return NextResponse.redirect(new URL(`/sign-in?error=${encodeURIComponent(error.message)}`, url.origin));
+    if (error) return NextResponse.redirect(new URL(`/sign-in?error=${codeForAuthMessage(error.message)}`, url.origin));
   } else if (tokenHash && type) {
     const { error } = await auth.verifyOtp({
       type: type as 'magiclink' | 'signup' | 'email' | 'recovery',
       token_hash: tokenHash,
     });
-    if (error) return NextResponse.redirect(new URL(`/sign-in?error=${encodeURIComponent(error.message)}`, url.origin));
+    if (error) return NextResponse.redirect(new URL(`/sign-in?error=${codeForAuthMessage(error.message)}`, url.origin));
   } else {
-    return NextResponse.redirect(new URL('/sign-in?error=Missing%20sign-in%20code', url.origin));
+    return NextResponse.redirect(new URL('/sign-in?error=expired-link', url.origin));
   }
 
   const { data } = await auth.getUser();
   const user = data.user;
-  if (!user) return NextResponse.redirect(new URL('/sign-in?error=No%20session', url.origin));
+  if (!user) return NextResponse.redirect(new URL('/sign-in?error=no-session', url.origin));
 
   const sessionId = await ensureSession();
   const supabase = serviceClient();

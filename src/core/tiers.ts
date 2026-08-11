@@ -114,7 +114,7 @@ export const TOOLS: Tool[] = [
     code: 'stopAlgos',
     name: 'Stop algorithms',
     kind: 'indicator',
-    effect: 'Chandelier Exit, Supertrend and Parabolic SAR. Sandbox only — see the note in this file.',
+    effect: 'Chandelier Exit, Supertrend and Parabolic SAR. Sandbox only: in a game about placing a stop, showing one is showing the answer key.',
   },
 ];
 
@@ -153,7 +153,7 @@ export const EXCLUDED_TOOLS: { name: string; reason: string }[] = [
   {
     name: 'Pivot Points, session VWAP, seasonality',
     reason:
-      'They need a session boundary, and §12.2 removes the calendar by design. Anchored VWAP from a ' +
+      'They need a session boundary, and the calendar is removed by design. Anchored VWAP from a ' +
       'swing works and is the more useful variant anyway.',
   },
   {
@@ -435,6 +435,23 @@ export function affordances(tier: Tier, mods: readonly ModCode[] = []) {
 /** Whether a tier grants a given tool. */
 export function grantsTool(tier: Tier, tool: ToolCode): boolean {
   return tier.tools.includes(tool);
+}
+
+/**
+ * The least permissive rung that still grants a tool — "what you would have to play to get this".
+ *
+ * The toolbox shows what the ruleset took away rather than hiding it, which is the same argument
+ * §3.2's timeframe picker already makes: a ladder nobody can see the rungs of is not a ladder. To
+ * say *"Full Desk grants the trendline"* the interface has to be able to look that up, and since
+ * `TIERS` runs most permissive to most restrictive the answer is simply the last one that has it.
+ *
+ * Null means no rung grants it, which today is unreachable and tomorrow is the honest answer for a
+ * tool that has been built but not yet placed on the ladder.
+ */
+export function grantingTier(tool: ToolCode): Tier | null {
+  let found: Tier | null = null;
+  for (const tier of TIERS) if (grantsTool(tier, tool)) found = tier;
+  return found;
 }
 
 /**
