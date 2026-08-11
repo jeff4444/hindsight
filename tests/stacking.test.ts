@@ -120,6 +120,25 @@ function isLayer(text: string): boolean {
   return /(?:^|\s)z-(?:\d+|\[)/.test(text);
 }
 
+/**
+ * Drop utilities that can only ever apply to a form control.
+ *
+ * `disabled:` and `enabled:` match `<button>`, `<input>`, `<select>` and friends and nothing else —
+ * the attribute does not exist on a `<div>`, so a rule behind one of them cannot fire on a wrapper.
+ * A control is never an ancestor of the chart frame, so `disabled:opacity-45` on the studies button
+ * is provably harmless, while a bare `opacity-45` on the same file's root would not be.
+ *
+ * Deliberately not extended to `hover:` or `group-*:`, which *do* apply to wrappers: a
+ * `hover:opacity-50` on a div above the frame would kill the rails on mouseover only, which is
+ * precisely the kind of bug this file exists to catch.
+ */
+function withoutControlStates(text: string): string {
+  return text
+    .split(/\s+/)
+    .filter((token) => !/^(?:disabled|enabled):/.test(token))
+    .join(' ');
+}
+
 describe('the rails stay grabbable', () => {
   for (const file of GUARDED) {
     const source = readFileSync(join(process.cwd(), file), 'utf8');
@@ -129,8 +148,9 @@ describe('the rails stay grabbable', () => {
 
       for (const { text, line } of literals(source)) {
         if (isLayer(text)) continue;
+        const structural = withoutControlStates(text);
         for (const { pattern, property } of FORBIDDEN) {
-          if (pattern.test(text)) {
+          if (pattern.test(structural)) {
             offenders.push(`${file}:${line} — ${property} in "${text.slice(0, 70)}"`);
           }
         }

@@ -182,21 +182,80 @@ export function ScoreStage({
  * Cornered and small: the rails span the full width, so an interactive element anywhere across the
  * middle of the frame would eat pointer events the drag needs.
  */
+const CORNER_BUTTON =
+  'press bg-scrim ring-line-faint grid h-8 w-8 place-items-center rounded-md ring-1 transition-colors';
+
+/**
+ * Magnet and log scale live here rather than in a tool palette.
+ *
+ * They are the same category as "reset the view": they change how the chart *draws*, not what you
+ * are doing with a pointer. The old toolbar filed them beside the instruments and the indicators,
+ * which made three unrelated kinds of control look like one list of fourteen. Chart furniture
+ * belongs with chart furniture, in the corner, beside the thing it is a sibling of.
+ */
 export function FrameControls({
   onResetView,
   onHelp,
+  magnet,
+  onMagnet,
+  logScale,
+  onLogScale,
+  onClear,
+  drawings = 0,
 }: {
   onResetView: () => void;
   onHelp: () => void;
+  /** Undefined where the tier does not grant the option, which hides the control entirely. */
+  magnet?: boolean;
+  onMagnet?: (on: boolean) => void;
+  logScale?: boolean;
+  onLogScale?: (on: boolean) => void;
+  onClear?: () => void;
+  drawings?: number;
 }) {
   return (
-    <div className="absolute bottom-10 right-3 z-30 flex items-center gap-1.5 sm:right-4">
+    <div className="absolute right-3 bottom-10 z-30 flex items-center gap-1.5 sm:right-4">
+      {onClear && drawings > 0 && (
+        <button
+          type="button"
+          onClick={onClear}
+          aria-label={`Clear ${drawings} drawing${drawings === 1 ? '' : 's'}`}
+          title={`Clear ${drawings} drawing${drawings === 1 ? '' : 's'}`}
+          className={cx(CORNER_BUTTON, 'text-ink-dim hover:text-short-ink')}
+        >
+          <Icon name="trash" size={15} />
+        </button>
+      )}
+      {onMagnet && (
+        <button
+          type="button"
+          onClick={() => onMagnet(!magnet)}
+          aria-pressed={magnet}
+          aria-label="Snap drawings to the nearest wick"
+          title="Snap drawings to the nearest wick"
+          className={cx(CORNER_BUTTON, magnet ? 'bg-surface-inv text-ink-inv' : 'text-ink-dim hover:text-ink-hi')}
+        >
+          <Icon name="magnet" size={15} />
+        </button>
+      )}
+      {onLogScale && (
+        <button
+          type="button"
+          onClick={() => onLogScale(!logScale)}
+          aria-pressed={logScale}
+          aria-label="Logarithmic price axis"
+          title="Logarithmic price axis"
+          className={cx(CORNER_BUTTON, logScale ? 'bg-surface-inv text-ink-inv' : 'text-ink-dim hover:text-ink-hi')}
+        >
+          <Icon name="log-scale" size={15} />
+        </button>
+      )}
       <button
         type="button"
         onClick={onResetView}
         aria-label="Reset the view"
         title="Reset the view"
-        className="press bg-scrim text-ink-dim hover:text-ink-hi ring-line-faint grid h-8 w-8 place-items-center rounded-md ring-1 transition-colors"
+        className={cx(CORNER_BUTTON, 'text-ink-dim hover:text-ink-hi')}
       >
         <Icon name="rotate-ccw" size={15} />
       </button>
@@ -205,7 +264,7 @@ export function FrameControls({
         onClick={onHelp}
         aria-label="Keyboard shortcuts"
         title="Keyboard shortcuts"
-        className="press bg-scrim text-ink-dim hover:text-ink-hi ring-line-faint grid h-8 w-8 place-items-center rounded-md ring-1 transition-colors"
+        className={cx(CORNER_BUTTON, 'text-ink-dim hover:text-ink-hi')}
       >
         <Icon name="keyboard" size={15} />
       </button>

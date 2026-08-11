@@ -52,32 +52,71 @@ import { volumeProfile } from '@/core/geometry/volumeProfile';
  *
  * Hues therefore live in the three arcs the candles leave free — amber 55–110, blue 210–280,
  * violet-magenta 290–345 — and are spread inside them so two overlays that are commonly on at once
- * are never neighbours. Written in oklch, like the rest of the system; lightweight-charts hands
- * these to a canvas, which parses any CSS colour the browser does.
+ * are never neighbours.
+ *
+ * **Hex, not oklch, and not by preference.** These were authored in oklch like the rest of the
+ * system and had to be converted: lightweight-charts parses colour strings itself rather than
+ * handing them to the canvas, and its parser predates oklch — it throws `Failed to parse color`
+ * and the overlay silently never draws. `palette.ts` pins the candle colours as hex for the same
+ * reason. The rules above are still the rules; `tests/toolOverlays.test.ts` converts these back to
+ * oklch and checks them there, so the design is enforced in the space it was designed in.
  */
 export const TOOL_COLOUR = {
   /** Three averages, maximally separated so 20/50/200 are never mistaken for each other. */
-  ma: ['oklch(0.74 0.14 250)', 'oklch(0.80 0.13 85)', 'oklch(0.72 0.16 305)'],
-  band: 'oklch(0.76 0.10 220)',
+  ma: ['#60b0ff', '#e4b750', '#bc88f4'],
+  band: '#5fc0dd',
   /** The band's midline: quieter than its edges, still legible. */
-  bandMid: 'oklch(0.60 0.07 220)',
-  donchian: 'oklch(0.82 0.14 100)',
-  swingHigh: 'oklch(0.76 0.15 62)',
-  swingLow: 'oklch(0.74 0.12 265)',
-  trendline: 'oklch(0.72 0.16 300)',
-  channel: 'oklch(0.70 0.13 275)',
-  level: 'oklch(0.80 0.11 90)',
-  poc: 'oklch(0.72 0.19 330)',
+  bandMid: '#4c8a9d',
+  donchian: '#d9c64d',
+  swingHigh: '#f4993c',
+  swingLow: '#86a9f7',
+  trendline: '#b58bf9',
+  channel: '#8797ef',
+  level: '#d9bb66',
+  poc: '#e472dc',
   /** A fill rather than a line, so it sits lower — but above the floor of visibility. */
-  valueArea: 'oklch(0.55 0.10 330)',
-  oscillator: 'oklch(0.86 0.012 265)',
-  oscillatorSignal: 'oklch(0.78 0.14 60)',
+  valueArea: '#9d6398',
+  oscillator: '#cdd1d9',
+  oscillatorSignal: '#f8a052',
   /** Sandbox only. §11.4 calls a stop algorithm the answer key, and the panel says so too. */
-  stop: 'oklch(0.76 0.15 320)',
+  stop: '#db90ec',
 } as const;
 
 /** Moving-average lengths offered. Three is what every platform ships and what a reader uses. */
 export const MA_LENGTHS = [20, 50, 200] as const;
+
+/**
+ * The periods a player may change, and what they start at.
+ *
+ * §11.4 argues at length that a player "who reads an RSI of 71 and places a stop on it is entitled
+ * to know which RSI" — and then the toolbox shipped with every period hardcoded and no way to see
+ * or set one. `TOOLS` even describes the moving averages as "three configurable lengths". These are
+ * those lengths.
+ *
+ * The defaults are the published ones, so a player who never opens the settings gets exactly the
+ * indicator the ruleset documents.
+ */
+export interface StudySettings {
+  ma: [number, number, number];
+  bollinger: number;
+  keltner: number;
+  donchian: number;
+  rsi: number;
+}
+
+export const DEFAULT_STUDY_SETTINGS: StudySettings = {
+  ma: [...MA_LENGTHS] as [number, number, number],
+  bollinger: 20,
+  keltner: 20,
+  donchian: 20,
+  rsi: 14,
+};
+
+/** Periods are whole bars, and a one-bar average is not an average. Clamped, never rejected. */
+export function clampPeriod(value: number, max = 400): number {
+  if (!Number.isFinite(value)) return 2;
+  return Math.min(max, Math.max(2, Math.round(value)));
+}
 
 /** Turn an aligned series into a polyline, dropping the warm-up. */
 function line(series: Series, colour: string, options: Partial<Overlay> = {}): Overlay | null {
@@ -95,6 +134,8 @@ export interface ToolContext {
   /** The one-minute detail, when the tier ships it. Only the volume profile wants it. */
   minutes?: Bar[];
   minutesPerBar?: number;
+  /** The player's periods. Omitted means the published defaults. */
+  settings?: StudySettings;
 }
 
 /**
@@ -112,6 +153,7 @@ export function overlaysFor(active: readonly ToolCode[], context: ToolContext): 
   const closes = bars.map((bar) => bar.c);
   const out: (Overlay | null)[] = [];
   const last = bars.length - 1;
+  const set = context.settings ?? DEFAULT_STUDY_SETTINGS;
 
   const span = (price: number, colour: string, options: Partial<Overlay> = {}): Overlay => ({
     points: [
@@ -125,26 +167,26 @@ export function overlaysFor(active: readonly ToolCode[], context: ToolContext): 
   /* ------------------------------------------------------------- indicators */
 
   if (has('ma')) {
-    MA_LENGTHS.forEach((length, i) => {
-      out.push(line(ema(closes, length), TOOL_COLOUR.ma[i], { width: 1 }));
+    set.ma.forEach((length, i) => {
+      out.push(line(ema(closes, clampPeriod(length)), TOOL_COLOUR.ma[i], { width: 1 }));
     });
   }
 
   if (has('bollinger')) {
-    const band = bollinger(closes);
+    const band = bollinger(closes, clampPeriod(set.bollinger));
     out.push(line(band.upper, TOOL_COLOUR.band));
     out.push(line(band.lower, TOOL_COLOUR.band));
     out.push(line(band.mid, TOOL_COLOUR.bandMid, { dashed: true }));
   }
 
   if (has('keltner')) {
-    const band = keltner(bars);
+    const band = keltner(bars, clampPeriod(set.keltner));
     out.push(line(band.upper, TOOL_COLOUR.band, { dashed: true }));
     out.push(line(band.lower, TOOL_COLOUR.band, { dashed: true }));
   }
 
   if (has('donchian')) {
-    const band = donchian(bars);
+    const band = donchian(bars, clampPeriod(set.donchian));
     out.push(line(band.upper, TOOL_COLOUR.donchian));
     out.push(line(band.lower, TOOL_COLOUR.donchian));
   }
@@ -226,7 +268,7 @@ export function overlaysFor(active: readonly ToolCode[], context: ToolContext): 
   /* ------------------------------------------------------------- oscillators */
 
   if (has('rsi')) {
-    out.push(line(rsi(closes), TOOL_COLOUR.oscillator, { pane: 1 }));
+    out.push(line(rsi(closes, clampPeriod(set.rsi)), TOOL_COLOUR.oscillator, { pane: 1 }));
     // The 30 and 70 rails, drawn in the same pane so the reading has a reference.
     for (const level of [30, 70]) {
       out.push({

@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  EXCLUDED_TOOLS,
   MODS,
   TIERS,
+  TOOLS,
   UNIVERSAL_AFFORDANCES,
   affordances,
   loadoutCode,
@@ -169,5 +171,42 @@ describe('the share-card loadout (§10.4)', () => {
       expect(mod.code).not.toMatch(/20\d\d/);
       expect(mod.name.toLowerCase()).not.toMatch(/long|short/);
     }
+  });
+});
+
+/**
+ * `TOOLS` and `EXCLUDED_TOOLS` used to be data nothing rendered. The studies panel now prints both
+ * — the effect line under every switch, and the excluded list under "Not here, and why" — which
+ * turns them from internal notes into product copy, and they were not written as product copy.
+ *
+ * Two things leaked on the first render: a `§12.2` citation in the reason a session VWAP is absent,
+ * and "see the note in this file" under the stop algorithms, addressed to a reader who has the
+ * source open. Both read as a draft that escaped.
+ */
+describe('the tool copy is written for a player', () => {
+  const strings = [
+    ...TOOLS.map((t) => ({ where: `TOOLS.${t.code}.effect`, text: t.effect })),
+    ...TOOLS.map((t) => ({ where: `TOOLS.${t.code}.name`, text: t.name })),
+    ...EXCLUDED_TOOLS.map((t) => ({ where: `EXCLUDED_TOOLS.${t.name}.reason`, text: t.reason })),
+  ];
+
+  it('cites no section numbers', () => {
+    expect(strings.filter((s) => /§/.test(s.text)).map((s) => s.where)).toEqual([]);
+  });
+
+  it('never addresses the reader as someone reading the source', () => {
+    const offenders = strings.filter((s) =>
+      /\bthis file\b|\bsee above\b|\bsee below\b|\bTODO\b|\bFIXME\b/i.test(s.text),
+    );
+    expect(offenders.map((s) => s.where)).toEqual([]);
+  });
+
+  it('ends every explanation as a sentence', () => {
+    // The effect line sits directly under a label in the panel; a fragment without a stop reads as
+    // a truncation rather than a choice.
+    const offenders = strings
+      .filter((s) => s.where.endsWith('.effect') || s.where.endsWith('.reason'))
+      .filter((s) => !/[.!?]$/.test(s.text.trim()));
+    expect(offenders.map((s) => s.where)).toEqual([]);
   });
 });

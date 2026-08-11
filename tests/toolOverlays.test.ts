@@ -172,11 +172,30 @@ describe('the measure tool speaks in the units the trade is scored in', () => {
  * shade off the down candle, straight across the candles themselves.
  */
 describe('no overlay borrows a colour that already means something', () => {
-  /** oklch(L C H) → its hue in degrees, and its lightness. */
+  /**
+   * `#rrggbb` → OKLCH.
+   *
+   * The palette ships as hex because lightweight-charts parses colour strings itself and its
+   * parser predates oklch — it throws rather than drawing. But hue and lightness are the rules,
+   * and they are meaningless in sRGB, so the check converts back into the space the choice was
+   * actually made in.
+   */
   function oklch(value: string): { l: number; c: number; h: number } {
-    const match = value.match(/oklch\(([\d.]+)\s+([\d.]+)\s+([\d.]+)\)/);
-    if (!match) throw new Error(`not an oklch colour: ${value}`);
-    return { l: Number(match[1]), c: Number(match[2]), h: Number(match[3]) };
+    const match = value.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+    if (!match) throw new Error(`not a hex colour: ${value}`);
+    const lin = (n: number) => {
+      const v = n / 255;
+      return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+    };
+    const [r, g, b] = [1, 2, 3].map((i) => lin(parseInt(match[i], 16)));
+    const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+    const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+    const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+    const L = 0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s;
+    const A = 1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s;
+    const B = 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s;
+    const h = (Math.atan2(B, A) * 180) / Math.PI;
+    return { l: L, c: Math.hypot(A, B), h: h < 0 ? h + 360 : h };
   }
 
   const swatches = Object.entries(TOOL_COLOUR).flatMap(([name, value]) =>

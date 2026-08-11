@@ -48,6 +48,7 @@ export function ChartFrame({
   loading,
   error,
   onRetry,
+  armed,
   className,
   children,
 }: {
@@ -64,6 +65,19 @@ export function ChartFrame({
   loading: boolean;
   error: string | null;
   onRetry: () => void;
+  /**
+   * An instrument is held, so the draw layer has the pointer and the rails cannot be grabbed.
+   *
+   * That is by design — a full-width interactive layer is the only way to draw across a frame whose
+   * rails are also full-width — but it was previously invisible. A player who picked up the fib to
+   * check a leg, then reached for their stop, found the drag simply dead. The frame says so now: a
+   * brand-toned edge while a tool is held, and the hint line names the way out.
+   *
+   * A border colour, deliberately. A ring, a glow or an outline would all do the job, and none of
+   * them creates a stacking context — but this element *is* the guarded one, so the change stays
+   * inside a property that cannot.
+   */
+  armed?: boolean;
   className?: string;
   /** In-frame layers. Rendered above the rails; see the note above about pointer events. */
   children?: React.ReactNode;
@@ -71,7 +85,8 @@ export function ChartFrame({
   return (
     <div
       className={cx(
-        'border-line bg-surface-1 shadow-well relative overflow-hidden rounded-xl border',
+        'bg-surface-1 shadow-well relative overflow-hidden rounded-xl border transition-colors',
+        armed ? 'border-brand-line' : 'border-line',
         className,
       )}
     >
@@ -114,7 +129,10 @@ export function ChartFrame({
 
       {/* bottom-9 keeps this clear of the time axis, which occupies the bottom strip. */}
       {hint && (
-        <div className="bg-scrim text-ink-lo ring-line-faint animate-fade text-xs pointer-events-none absolute bottom-9 left-1/2 z-20 -translate-x-1/2 rounded-full px-3 py-1.5 ring-1">
+        // Centred and full-width-capped on a phone, where a three-line pill centred on the frame
+        // ran straight under the corner controls; a single line above them instead. `max-w` rather
+        // than a smaller font, because this line is the only instruction on the screen.
+        <div className="bg-scrim text-ink-lo ring-line-faint animate-fade pointer-events-none absolute inset-x-3 bottom-20 z-20 mx-auto w-fit max-w-[min(28rem,calc(100%-1.5rem))] rounded-full px-3 py-1.5 text-center text-xs ring-1 sm:inset-x-auto sm:bottom-9 sm:left-1/2 sm:-translate-x-1/2">
           {hint}
         </div>
       )}

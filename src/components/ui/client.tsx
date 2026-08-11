@@ -169,6 +169,7 @@ export function Dialog({
   title,
   description,
   placement = 'center',
+  size = 'sm',
   children,
   footer,
 }: {
@@ -178,6 +179,14 @@ export function Dialog({
   description?: string;
   /** `bottom` is a sheet on a phone and still a sheet on desktop — use it for stacked choices. */
   placement?: 'center' | 'bottom';
+  /**
+   * How much room the content needs.
+   *
+   * `sm` is a confirmation. `lg` is a settings surface — the studies panel carries nine rows of
+   * label, explanation, published formula and a period input, and at the confirm width the word
+   * "Moving averages" wrapped onto two lines and its note onto nine.
+   */
+  size?: 'sm' | 'lg';
   children: ReactNode;
   footer?: ReactNode;
 }) {
@@ -209,8 +218,14 @@ export function Dialog({
       className={cx(
         'bg-surface-2 text-ink shadow-e4 border-line m-0 border p-0 backdrop:bg-scrim',
         placement === 'bottom'
-          ? 'fixed inset-x-0 bottom-0 top-auto w-full max-w-none rounded-t-2xl sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:w-[26rem] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl'
-          : 'fixed left-1/2 top-1/2 w-[calc(100%-2rem)] max-w-[30rem] -translate-x-1/2 -translate-y-1/2 rounded-2xl',
+          ? cx(
+              'fixed inset-x-0 bottom-0 top-auto w-full max-w-none rounded-t-2xl sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl',
+              size === 'lg' ? 'sm:w-[40rem]' : 'sm:w-[26rem]',
+            )
+          : cx(
+              'fixed left-1/2 top-1/2 w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 rounded-2xl',
+              size === 'lg' ? 'max-w-[40rem]' : 'max-w-[30rem]',
+            ),
       )}
     >
       <div className="flex items-start justify-between gap-4 px-5 pt-5">
@@ -316,7 +331,8 @@ export function Tooltip({
   children,
 }: {
   label: string;
-  placement?: 'top' | 'bottom';
+  /** `right` is for a vertical rail, where a label above the button covers the button above it. */
+  placement?: 'top' | 'bottom' | 'right';
   children: ReactNode;
 }) {
   const id = useId();
@@ -326,10 +342,11 @@ export function Tooltip({
   const show = useCallback(() => {
     const box = anchor.current?.getBoundingClientRect();
     if (!box) return;
-    setPos({
-      top: placement === 'top' ? box.top - 8 : box.bottom + 8,
-      left: box.left + box.width / 2,
-    });
+    setPos(
+      placement === 'right'
+        ? { top: box.top + box.height / 2, left: box.right + 8 }
+        : { top: placement === 'top' ? box.top - 8 : box.bottom + 8, left: box.left + box.width / 2 },
+    );
   }, [placement]);
 
   const hide = useCallback(() => setPos(null), []);
@@ -367,7 +384,8 @@ export function Tooltip({
             role="tooltip"
             style={{ top: pos.top, left: pos.left }}
             className={cx(
-              'bg-surface-3 text-ink shadow-e3 ring-line animate-fade pointer-events-none fixed z-50 max-w-56 -translate-x-1/2 rounded-md px-2.5 py-1.5 text-xs ring-1',
+              'bg-surface-3 text-ink shadow-e3 ring-line animate-fade pointer-events-none fixed z-50 max-w-56 rounded-md px-2.5 py-1.5 text-xs ring-1',
+              placement === 'right' ? '-translate-y-1/2' : '-translate-x-1/2',
               placement === 'top' ? '-translate-y-full' : '',
             )}
           >
