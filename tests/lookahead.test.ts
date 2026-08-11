@@ -10,6 +10,11 @@ import {
 } from '@/core/regime';
 import { mulberry32 } from '@/core/random';
 import { HOUR_MS } from '@/core/bars';
+import { persistentSwings, walkFromBars } from '@/core/geometry/swings';
+import { candidates } from '@/core/geometry/trendlines';
+import { fitChannel } from '@/core/geometry/channels';
+import { levelsFrom } from '@/core/geometry/levels';
+import { volumeProfile } from '@/core/geometry/volumeProfile';
 
 /**
  * The look-ahead suite — §14's exit condition for Phase 0.5.
@@ -221,6 +226,63 @@ describe('every derived feature is causal', () => {
       expect(volatilityPercentile(mutated.map((b) => b.c))).toEqual(fromOriginal);
       expect(fromOriginal).not.toBeNull();
     }
+  });
+});
+
+describe('Layer 2 geometry, which is what this harness was built a phase early for', () => {
+  const bars = series(140, 31);
+
+  it('persistence swings survive the strong test: a replaced future changes nothing visible', () => {
+    // `assertEmissionCausal` is the demanding one — it hands the detector the whole series and
+    // asks what a viewer at the cut could see, then replaces the future wholesale and asks again.
+    // This is the shape of the bug that ships in public packages: `smartmoneyconcepts` draws its
+    // clustering tolerance from the whole dataframe's range, and appending future bars takes the
+    // liquidity pools labelled *inside a fixed window* from three to nine.
+    //
+    // Swings pass because a swing is not emitted until its persistence is final, so there is
+    // nothing left for the future to revise.
+    assertEmissionCausal((series) => persistentSwings(walkFromBars(series)), bars);
+  });
+
+  it('is not passing that for want of anything to compare', () => {
+    expect(visibleAt(persistentSwings(walkFromBars(bars)), 60).length).toBeGreaterThan(5);
+  });
+
+  it('levels inherit it, because they are stamped by their last supporter', () => {
+    assertEmissionCausal(
+      (series) => levelsFrom(persistentSwings(walkFromBars(series)), atr(series) ?? 1),
+      bars,
+    );
+  });
+
+  it('hull-derived lines are prefix-causal, which is a different and weaker claim', () => {
+    // A trendline is knowable the moment its second anchor prints, so it passes the prefix test:
+    // handed the bars a viewer could see, it uses nothing else.
+    assertPrefixCausal((prefix) => candidates(prefix, 'upper'), bars);
+    assertPrefixCausal((prefix) => fitChannel(prefix), bars);
+  });
+
+  it('and must therefore be computed on the prefix, never filtered from the whole series', () => {
+    // The distinction matters enough to assert rather than describe. The hull is causal but **not
+    // monotone in time** — a new high pops the vertices that anchored yesterday's line, which is
+    // correct, because a new high invalidates the old resistance line by definition.
+    //
+    // So `visibleAt(candidates(everything), t)` is *not* what a viewer at t would have drawn, and
+    // whoever wires this into the API in 2b needs to know that before they write the convenient
+    // thing. Here the two disagree outright.
+    const cut = 60;
+    const fromPrefix = candidates(bars.slice(0, cut + 1), 'upper');
+    const filtered = visibleAt(candidates(bars, 'upper'), cut);
+    expect(filtered).not.toEqual(fromPrefix);
+
+    // Neither is a leak: both use only bars at or before the cut. The prefix one is the honest
+    // rendering, and it is the one that is stable when the future is replaced.
+    const mutated = candidates(mutateFuture(bars, cut).slice(0, cut + 1), 'upper');
+    expect(mutated).toEqual(fromPrefix);
+  });
+
+  it('the volume profile reads only the bars it is handed', () => {
+    assertPrefixCausal((prefix) => volumeProfile(prefix, 1), bars);
   });
 });
 
