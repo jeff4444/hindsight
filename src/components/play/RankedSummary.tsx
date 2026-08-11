@@ -2,7 +2,7 @@
 
 import type { RankedPayload } from '@/lib/api-types';
 import { FORFEIT_IMP } from '@/core/ranked';
-import { Button, Eyebrow, cx } from '../ui';
+import { Button, Eyebrow, cx, Panel } from '../ui';
 
 /**
  * The end of a ranked session.
@@ -20,21 +20,21 @@ export function RankedSummary({ ranked }: { ranked: RankedPayload }) {
   if (!result) return null;
 
   return (
-    <div className="bg-surface-2 border-line shadow-panel animate-rise rounded-lg border p-4">
+    <Panel tone="hero" pad="none" className="animate-rise mx-auto w-full max-w-3xl p-5 md:p-8">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
         <div>
           <Eyebrow>Ranked session complete</Eyebrow>
           <div className="mt-0.5 flex items-baseline gap-2">
             <span
               className={cx(
-                'font-mono text-3xl font-semibold tabular-nums',
+                'numeral text-display-sm font-semibold',
                 result.total > 0 ? 'text-long-ink' : result.total < 0 ? 'text-short-ink' : 'text-ink-hi',
               )}
             >
               {result.total > 0 ? '+' : ''}
               {result.total}
             </span>
-            <span className="text-ink-dim text-xs">compressed, across {ranked.total} charts</span>
+            <span className="text-ink-dim text-sm">compressed, across {ranked.total} charts</span>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -66,7 +66,7 @@ export function RankedSummary({ ranked }: { ranked: RankedPayload }) {
           >
             <div
               className={cx(
-                'font-mono text-lg font-semibold tabular-nums',
+                'numeral text-xl font-semibold',
                 imp > 0 ? 'text-long-ink' : imp < 0 ? 'text-short-ink' : 'text-ink-lo',
               )}
             >
@@ -80,7 +80,7 @@ export function RankedSummary({ ranked }: { ranked: RankedPayload }) {
         ))}
       </div>
 
-      <p className="text-ink-dim mt-4 text-xs leading-relaxed">
+      <p className="text-ink-lo mt-5 max-w-prose text-sm leading-relaxed">
         {result.quotaMet ? (
           <>
             Traded {result.entries} of {ranked.total}, passed {result.passes}. Your rating moved on
@@ -96,6 +96,6 @@ export function RankedSummary({ ranked }: { ranked: RankedPayload }) {
           </span>
         )}
       </p>
-    </div>
+    </Panel>
   );
 }

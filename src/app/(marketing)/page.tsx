@@ -1,9 +1,8 @@
 import Link from 'next/link';
-import { currentViewer } from '@/lib/viewer';
-import { Button, Eyebrow } from '@/components/ui';
+import { Button, Eyebrow, Panel, Tier } from '@/components/ui';
+import { Icon } from '@/components/ui/icons';
 import { MarketSignature } from '@/components/ui/MarketSignature';
-
-export const dynamic = 'force-dynamic';
+import { HeroReveal } from '@/components/marketing/HeroReveal';
 
 /**
  * The front door.
@@ -13,224 +12,286 @@ export const dynamic = 'force-dynamic';
  * mechanic and shows the honest arithmetic behind it, which is the only claim the product can
  * actually defend.
  *
- * There is no redirect for a signed-in visitor. People link the landing page, a redirect makes it
- * uncacheable and produces a flash, and someone who arrives here already signed in wants a resume
- * affordance rather than a bounce.
+ * Two things changed structurally.
+ *
+ * **The hero shows the game.** It used to be nine generated avatars — which showed the identity
+ * system and nothing about what you do here. The reveal is the product's one genuinely unusual
+ * idea and it has to be seen moving.
+ *
+ * **The sections are bands rather than a stack of hairlines.** Five identically-spaced
+ * `border-t py-14` blocks in a single column gave the page no rhythm at all; alternating
+ * full-bleed surfaces do most of the work of making a long page readable.
+ *
+ * No redirect for a signed-in visitor. People link the landing page, a redirect makes it
+ * uncacheable and produces a flash, and someone who arrives already signed in wants a resume
+ * affordance rather than a bounce — the header has one.
  */
-export default async function Landing() {
-  const viewer = await currentViewer();
-  const signedIn = Boolean(viewer.profile);
-
+export default function Landing() {
   return (
-    <div className="min-h-dvh">
-      <header className="max-w-app mx-auto flex items-center justify-between px-5 py-5">
-        <span className="text-ink-hi tracking-wordmark text-sm font-semibold">HINDSIGHT</span>
-        <nav className="flex items-center gap-1.5">
-          <Link
-            href="/rules"
-            className="text-ink-lo hover:text-ink-hi hidden h-9 items-center px-3 text-xs font-medium transition-colors sm:inline-flex"
-          >
-            Ruleset
-          </Link>
-          {signedIn ? (
-            <Button as="a" href="/home" variant="primary">
-              Your desk
-            </Button>
-          ) : (
-            <>
-              <Button as="a" href="/sign-in" variant="ghost">
-                Sign in
-              </Button>
-              <Button as="a" href="/play" variant="primary">
-                Play today
-              </Button>
-            </>
-          )}
-        </nav>
-      </header>
-
-      <main className="max-w-app mx-auto px-5">
-        {/* ------------------------------------------------------------ hero */}
-        <section className="grid items-center gap-10 py-12 lg:grid-cols-[1.05fr_1fr] lg:py-20">
+    <>
+      {/* ------------------------------------------------------------- hero */}
+      <Band>
+        <div className="grid items-center gap-10 py-14 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:py-24">
           <div data-stagger>
             <h1
-              className="text-ink-max text-3xl font-semibold text-balance xl:text-4xl"
+              className="text-ink-max text-3xl font-semibold text-balance md:text-4xl xl:text-display"
               style={{ '--i': 0 } as React.CSSProperties}
             >
               You cannot learn to trade from a chart you can scroll.
             </h1>
             <p
-              className="text-ink-lo mt-5 max-w-prose text-base"
+              className="text-ink mt-6 max-w-prose text-lg md:text-xl"
               style={{ '--i': 1 } as React.CSSProperties}
             >
-              You get eighty candles, no ticker and no date. Place a stop and a target, and watch
-              the next sixty play out. Then — and this is the part nobody else does — you are
-              scored against <em className="text-ink-hi not-italic">every bracket that was
-              placeable on that exact path</em>, not against whether you happened to profit.
+              Eighty candles, no ticker, no date. Place a stop and a target, then watch the next
+              sixty play out. And then — this is the part nobody else does — you are scored against{' '}
+              <em className="text-ink-max not-italic">every bracket that was placeable on that exact
+              path</em>, not against whether you happened to profit.
             </p>
-            <div className="mt-7 flex flex-wrap items-center gap-2.5" style={{ '--i': 2 } as React.CSSProperties}>
-              <Button as="a" href="/play" variant="primary" size="lg">
+            <div
+              className="mt-8 flex flex-wrap items-center gap-3"
+              style={{ '--i': 2 } as React.CSSProperties}
+            >
+              <Button as="a" href="/play" variant="primary" size="xl" glow="brand">
                 Play today&rsquo;s daily
               </Button>
-              <Button as="a" href="/tapes" variant="secondary" size="lg">
+              <Button as="a" href="/tapes" variant="secondary" size="xl">
                 Browse tapes
               </Button>
             </div>
-            <p className="text-ink-faint text-mini mt-4 font-mono" style={{ '--i': 3 } as React.CSSProperties}>
-              1,000 charts · 98 outcomes scored per chart · no future data on the client · no account needed
+            <p
+              className="text-ink-faint numeral mt-5 text-xs"
+              style={{ '--i': 3 } as React.CSSProperties}
+            >
+              1,000 charts · 98 outcomes scored per chart · no future data on the client · no
+              account needed
             </p>
           </div>
 
-          <HeroFigure />
-        </section>
+          <HeroReveal />
+        </div>
+      </Band>
 
-        {/* ------------------------------------------------- the moat, shown */}
-        <section className="border-line-faint border-t py-14">
+      {/* --------------------------------------------------- one round works */}
+      <Band tone="raised">
+        <div className="py-16">
+          <Eyebrow>One round</Eyebrow>
+          <h2 className="text-ink-max mt-2 max-w-prose text-2xl font-semibold text-balance md:text-3xl">
+            Commit before you know, then watch it happen.
+          </h2>
+          <div className="mt-10 grid gap-4 sm:grid-cols-3" data-stagger>
+            {STEPS.map((step, i) => (
+              <Panel key={step.title} pad="md" style={{ '--i': i } as React.CSSProperties}>
+                <span className="bg-fill-1 text-ink-hi grid h-10 w-10 place-items-center rounded-full">
+                  <Icon name={step.icon} size={19} />
+                </span>
+                <h3 className="text-ink-hi mt-4 text-base font-semibold">{step.title}</h3>
+                <p className="text-ink-lo mt-2 text-sm leading-relaxed">{step.body}</p>
+              </Panel>
+            ))}
+          </div>
+        </div>
+      </Band>
+
+      {/* ------------------------------------------------------ the moat */}
+      <Band>
+        <div className="py-16">
           <Eyebrow>Why a percentile and not a P&amp;L</Eyebrow>
-          <h2 className="text-ink-max mt-2 max-w-prose text-xl font-semibold text-balance">
+          <h2 className="text-ink-max mt-2 max-w-prose text-2xl font-semibold text-balance md:text-3xl">
             A single result is mostly luck. The set of results is not.
           </h2>
-          <p className="text-ink-lo mt-4 max-w-prose text-sm leading-relaxed">
+          <p className="text-ink-lo mt-5 max-w-prose text-base leading-relaxed">
             Because every player gets the identical future, the set of outcomes is finite — so it is
             counted rather than estimated. Two directions, seven stop distances, seven targets: 98
             brackets, each resolved on the same one-minute path your own trade is. Your score is
             where you landed among them.
           </p>
-          <div className="mt-8 grid gap-3 sm:grid-cols-3" data-stagger>
-            {[
-              ['98', 'brackets enumerated per chart', 'Exact, not sampled. The same chart yields the same distribution forever.'],
-              ['19R', 'median oracle', 'The best any stop and target could have done. It is a real bracket, not a ceiling.'],
-              ['61st', 'percentile for passing', 'Restraint is scored. On most charts it beats most entries — and we publish that.'],
-            ].map(([figure, label, body], i) => (
-              <div
-                key={label}
-                className="bg-surface-2 border-line shadow-panel rounded-lg border p-4"
-                style={{ '--i': i } as React.CSSProperties}
-              >
-                <div className="text-ink-max font-mono text-2xl font-semibold tabular-nums">{figure}</div>
-                <div className="eyebrow text-ink-dim mt-1">{label}</div>
-                <p className="text-ink-lo mt-2 text-xs leading-relaxed">{body}</p>
-              </div>
+
+          <div className="mt-10 grid gap-4 sm:grid-cols-3" data-stagger>
+            {FIGURES.map(([figure, label, body], i) => (
+              <Panel key={label} pad="md" style={{ '--i': i } as React.CSSProperties}>
+                <div className="numeral text-ink-max text-display-sm font-semibold">{figure}</div>
+                <div className="eyebrow text-ink-dim mt-2">{label}</div>
+                <p className="text-ink-lo mt-2.5 text-sm leading-relaxed">{body}</p>
+              </Panel>
             ))}
           </div>
-        </section>
+        </div>
+      </Band>
 
-        {/* --------------------------------------------------------- honesty */}
-        <section className="border-line-faint border-t py-14">
-          <Eyebrow>The uncomfortable part</Eyebrow>
-          <h2 className="text-ink-max mt-2 max-w-prose text-xl font-semibold text-balance">
-            Passing everything scores a mean 61st percentile. We are telling you that up front.
-          </h2>
-          <p className="text-ink-lo mt-4 max-w-prose text-sm leading-relaxed">
-            The grid is direction-symmetric, so half of it is always on the wrong side and stops at
-            exactly −1R — which puts doing nothing above the median on 95% of charts. It never
-            exceeds the 80th, so it is a baseline a reader has to beat, not a free win. No fixed
-            bracket beats it either; the best one measured across the corpus manages 57.7th.
-            <br />
-            <Link href="/rules" className="text-ink-hi mt-3 inline-block underline underline-offset-4">
-              The whole ruleset, including the parts that do not flatter us →
+      {/* ---------------------------------------------------------- honesty */}
+      <Band tone="raised">
+        <div className="grid gap-10 py-16 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-center">
+          <div>
+            <Eyebrow>The uncomfortable part</Eyebrow>
+            <p className="text-ink-max mt-4 text-2xl font-semibold text-balance md:text-3xl">
+              &ldquo;Passing everything scores a mean 61st percentile.&rdquo;
+            </p>
+            <p className="text-ink-dim mt-3 text-sm">
+              We are telling you that up front, on the front page.
+            </p>
+          </div>
+          <div>
+            <p className="text-ink-lo max-w-prose text-base leading-relaxed">
+              The grid is direction-symmetric, so half of it is always on the wrong side and stops
+              at exactly −1R — which puts doing nothing above the median on 95% of charts. It never
+              exceeds the 80th, so it is a baseline a reader has to beat, not a free win. No fixed
+              bracket beats it either; the best one measured across the corpus manages 57.7th.
+            </p>
+            <Link
+              href="/rules"
+              className="text-brand-ink mt-5 inline-flex items-center gap-1.5 text-base font-medium underline underline-offset-4"
+            >
+              The whole ruleset, including the parts that do not flatter us
+              <Icon name="arrow-up-right" size={15} />
             </Link>
-          </p>
-        </section>
+          </div>
+        </div>
+      </Band>
 
-        {/* ----------------------------------------------------------- ladder */}
-        <section className="border-line-faint border-t py-14">
+      {/* ----------------------------------------------------------- ladder */}
+      <Band>
+        <div className="py-16">
           <Eyebrow>The ruleset ladder</Eyebrow>
-          <h2 className="text-ink-max mt-2 text-xl font-semibold">One tier exists today. Four do not.</h2>
-          <div className="mt-6 flex flex-wrap gap-2">
-            {[
-              ['FD', 'Full Desk', false],
-              ['NN', 'News Blind', false],
-              ['NT', 'No Tools', false],
-              ['NTZ', 'Naked', true],
-              ['NTVZ', 'Blackout', false],
-            ].map(([code, name, live]) => (
-              <div
-                key={code as string}
-                className={
-                  live
-                    ? 'border-info-line bg-info-bg rounded-lg border px-4 py-3'
-                    : 'border-line-faint rounded-lg border border-dashed px-4 py-3 opacity-55'
-                }
-              >
-                <div className={live ? 'text-info-ink font-mono text-sm font-semibold' : 'text-ink-faint font-mono text-sm'}>
-                  {code}
-                </div>
-                <div className={live ? 'text-ink-hi mt-0.5 text-xs' : 'text-ink-faint mt-0.5 text-xs'}>{name}</div>
-                {!live && <div className="text-ink-faint text-micro mt-1">soon</div>}
-              </div>
+          <h2 className="text-ink-max mt-2 text-2xl font-semibold md:text-3xl">
+            One tier exists today. Four do not.
+          </h2>
+          <div className="mt-8 flex flex-wrap gap-3">
+            {TIERS.map(([code, name, live]) => (
+              <Tier
+                key={code}
+                code={code}
+                name={name}
+                state={live ? 'live' : 'soon'}
+                className={live ? 'min-w-36' : 'min-w-32'}
+              />
             ))}
           </div>
-          <p className="text-ink-dim mt-4 max-w-prose text-xs leading-relaxed">
+          <p className="text-ink-lo mt-6 max-w-prose text-sm leading-relaxed">
             Naked is the ranked standard: 80 candles, one timeframe, volume, an ATR badge, set and
-            forget. §3.1 draws the line — identity, hindsight and crutches get restricted; the price
-            axis, the volatility badge and tick size never do, because hiding those does not test
-            skill, it randomises the result.
+            forget. Identity, hindsight and crutches get restricted; the price axis, the volatility
+            badge and tick size never do — hiding those does not test skill, it randomises the
+            result.
           </p>
-        </section>
+        </div>
+      </Band>
 
-        {/* -------------------------------------------------------------- card */}
-        <section className="border-line-faint grid gap-8 border-t py-14 lg:grid-cols-2">
+      {/* ------------------------------------------------------------- card */}
+      <Band tone="raised">
+        <div className="grid items-center gap-10 py-16 lg:grid-cols-2">
           <div>
             <Eyebrow>The share card</Eyebrow>
-            <h2 className="text-ink-max mt-2 text-xl font-semibold">Nothing on it can spoil the chart.</h2>
-            <p className="text-ink-lo mt-4 max-w-prose text-sm leading-relaxed">
+            <h2 className="text-ink-max mt-2 text-2xl font-semibold md:text-3xl">
+              Nothing on it can spoil the chart.
+            </h2>
+            <p className="text-ink-lo mt-5 max-w-prose text-base leading-relaxed">
               A percentile, a bar, and how many of the five you were willing to trade. Never the
               R-multiple, the direction, the ticker or the date. Plain Unicode — no image, no link —
               so it survives being pasted anywhere.
             </p>
           </div>
-          <pre className="border-line bg-surface-1 text-ink self-center rounded-lg border p-4 font-mono text-sm leading-relaxed">
+          <pre className="border-line bg-surface-1 text-ink shadow-e1 self-center rounded-xl border p-6 font-mono text-base leading-relaxed">
             {'HINDSIGHT #412 · NTZ · 78th\n████████░░\ntraded 3 of 5'}
           </pre>
-        </section>
+        </div>
+      </Band>
 
-        <section className="border-line-faint border-t py-16 text-center">
-          <h2 className="text-ink-max text-2xl font-semibold text-balance">
+      {/* ------------------------------------------------------- signatures */}
+      <Band>
+        <div className="py-16">
+          <div className="flex flex-wrap items-end justify-between gap-6">
+            <div>
+              <Eyebrow>Make it yours</Eyebrow>
+              <h2 className="text-ink-max mt-2 text-2xl font-semibold md:text-3xl">
+                A signature, generated from a seed.
+              </h2>
+              <p className="text-ink-lo mt-4 max-w-prose text-base leading-relaxed">
+                Rerolled until one looks like you, and never uploaded. It gilds when your streak is
+                perfect.
+              </p>
+            </div>
+            <Button as="a" href="/sign-in" variant="secondary" size="lg">
+              Claim one
+            </Button>
+          </div>
+          <div className="mt-8 flex flex-wrap gap-5" data-stagger>
+            {SEEDS.map((seed, i) => (
+              <div key={seed} style={{ '--i': i } as React.CSSProperties}>
+                <MarketSignature
+                  seed={seed}
+                  accent={ACCENTS[i % ACCENTS.length]}
+                  size={64}
+                  ring={i === 2 ? 'gold' : 'accent'}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      </Band>
+
+      {/* -------------------------------------------------------- final CTA */}
+      <Band tone="raised">
+        <div className="py-20 text-center">
+          <h2 className="text-ink-max mx-auto max-w-2xl text-3xl font-semibold text-balance md:text-4xl">
             Today&rsquo;s daily is five charts. About six minutes.
           </h2>
-          <div className="mt-6 flex justify-center">
-            <Button as="a" href="/play" variant="primary" size="lg">
+          <div className="mt-8 flex justify-center">
+            <Button as="a" href="/play" variant="primary" size="xl" glow="brand">
               Start
             </Button>
           </div>
-          <p className="text-ink-faint mt-3 text-xs">No account needed. Sign in later to keep it.</p>
-        </section>
-      </main>
-
-      <footer className="border-line-faint border-t">
-        <div className="max-w-app text-ink-faint mx-auto flex flex-wrap items-center justify-between gap-3 px-5 py-6 text-xs">
-          <span>Historical price data from the public Binance archive.</span>
-          <span>Not investment advice. Nothing here predicts anything.</span>
+          <p className="text-ink-dim mt-4 text-sm">No account needed. Sign in later to keep it.</p>
         </div>
-      </footer>
-    </div>
+      </Band>
+    </>
   );
 }
 
 /**
- * A wall of signatures.
+ * A full-bleed section.
  *
- * Deliberately not a screenshot of the chart: a static chart image cannot distinguish this product
- * from a bar-replay tool, and the reveal is the thing that has to be seen moving. These are real
- * generated avatars, which shows the identity system and gives the page something alive that costs
- * no data, no chart bundle and — crucially — carries no price path a player could learn from.
+ * The alternation is what gives a long page rhythm. Doing it as a full-width surface with an inner
+ * max-width, rather than as a hairline rule, means the eye gets a real boundary at any viewport.
  */
-function HeroFigure() {
-  const seeds = [10_193, 4_402_919, 88_317, 1_337_244, 55_120, 902_355, 71_004, 660_918, 13_579];
-  const accents = ['ember', 'signal', 'frost', 'moss', 'violet', 'slate'] as const;
+function Band({ tone = 'flush', children }: { tone?: 'flush' | 'raised'; children: React.ReactNode }) {
   return (
-    <div className="border-line bg-surface-1 rounded-xl border p-5">
-      <div className="grid grid-cols-3 gap-4" data-stagger>
-        {seeds.map((seed, i) => (
-          <div key={seed} className="flex justify-center" style={{ '--i': i } as React.CSSProperties}>
-            <MarketSignature seed={seed} accent={accents[i % accents.length]} size={84} ring="accent" />
-          </div>
-        ))}
-      </div>
-      <p className="text-ink-dim mt-5 text-center text-xs">
-        Every player gets a market signature — generated from a seed you can reroll, never uploaded.
-      </p>
-    </div>
+    <section className={tone === 'raised' ? 'bg-surface-1/60 border-line-faint border-y' : ''}>
+      <div className="max-w-app mx-auto px-5">{children}</div>
+    </section>
   );
 }
+
+const STEPS = [
+  {
+    icon: 'rail' as const,
+    title: 'Place',
+    body: 'Drag a stop and a target over eighty candles. Direction is implied by which side of the entry your stop sits on, so the bracket is the whole decision.',
+  },
+  {
+    icon: 'candle' as const,
+    title: 'Reveal',
+    body: 'Sixty candles arrive one at a time against the bracket you already committed. You cannot move it, and you cannot scroll ahead.',
+  },
+  {
+    icon: 'distribution' as const,
+    title: 'Rank',
+    body: 'Your result is placed among the 98 brackets that were possible on that exact path — with the oracle, the median, and what your stop would have survived.',
+  },
+];
+
+const FIGURES: [string, string, string][] = [
+  ['98', 'brackets enumerated per chart', 'Exact, not sampled. The same chart yields the same distribution forever.'],
+  ['19R', 'median oracle', 'The best any stop and target could have done. It is a real bracket, not a ceiling.'],
+  ['61st', 'percentile for passing', 'Restraint is scored. On most charts it beats most entries — and we publish that.'],
+];
+
+const TIERS: [string, string, boolean][] = [
+  ['FD', 'Full Desk', false],
+  ['NN', 'News Blind', false],
+  ['NT', 'No Tools', false],
+  ['NTZ', 'Naked', true],
+  ['NTVZ', 'Blackout', false],
+];
+
+const SEEDS = [10_193, 4_402_919, 88_317, 1_337_244, 55_120, 902_355, 71_004, 660_918];
+const ACCENTS = ['ember', 'signal', 'frost', 'moss', 'violet', 'slate'] as const;

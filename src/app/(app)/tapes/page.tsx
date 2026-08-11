@@ -23,28 +23,31 @@ export default async function TapesPage() {
   return (
     <div className="mx-auto max-w-5xl">
       <Eyebrow>Practice, unlimited and unmetered</Eyebrow>
-      <h1 className="text-ink-max mt-1 text-xl font-semibold">Tapes</h1>
-      <p className="text-ink-lo mt-2 max-w-prose text-sm leading-relaxed">
+      <h1 className="text-ink-max mt-1 text-2xl font-semibold">Tapes</h1>
+      <p className="text-ink-lo mt-3 max-w-prose text-base leading-relaxed">
         A tape is a slice of the corpus defined by a published rule over the regime tags — never
         hand-picked, because curating for &ldquo;interesting&rdquo; charts changes the difficulty
         distribution and invalidates every statistic computed on it.
       </p>
 
-      <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-3" data-stagger>
-        {open.map((tape, i) => (
-          <TapeCard key={tape.slug} tape={tape} index={i} />
-        ))}
-      </div>
+      <section className="mt-10">
+        <h2 className="text-ink-max text-xl font-semibold">Open now</h2>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" data-stagger>
+          {open.map((tape, i) => (
+            <TapeCard key={tape.slug} tape={tape} index={i} />
+          ))}
+        </div>
+      </section>
 
       {locked.length > 0 && (
         <section className="mt-12">
-          <Eyebrow>Not open yet</Eyebrow>
-          <p className="text-ink-dim mt-2 max-w-prose text-xs leading-relaxed">
+          <h2 className="text-ink-max text-xl font-semibold">Not open yet</h2>
+          <p className="text-ink-lo mt-3 max-w-prose text-sm leading-relaxed">
             A tape&rsquo;s filter has to be computable from the lead-in alone. Anything derived from
             the reveal path would announce the answer in the tape&rsquo;s own name — which is why
             the one below is locked rather than shipped.
           </p>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {locked.map((tape) => (
               <TapeCard key={tape.slug} tape={tape} />
             ))}

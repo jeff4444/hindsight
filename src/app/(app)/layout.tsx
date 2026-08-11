@@ -1,4 +1,7 @@
+import { Suspense } from 'react';
 import { AppShell } from '@/components/shell/AppShell';
+import { DailyLauncher, DailyLauncherSkeleton } from '@/components/shell/DailyLauncher';
+import { ToastProvider } from '@/components/ui/client';
 import { currentViewer, getStreak } from '@/lib/viewer';
 
 export const dynamic = 'force-dynamic';
@@ -9,26 +12,38 @@ export const dynamic = 'force-dynamic';
  * Anonymous play is a first-class state (§14 calls the raw loop the most important gate in the
  * product, and §10.4 forbids metering the daily or practice), so the shell renders for everyone
  * and only the account-shaped surfaces ask for one.
+ *
+ * `ToastProvider` renders no wrapper element of its own, which is the only reason it is safe to
+ * mount here: the play route lives under this layout, and a `<div>` wrapped around `children`
+ * would be an ancestor of the chart frame.
  */
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const viewer = await currentViewer();
   const streak = viewer.profile ? await getStreak(viewer) : null;
 
   return (
-    <AppShell
-      viewer={
-        viewer.profile
-          ? {
-              handle: viewer.profile.handle,
-              displayName: viewer.profile.displayName,
-              avatarSeed: viewer.profile.avatarSeed,
-              avatarAccent: viewer.profile.avatarAccent,
-              perfectStreak: streak?.perfect ?? false,
-            }
-          : null
-      }
-    >
-      {children}
-    </AppShell>
+    <ToastProvider>
+      <AppShell
+        viewer={
+          viewer.profile
+            ? {
+                handle: viewer.profile.handle,
+                displayName: viewer.profile.displayName,
+                avatarSeed: viewer.profile.avatarSeed,
+                avatarAccent: viewer.profile.avatarAccent,
+                perfectStreak: streak?.perfect ?? false,
+                streakLength: streak?.length ?? 0,
+              }
+            : null
+        }
+        launcher={
+          <Suspense fallback={<DailyLauncherSkeleton />}>
+            <DailyLauncher />
+          </Suspense>
+        }
+      >
+        {children}
+      </AppShell>
+    </ToastProvider>
   );
 }

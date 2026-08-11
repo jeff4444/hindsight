@@ -30,14 +30,19 @@ export function TapeLaunch({ slug, locked }: { slug: string; locked: boolean }) 
     <div className="space-y-6">
       <div>
         <Eyebrow>Ruleset</Eyebrow>
-        <div className="mt-2 grid gap-2 sm:grid-cols-2">
+        {/* A mutually exclusive choice is a radio group, not a row of toggles: `aria-pressed`
+            announces each tier as an independent on/off, which is not what picking a ruleset is.
+            Roving tabindex keeps the whole ladder to one tab stop with arrows inside it. */}
+        <div role="radiogroup" aria-label="Ruleset" className="mt-2 grid gap-2 sm:grid-cols-2">
           {TIERS.map((option) => {
             const active = option.code === tier;
             return (
               <button
                 key={option.code}
                 type="button"
-                aria-pressed={active}
+                role="radio"
+                aria-checked={active}
+                tabIndex={active ? 0 : -1}
                 onClick={() => setTier(option.code)}
                 className={cx(
                   'press rounded-md border p-3 text-left transition-colors',

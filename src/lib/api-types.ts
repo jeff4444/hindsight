@@ -158,6 +158,29 @@ export interface RevealPayload {
  * card. Nothing here carries the future: `round` is the same lead-in-only projection free play
  * uses, and the card is spoiler-free by construction (§10.4).
  */
+export interface DailyResult {
+  /** Position in the session, 0-indexed. */
+  index: number;
+  passed: boolean;
+  percentile: number | null;
+}
+
+/**
+ * What completing a daily did to the streak.
+ *
+ * `before` and `after` are read either side of `record_daily_completion`, so the ceremony can
+ * animate the increment rather than simply displaying the new total. Null for an anonymous
+ * player, who has no streak to move.
+ */
+export interface StreakDelta {
+  before: number;
+  after: number;
+  /** §10.3's gold state: no freeze and no repair anywhere in the current run. */
+  perfect: boolean;
+  freezesRemaining: number;
+  longest: number;
+}
+
 export interface DailyPayload {
   day: number;
   complete: boolean;
@@ -168,6 +191,15 @@ export interface DailyPayload {
   traded: number;
   /** Mean percentile across the session, once complete. */
   percentile: number | null;
+  /**
+   * Per-chart outcomes, once complete.
+   *
+   * Not future data: every one of these has been committed and revealed to this player already.
+   * It exists so the completion screen can show the *shape* of the day — which of the five were
+   * traded, which were passed, how each scored — rather than only its mean.
+   */
+  results: DailyResult[];
+  streak: StreakDelta | null;
   card: string | null;
   round: RoundPayload | null;
 }

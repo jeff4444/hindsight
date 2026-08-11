@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef } from 'react';
 import type { Bar } from '@/core/bars';
-import { LEAD_IN_BARS } from '@/core/config';
+
 import type { RoundResult } from '@/lib/api-types';
 import {
   finalView,
@@ -12,6 +12,7 @@ import {
   settled,
   step,
   type View,
+  type Window,
 } from '@/lib/camera';
 import { exitColour } from '@/lib/palette';
 import type { ChartHandle } from '../Chart';
@@ -61,6 +62,14 @@ export interface RevealRefs {
    * stops defaulting it.
    */
   tau: React.RefObject<number>;
+  /**
+   * The candle counts this round actually issued.
+   *
+   * Not a constant since the ladder: a tier can grant 60, 80 or 300 candles of history, so the
+   * decision bar's index — which every camera target and every `revealHour` call is relative to —
+   * changes per round.
+   */
+  window: React.RefObject<Window>;
 }
 
 export interface RevealCallbacks {
@@ -87,11 +96,62 @@ export function useRevealLoop(refs: RevealRefs, callbacks: RevealCallbacks) {
     frame.current = null;
   }, []);
 
+  /**
+   * The camera pre-roll, run the instant the player commits and before the server answers.
+   *
+   * `submit` sets the phase to `committing` before awaiting the network, so there is a hole of
+   * however long the round trip takes in which the screen has been told something happened and
+   * shows nothing. Easing to the close-up during that hole turns latency into a camera move: by
+   * the time the future arrives the chart is already framed for it, and `start()` picks the camera
+   * up wherever this left it because it seeds from `getLogical()` rather than from an assumption.
+   *
+   * Deliberately no bar work and no state — this only moves the view, so if the request fails the
+   * chart is merely zoomed in and `load()` resets it.
+   */
+  const prime = useCallback(() => {
+    const { chart, shown, rails, frame, tau, window: win } = r.current;
+    const chartApi = chart.current;
+    if (!chartApi) return;
+
+    if (frame.current !== null) cancelAnimationFrame(frame.current);
+    chartApi.setInteractive(false);
+
+    const logical = chartApi.getLogical();
+    const price = chartApi.getPrice();
+    const opening = focusView(win.current);
+    const target: View = {
+      ...opening,
+      ...priceExtent(shown.current, opening.from, opening.to, rails.current),
+    };
+    const camera: View = {
+      from: logical?.from ?? opening.from,
+      to: logical?.to ?? opening.to,
+      ...(price ?? priceExtent(shown.current, opening.from, opening.to, rails.current)),
+    };
+
+    let last = performance.now();
+    const tick = (now: number) => {
+      const dt = Math.min(now - last, 64);
+      last = now;
+      step(camera, target, dt, tau.current);
+      chartApi.setLogical({ from: camera.from, to: camera.to });
+      chartApi.setPrice({ min: camera.min, max: camera.max });
+      // No settle test: `start()` cancels this the moment the reveal begins, and if the commit
+      // fails the reset in `load()` ends it. Stopping early would leave the camera short of the
+      // close-up with nothing scheduled to finish the move.
+      frame.current = requestAnimationFrame(tick);
+    };
+    frame.current = requestAnimationFrame(tick);
+  }, []);
+
   const start = useCallback(() => {
-    const { chart, reveal, shown, rails, revealed, speed, paused, result, frame, tau } = r.current;
+    const { chart, reveal, shown, rails, revealed, speed, paused, result, frame, tau, window: win } = r.current;
     const total = reveal.current.length;
     const chartApi = chart.current;
     if (!chartApi || total === 0) return;
+
+    // The pre-roll may still be running its own frame against the same slot.
+    if (frame.current !== null) cancelAnimationFrame(frame.current);
 
     revealed.current = 0;
     cb.current.onRevealed(0);
@@ -101,7 +161,7 @@ export function useRevealLoop(refs: RevealRefs, callbacks: RevealCallbacks) {
     // from their view rather than a jump from an assumed one.
     const logical = chartApi.getLogical();
     const price = chartApi.getPrice();
-    const opening = focusView();
+    const opening = focusView(win.current);
     const camera: View = {
       from: logical?.from ?? opening.from,
       to: logical?.to ?? opening.to,
@@ -123,7 +183,7 @@ export function useRevealLoop(refs: RevealRefs, callbacks: RevealCallbacks) {
           carry -= perBar;
           const index = revealed.current;
           const bar = reveal.current[index];
-          chartApi.revealHour(bar, LEAD_IN_BARS + index);
+          chartApi.revealHour(bar, win.current.leadIn + index);
           shown.current.push(bar);
           revealed.current = index + 1;
 
@@ -148,8 +208,8 @@ export function useRevealLoop(refs: RevealRefs, callbacks: RevealCallbacks) {
 
       const done = revealed.current >= total;
       const view = done
-        ? finalView(shown.current, rails.current)
-        : revealTarget(revealed.current, total, shown.current, rails.current);
+        ? finalView(shown.current, rails.current, win.current)
+        : revealTarget(revealed.current, total, shown.current, rails.current, win.current);
 
       step(camera, view, dt, tau.current);
       chartApi.setLogical({ from: camera.from, to: camera.to });
@@ -173,12 +233,12 @@ export function useRevealLoop(refs: RevealRefs, callbacks: RevealCallbacks) {
 
   /** Jump to the end without stopping the camera, which still eases into the final view. */
   const skip = useCallback(() => {
-    const { chart, reveal, shown, revealed, result } = r.current;
+    const { chart, reveal, shown, revealed, result, window: win } = r.current;
     const chartApi = chart.current;
     if (!chartApi) return;
 
     for (let i = revealed.current; i < reveal.current.length; i++) {
-      chartApi.revealHour(reveal.current[i], LEAD_IN_BARS + i);
+      chartApi.revealHour(reveal.current[i], win.current.leadIn + i);
       shown.current.push(reveal.current[i]);
     }
     const outcome = result.current;
@@ -193,5 +253,5 @@ export function useRevealLoop(refs: RevealRefs, callbacks: RevealCallbacks) {
     cb.current.onRevealed(reveal.current.length);
   }, []);
 
-  return { start, skip, stop };
+  return { start, skip, stop, prime };
 }

@@ -25,6 +25,16 @@ export function dailyNumber(nowMs: number): number {
   return Math.floor((nowMs - DAILY_EPOCH_UTC) / DAY_MS);
 }
 
+/**
+ * When the next daily opens: the next midnight UTC.
+ *
+ * Derived from the epoch rather than from a `Date` with local fields, so it lands on the same
+ * instant the day number rolls over regardless of where the clock reading it is.
+ */
+export function nextResetAt(nowMs: number = Date.now()): number {
+  return DAILY_EPOCH_UTC + (dailyNumber(nowMs) + 1) * DAY_MS;
+}
+
 /** Is `day` still open at `nowMs`? Today and yesterday are; older is not. */
 export function isDailyOpen(day: number, nowMs: number): boolean {
   const today = dailyNumber(nowMs);

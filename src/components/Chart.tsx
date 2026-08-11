@@ -334,8 +334,22 @@ export const Chart = forwardRef<ChartHandle, { className?: string }>(function Ch
 
     // Records the view in hours so a resize can restore it — lightweight-charts stores zoom as
     // a bar spacing in pixels, so a resize silently changes how many bars are on screen.
+    //
+    // The width check is what makes that restore actually work. `autoSize` gives the library its
+    // own ResizeObserver on this same element, registered inside `createChart` and therefore ahead
+    // of ours in the delivery order: on a resize it re-fits at the *preserved* bar spacing and
+    // emits that as a range change, so by the time our observer ran, the range we were about to
+    // restore had already been overwritten with the one we were trying to undo. Widening a
+    // collapsed pane to 1400px turned an 80-bar view into a 233-bar view, permanently.
+    //
+    // So a range change that arrives at a width we have not accepted yet is the library re-fitting,
+    // not the player zooming, and it is dropped. `lastWidth` advances only in the callback below,
+    // once the correct range has been put back — which also covers the change `applyHours` itself
+    // emits, since that one arrives at the new width too.
+    let lastWidth = container.current.clientWidth;
     const onRangeChange = (next: { from: number; to: number } | null) => {
       if (!next) return;
+      if ((container.current?.clientWidth ?? lastWidth) !== lastWidth) return;
       const perHour = 60 / tier.current;
       logical.current = { from: next.from / perHour, to: next.to / perHour };
     };
@@ -344,6 +358,7 @@ export const Chart = forwardRef<ChartHandle, { className?: string }>(function Ch
     const observer = new ResizeObserver(() =>
       requestAnimationFrame(() => {
         if (logical.current) applyHours(logical.current);
+        lastWidth = container.current?.clientWidth ?? lastWidth;
       }),
     );
     observer.observe(container.current);

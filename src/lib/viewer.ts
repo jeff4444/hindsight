@@ -1,4 +1,5 @@
 import 'server-only';
+import { cache } from 'react';
 import { serviceClient } from './supabase/server';
 import { authClient } from './supabase/auth-server';
 import { SESSION_COOKIE, ensureSession, readSession } from './session';
@@ -34,7 +35,16 @@ export interface Viewer {
   profile: Profile | null;
 }
 
-export async function currentViewer(): Promise<Viewer> {
+/**
+ * Deduplicated per request.
+ *
+ * This does an auth round trip, a `play_sessions` lookup, sometimes a `claim_session` RPC, and a
+ * profile select — and it is called from the layout, the page, and now from each streamed section
+ * of a page independently. `cache()` is scoped to a single server request, so every caller in one
+ * render shares one answer and the work happens once. Without it, splitting `/home` into four
+ * Suspense boundaries would have quadrupled the identity lookup to buy a faster paint.
+ */
+export const currentViewer = cache(async function currentViewer(): Promise<Viewer> {
   const sessionId = await ensureSession();
   let userId: string | null = null;
   let email: string | null = null;
@@ -84,7 +94,7 @@ export async function currentViewer(): Promise<Viewer> {
     : null;
 
   return { sessionId, userId, email, profile };
-}
+});
 
 /** The session cookie has to be written from a route handler; pages only read it. */
 export async function sessionCookiePresent(): Promise<boolean> {
@@ -130,7 +140,17 @@ export async function getDailyState(viewer: Viewer, day = dailyNumber(Date.now()
 
 /* ------------------------------------------------------------------ streaks */
 
-export async function getStreak(viewer: Viewer): Promise<StreakView | null> {
+/**
+ * The streak, plus the day it was computed against.
+ *
+ * `today` rides along because every renderer of a streak needs it and it is already derived in
+ * here. Recomputing `dailyNumber(Date.now())` at the call site means two clock reads that can land
+ * either side of a UTC midnight, which would render a strip whose "today" cell is not the day the
+ * streak was evaluated for.
+ */
+export type StreakSnapshot = StreakView & { today: number };
+
+export async function getStreak(viewer: Viewer): Promise<StreakSnapshot | null> {
   if (!viewer.userId) return null;
   const supabase = serviceClient();
   const today = dailyNumber(Date.now());
@@ -170,7 +190,7 @@ export async function getStreak(viewer: Viewer): Promise<StreakView | null> {
   // burns one, and there is no cron job deciding their fate while they sleep.
   await applyStreakDecisions(viewer.userId, decisions);
 
-  return { ...view, longest: streak.data?.longest_length ?? 0 };
+  return { ...view, longest: streak.data?.longest_length ?? 0, today };
 }
 
 async function applyStreakDecisions(
@@ -303,4 +323,55 @@ export async function listTapes(): Promise<Tape[]> {
 export async function getTape(slug: string): Promise<Tape | null> {
   const tapes = await listTapes();
   return tapes.find((t) => t.slug === slug) ?? null;
+}
+
+/* ------------------------------------------------------------------ series */
+
+/**
+ * The player's recent percentiles, oldest first.
+ *
+ * A sparkline needs order, which the aggregate in `getPlayerStats` throws away. Capped rather than
+ * paginated: twenty points is as much shape as a 72px line can carry, and asking for the whole
+ * history to draw one would grow with the account forever.
+ *
+ * §4.9's rule still applies at the call site — this returns the numbers, and whether they are
+ * shown at all is `Gated`'s decision, not this function's.
+ */
+export async function getPercentileSeries(viewer: Viewer, limit = 20): Promise<number[]> {
+  const supabase = serviceClient();
+  const owner = viewer.userId ?? viewer.sessionId;
+
+  const { data } = await supabase
+    .from('rounds')
+    .select('percentile, committed_at')
+    .eq('owner', owner)
+    .eq('superseded', false)
+    .not('committed_at', 'is', null)
+    .not('percentile', 'is', null)
+    .order('committed_at', { ascending: false })
+    .limit(limit);
+
+  // Queried newest-first so the limit takes the *recent* window, then reversed for drawing.
+  return (data ?? []).map((row) => row.percentile as number).reverse();
+}
+
+/**
+ * Which of the last `window` dailies a player completed, and the day that window ends on.
+ *
+ * `today` rides along for the same reason it does on `getStreak`: the caller needs it to label the
+ * strip, and reading the clock again at the call site is a second clock read that can land the
+ * other side of a UTC midnight — and reading it during render is impure besides.
+ */
+export async function getCompletedDays(
+  userId: string,
+  window: number,
+): Promise<{ today: number; days: Set<number> }> {
+  const today = dailyNumber(Date.now());
+  const supabase = serviceClient();
+  const { data } = await supabase
+    .from('daily_completions')
+    .select('day')
+    .eq('user_id', userId)
+    .gte('day', today - window + 1);
+  return { today, days: new Set((data ?? []).map((row) => row.day as number)) };
 }

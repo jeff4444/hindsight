@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Button } from '@/components/ui';
+import { Button, Divider, Eyebrow, Field, INPUT_CLASS } from '@/components/ui';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,30 +24,26 @@ export default async function SignInPage({
   return (
     <div data-stagger>
       <div style={{ '--i': 0 } as React.CSSProperties}>
-        <Link href="/" className="text-ink-hi tracking-wordmark text-sm font-semibold">
-          HINDSIGHT
-        </Link>
+        <Eyebrow>Play first, claim later</Eyebrow>
+        <h1 className="text-ink-max mt-2 text-2xl font-semibold">Keep your record</h1>
+        <p className="text-ink-lo mt-3 text-base leading-relaxed">
+          Anything you have already played on this browser is bound to your account when you sign
+          in — rounds, percentiles and today&rsquo;s daily included. Nothing is lost and nothing is
+          replayed.
+        </p>
       </div>
-
-      <h1 className="text-ink-max mt-6 text-xl font-semibold" style={{ '--i': 1 } as React.CSSProperties}>
-        Keep your record
-      </h1>
-      <p className="text-ink-lo mt-2 text-sm leading-relaxed" style={{ '--i': 2 } as React.CSSProperties}>
-        Anything you have already played on this browser is bound to your account when you sign in —
-        rounds, percentiles and today&rsquo;s daily included. Nothing is lost and nothing is replayed.
-      </p>
 
       {error && (
         <div
-          className="border-short-line bg-short-bg text-short-ink mt-4 rounded-md border p-3 text-xs"
-          style={{ '--i': 3 } as React.CSSProperties}
+          className="border-short-line bg-short-bg text-short-ink mt-5 rounded-lg border p-3.5 text-sm"
+          style={{ '--i': 1 } as React.CSSProperties}
           role="alert"
         >
           {error}
         </div>
       )}
 
-      <form action="/api/auth/oauth" method="post" className="mt-6" style={{ '--i': 4 } as React.CSSProperties}>
+      <form action="/api/auth/oauth" method="post" className="mt-7" style={{ '--i': 2 } as React.CSSProperties}>
         <input type="hidden" name="provider" value="google" />
         <input type="hidden" name="next" value={next} />
         <Button type="submit" variant="primary" size="lg" block>
@@ -55,22 +51,18 @@ export default async function SignInPage({
         </Button>
       </form>
 
-      <div className="my-5 flex items-center gap-3" style={{ '--i': 5 } as React.CSSProperties}>
-        <span className="bg-line h-px flex-1" />
-        <span className="text-ink-faint text-micro">or</span>
-        <span className="bg-line h-px flex-1" />
-      </div>
+      <Divider label="or" className="my-6" />
 
-      <form action="/api/auth/magic-link" method="post" className="space-y-2" style={{ '--i': 6 } as React.CSSProperties}>
+      <form action="/api/auth/magic-link" method="post" className="space-y-3" style={{ '--i': 3 } as React.CSSProperties}>
         <label className="block">
-          <span className="text-ink-lo text-xs font-medium">Email</span>
+          <span className="text-ink-lo mb-1.5 block text-sm font-medium">Email</span>
           <input
             type="email"
             name="email"
             required
             autoComplete="email"
             placeholder="you@example.com"
-            className="border-line bg-surface-1 text-ink placeholder:text-ink-faint mt-1 h-11 w-full rounded-md border px-3 text-sm"
+            className={INPUT_CLASS}
           />
         </label>
         <Button type="submit" variant="secondary" size="lg" block>
@@ -78,41 +70,37 @@ export default async function SignInPage({
         </Button>
       </form>
 
-      <details className="mt-5" style={{ '--i': 7 } as React.CSSProperties}>
-        <summary className="text-ink-dim hover:text-ink-lo cursor-pointer text-xs">
+      <details className="group mt-6" style={{ '--i': 4 } as React.CSSProperties}>
+        <summary className="text-ink-dim hover:text-ink-hi hover:bg-fill-1 press inline-flex cursor-pointer list-none items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm transition-colors">
           Use a password instead
         </summary>
-        <form action="/api/auth/password" method="post" className="mt-3 space-y-2">
-          <input
-            type="email"
-            name="email"
-            required
-            autoComplete="email"
-            placeholder="Email"
-            className="border-line bg-surface-1 text-ink placeholder:text-ink-faint h-11 w-full rounded-md border px-3 text-sm"
-          />
-          <input
+        {/* Visible labels rather than placeholders. A placeholder disappears the moment you type,
+            so it is the one form affordance that vanishes exactly when it is being relied on. */}
+        <form action="/api/auth/password" method="post" className="mt-4 space-y-3">
+          <Field id="pw-email" label="Email" type="email" name="email" required autoComplete="email" />
+          <Field
+            id="pw-password"
+            label="Password"
+            hint="At least 8 characters."
             type="password"
             name="password"
             required
             minLength={8}
             autoComplete="current-password"
-            placeholder="Password — at least 8 characters"
-            className="border-line bg-surface-1 text-ink placeholder:text-ink-faint h-11 w-full rounded-md border px-3 text-sm"
           />
           <div className="flex gap-2">
-            <Button type="submit" name="intent" value="sign-in" variant="secondary" block>
+            <Button type="submit" name="intent" value="sign-in" variant="secondary" size="lg" block>
               Sign in
             </Button>
-            <Button type="submit" name="intent" value="sign-up" variant="ghost" block>
+            <Button type="submit" name="intent" value="sign-up" variant="ghost" size="lg" block>
               Create account
             </Button>
           </div>
         </form>
       </details>
 
-      <p className="text-ink-faint mt-8 text-xs">
-        <Link href="/play" className="underline underline-offset-4">
+      <p className="text-ink-dim mt-10 text-sm" style={{ '--i': 5 } as React.CSSProperties}>
+        <Link href={`/play${next && next !== '/home' ? `?next=${encodeURIComponent(next)}` : ''}`} className="text-ink-lo hover:text-ink-hi underline underline-offset-4 transition-colors">
           Or just play
         </Link>{' '}
         — the daily and every tape are open without an account.

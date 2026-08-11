@@ -1,4 +1,5 @@
-import { Button, Eyebrow, Gated } from '../ui';
+import { Button, Eyebrow, Gated, Panel } from '../ui';
+import { Icon } from '../ui/icons';
 import { RANK_MIN_ATTEMPTS } from '@/core/rating';
 import { TIERS } from '@/core/tiers';
 
@@ -30,17 +31,17 @@ export function RankedCard({
   const naked = TIERS.find((tier) => tier.code === 'NTZ')!;
 
   return (
-    <div className="border-line bg-surface-2 shadow-panel rounded-lg border p-4">
-      <div className="flex items-start justify-between gap-4">
+    <Panel pad="md">
+      <div className="flex flex-wrap items-start justify-between gap-6">
         <div>
           <Eyebrow>Ranked · {naked.name}</Eyebrow>
-          <div className="mt-1 flex items-baseline gap-2">
+          <div className="mt-1.5 flex items-baseline gap-2.5">
             {showable && rating !== null ? (
               <>
-                <span className="text-ink-max font-mono text-2xl font-semibold tabular-nums">
+                <span className="numeral text-ink-max text-display-sm font-semibold">
                   {Math.round(rating)}
                 </span>
-                <span className="text-ink-dim text-xs">± {Math.round(rd ?? 0)}</span>
+                <span className="text-ink-dim text-sm">± {Math.round(rd ?? 0)}</span>
               </>
             ) : (
               <span className="text-ink-lo text-sm">
@@ -51,25 +52,25 @@ export function RankedCard({
               </span>
             )}
           </div>
+          <p className="text-ink-lo mt-3 max-w-prose text-sm leading-relaxed">
+            Five charts, at most two passes, 90 seconds each. Your rating moves against each
+            chart&rsquo;s own rating — a chart is an opponent, and a hard one is worth more.
+          </p>
+        </div>
+
+        <div className="shrink-0">
+          {signedIn ? (
+            <Button as="a" href="/play?mode=ranked" variant="primary" size="lg">
+              <Icon name="play" size={15} />
+              {attempts > 0 ? 'Play ranked' : 'Start placement'}
+            </Button>
+          ) : (
+            <Button as="a" href="/sign-in" variant="secondary" size="lg">
+              Sign in to rank
+            </Button>
+          )}
         </div>
       </div>
-
-      <p className="text-ink-dim mt-3 text-xs leading-relaxed">
-        Five charts, at most two passes, 90 seconds each. Your rating moves against each
-        chart&rsquo;s own rating — a chart is an opponent, and a hard one is worth more.
-      </p>
-
-      <div className="mt-4">
-        {signedIn ? (
-          <Button as="a" href="/play?mode=ranked" variant="primary" size="lg">
-            {attempts > 0 ? 'Play ranked' : 'Start placement'}
-          </Button>
-        ) : (
-          <Button as="a" href="/sign-in" variant="secondary" size="lg">
-            Sign in to rank
-          </Button>
-        )}
-      </div>
-    </div>
+    </Panel>
   );
 }

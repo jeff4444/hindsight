@@ -7,6 +7,7 @@ import { RANKED_TIER, affordances, tierByCode } from '@/core/tiers';
 import { roundPayload } from '@/lib/round-payload';
 import { DAILY_CHARTS, dailyNumber, isDailyOpen } from '@/lib/daily';
 import { shareCard } from '@/lib/share';
+import { getStreak } from '@/lib/viewer';
 import type { DailyPayload } from '@/lib/api-types';
 
 export const runtime = 'nodejs';
@@ -70,6 +71,13 @@ export async function POST(request: Request) {
     // heals a session whose fifth chart committed before they had an account.
     if (userId) await supabase.rpc('record_daily_completion', { p_user: userId, p_day: day });
 
+    // Read once, after the write. `getStreak` is not a pure read — it spends freezes lazily and
+    // opens or expires repairs as a side effect — so calling it either side of the write to get a
+    // true "before" would run that decision path twice in one request. Completing today either
+    // extends the run by one or starts a new one at one, so the length before today counted is
+    // always exactly one less. That is what the count-up animates, and it cannot be wrong by more.
+    const after = userId ? await getStreak({ sessionId, userId, email: null, profile: null }) : null;
+
     const scored = results.map((r) => r.percentile).filter((p): p is number => p !== null);
     const mean = scored.length > 0 ? scored.reduce((a, b) => a + b, 0) / scored.length : null;
     const traded = results.filter((r) => !r.passed).length;
@@ -81,6 +89,16 @@ export async function POST(request: Request) {
       total: DAILY_CHARTS,
       traded,
       percentile: mean,
+      results,
+      streak: after
+        ? {
+            before: Math.max(0, after.length - 1),
+            after: after.length,
+            perfect: after.perfect,
+            freezesRemaining: after.freezesRemaining,
+            longest: after.longest,
+          }
+        : null,
       card: shareCard({ day, percentile: mean, traded, total: DAILY_CHARTS }),
       round: null,
     };
@@ -122,6 +140,8 @@ export async function POST(request: Request) {
     total: DAILY_CHARTS,
     traded: results.filter((r) => !r.passed).length,
     percentile: null,
+    results,
+    streak: null,
     card: null,
     round,
   };
