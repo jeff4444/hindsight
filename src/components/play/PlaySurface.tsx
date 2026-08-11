@@ -579,6 +579,19 @@ export function PlaySurface({
         if (studiesOpen) return; // the dialog owns Escape while it is open
         if (tool) setTool(null);
       },
+      /**
+       * Undo the last drawing.
+       *
+       * Drawings are append-only within a round, so this is "drop the last one" and needs no
+       * history stack. It is the fix for the real complaint about the old bulk clear: the mark a
+       * player wants gone is nearly always the one they just made, and undo removes it without
+       * having to aim at anything.
+       */
+      'mod+z': (event) => {
+        if (phase !== 'placing' || drawings.length === 0) return;
+        event.preventDefault();
+        setDrawings((current) => current.slice(0, -1));
+      },
       // Digits pick an instrument, in rail order. Ignored where the ruleset does not grant it.
       ...Object.fromEntries(
         (['measure', 'trendline', 'level', 'channel', 'fib'] as DrawTool[]).map((code, i) => [

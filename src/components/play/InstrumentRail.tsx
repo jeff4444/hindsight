@@ -99,7 +99,10 @@ export const INSTRUMENT_LABEL = Object.fromEntries(
 ) as Record<DrawTool, string>;
 
 export const INSTRUMENT_HOWTO = Object.fromEntries(
-  INSTRUMENTS.map((i) => [i.tool, i.hint.toLowerCase()]),
+  // Not lower-cased. The first version was, to sit inside the frame's lower-case hint line — and it
+  // turned "in ATR and R" into "in atr and r", which are units, not words. Only the first letter
+  // moves.
+  INSTRUMENTS.map((i) => [i.tool, i.hint.charAt(0).toLowerCase() + i.hint.slice(1)]),
 ) as Record<DrawTool, string>;
 
 export function InstrumentRail({

@@ -80,6 +80,17 @@ export const TOOL_COLOUR = {
   oscillatorSignal: '#f8a052',
   /** Sandbox only. §11.4 calls a stop algorithm the answer key, and the panel says so too. */
   stop: '#db90ec',
+
+  /**
+   * The player's own marks, and the one being drawn.
+   *
+   * Deliberately near-neutral rather than a hue, and that *is* the legend: every coloured line on
+   * the chart is the app talking — an average, a channel, something Layer 2 computed — and white is
+   * you. The shipped set drew committed drawings in the same violet as the Layer 2 hull trendline,
+   * so a mark you made and a mark the product inferred were the same colour on the same chart.
+   */
+  mark: '#e8ecf5',
+  markLive: '#ffffff',
 } as const;
 
 /** Moving-average lengths offered. Three is what every platform ships and what a reader uses. */

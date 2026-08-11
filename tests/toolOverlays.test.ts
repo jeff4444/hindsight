@@ -218,10 +218,23 @@ describe('no overlay borrows a colour that already means something', () => {
   const CLEARANCE = 28;
 
   it('keeps every overlay clear of the long and short hues', () => {
-    const offenders = swatches.filter(
-      (s) => apart(s.h, LONG_HUE) < CLEARANCE || apart(s.h, SHORT_HUE) < CLEARANCE,
-    );
+    // A near-neutral is exempt, and not as a loophole: at chroma this low there is no hue to
+    // confuse — the player's own marks are deliberately white for exactly that reason, and the
+    // hue a converter reports for #ffffff is an artefact of dividing by nothing.
+    const offenders = swatches
+      .filter((s) => s.c >= 0.04)
+      .filter((s) => apart(s.h, LONG_HUE) < CLEARANCE || apart(s.h, SHORT_HUE) < CLEARANCE);
     expect(offenders.map((o) => `${o.name} at ${o.h}°`)).toEqual([]);
+  });
+
+  it('draws the player their own marks in something no overlay uses', () => {
+    // Colour is the app talking; white is you. If a mark ever took a hue it would be competing
+    // with the studies for the same meaning.
+    for (const name of ['mark', 'markLive'] as const) {
+      const swatch = swatches.find((s) => s.name === name)!;
+      expect(swatch.c).toBeLessThan(0.04);
+      expect(swatch.l).toBeGreaterThan(0.9);
+    }
   });
 
   it('draws nothing too dark to see on the page it is drawn on', () => {

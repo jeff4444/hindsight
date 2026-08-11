@@ -275,24 +275,45 @@ export function FrameControls({
 /* -------------------------------------------------------------------- legend */
 
 export function HotkeyLegend() {
-  const rows: [string, string][] = [
-    ['⏎', 'Commit the bracket, then move to the next chart'],
-    ['P', 'Pass — a scored decision, not a skip'],
-    ['R', 'Reset the view while placing, replay the reveal after'],
-    ['Space', 'Pause and resume the reveal'],
-    ['S', 'Skip to the end of the reveal'],
+  const groups: { title: string; rows: [string, string][] }[] = [
+    {
+      title: 'The round',
+      rows: [
+        ['⏎', 'Commit the bracket, then move to the next chart'],
+        ['P', 'Pass — a scored decision, not a skip'],
+        ['R', 'Reset the view while placing, replay the reveal after'],
+        ['Space', 'Pause and resume the reveal'],
+        ['S', 'Skip to the end of the reveal'],
+      ],
+    },
+    {
+      // Undiscoverable otherwise: the rail carries icons, and the numbers are only in a tooltip.
+      title: 'The toolbox',
+      rows: [
+        ['1–5', 'Pick an instrument — ruler, line, level, channel, fib'],
+        ['Esc', 'Put the instrument down and hand the rails back'],
+        ['⌘Z', 'Undo the last drawing'],
+      ],
+    },
   ];
   return (
-    <dl className="flex flex-col gap-2.5">
-      {rows.map(([key, what]) => (
-        <div key={key} className="flex items-baseline gap-3">
-          <dt className="bg-fill-2 ring-line shrink-0 rounded px-1.5 py-0.5 ring-1">
-            <Kbd>{key}</Kbd>
-          </dt>
-          <dd className="text-ink-lo text-sm">{what}</dd>
-        </div>
+    <div className="flex flex-col gap-5">
+      {groups.map((group) => (
+        <section key={group.title}>
+          <p className="eyebrow text-ink-dim mb-2">{group.title}</p>
+          <dl className="flex flex-col gap-2.5">
+            {group.rows.map(([key, what]) => (
+              <div key={key} className="flex items-baseline gap-3">
+                <dt className="bg-fill-2 ring-line shrink-0 rounded px-1.5 py-0.5 ring-1">
+                  <Kbd>{key}</Kbd>
+                </dt>
+                <dd className="text-ink-lo text-sm">{what}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
       ))}
-    </dl>
+    </div>
   );
 }
 
