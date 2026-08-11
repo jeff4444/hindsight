@@ -26,6 +26,7 @@ export function AchievableField({
   stopIndex,
   targetIndex,
   progress = 1,
+  columns = 2,
   className,
 }: {
   distribution: number[];
@@ -36,6 +37,16 @@ export function AchievableField({
   targetIndex: number | null;
   /** 0–1, shared with the headline count-up so the field fills as the number lands. */
   progress?: number;
+  /**
+   * How many grids sit side by side.
+   *
+   * A prop rather than a `grid-cols-1` handed in through `className`: both would be
+   * `grid-template-columns` utilities on the same element, and which one wins is decided by their
+   * order in the generated stylesheet rather than by the caller — the same way `hidden` lost to
+   * `inline-flex` and rendered the timeframe control twice. In a 26rem rail the two halves have to
+   * stack, and that has to be a decision the call site can actually make.
+   */
+  columns?: 1 | 2;
   className?: string;
 }) {
   // The stored array can be short of 98: `enumerateAchievable` skips a cell whose stop collapses
@@ -48,7 +59,7 @@ export function AchievableField({
   const oracleAt = distribution.indexOf(best);
 
   return (
-    <div className={cx('grid gap-5 sm:grid-cols-2', className)}>
+    <div className={cx('grid gap-5', columns === 2 && 'sm:grid-cols-2', className)}>
       {(['long', 'short'] as const).map((side, d) => (
         <Half
           key={side}

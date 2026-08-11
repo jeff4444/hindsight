@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { cx } from '../ui';
+import { useEffect, useState } from "react";
+import { Disclosure, cx } from "../ui";
 
 export interface RulesSection {
   id: string;
@@ -51,11 +51,11 @@ export function RulesNav({ sections }: { sections: RulesSection[] }) {
     };
 
     measure();
-    window.addEventListener('scroll', measure, { passive: true });
-    window.addEventListener('resize', measure);
+    window.addEventListener("scroll", measure, { passive: true });
+    window.addEventListener("resize", measure);
     return () => {
-      window.removeEventListener('scroll', measure);
-      window.removeEventListener('resize', measure);
+      window.removeEventListener("scroll", measure);
+      window.removeEventListener("resize", measure);
     };
   }, [sections]);
 
@@ -67,13 +67,13 @@ export function RulesNav({ sections }: { sections: RulesSection[] }) {
         <li key={section.id}>
           <a
             href={`#${section.id}`}
-            aria-current={active === section.id ? 'true' : undefined}
+            aria-current={active === section.id ? "true" : undefined}
             className={cx(
-              'block rounded-md py-1.5 pr-2 pl-3 text-sm leading-snug transition-colors',
-              'border-l-2',
+              "block rounded-md py-1.5 pr-2 pl-3 text-sm leading-snug transition-colors",
+              "border-l-2",
               active === section.id
-                ? 'border-info text-ink-hi bg-fill-1'
-                : 'text-ink-dim hover:text-ink-hi border-transparent',
+                ? "border-info text-ink-hi bg-fill-1"
+                : "text-ink-dim hover:text-ink-hi border-transparent",
             )}
           >
             {section.title}
@@ -86,13 +86,14 @@ export function RulesNav({ sections }: { sections: RulesSection[] }) {
   return (
     <>
       {/* Above the prose on a phone, closed, so it costs one line until it is wanted. */}
-      <details className="group border-line mt-4 rounded-lg border p-3 lg:hidden">
-        <summary className="text-ink-lo press flex cursor-pointer list-none items-center justify-between text-sm font-medium">
-          Jump to a section
-          <span className="text-ink-faint text-xs">{sections.length}</span>
-        </summary>
-        <div className="mt-3">{list}</div>
-      </details>
+      <Disclosure
+        tone="panel"
+        label="Jump to a section"
+        aside={sections.length}
+        className="mt-4 lg:hidden"
+      >
+        {list}
+      </Disclosure>
 
       <nav
         aria-label="Sections"
