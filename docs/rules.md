@@ -499,7 +499,79 @@ The clock is sent as a remaining duration, never a deadline. A wall-clock timest
 client with a skewed clock decide whether its own commit was late. A commit after the deadline is a
 **forfeit**, not a rejection, so running out of time cannot be undone by reloading.
 
-### 11.4 Mods
+### 11.4 Full Desk, and the toolbox
+
+**Full Desk is the top rung and it grants the tools.** 300 candles, three timeframes, volume,
+unlimited time, indicators, drawings and overlays.
+
+It nearly did not ship. §3.2 defined it as the tools rung *plus* pre-trade news headlines, and
+News Blind as "Full Desk except the headlines" — so until a news layer existed the two were one
+ruleset wearing two names, and Phase 1.5 deferred both. **News has since been dropped from the
+plan**, which resolves it rather than postponing it again: with no headlines to withhold, Full Desk
+*is* News Blind. One rung, and it ships. News Blind is deleted, not pending.
+
+What Full Desk does **not** get, despite §3.2 listing it: **post-entry trade management**. That is
+not a tool. §4.2 enumerates the achievable set over a *static* bracket, so a trade that can be
+adjusted mid-flight is no longer described by the distribution it is scored against — a Layer 1
+change wearing a chart affordance's clothes. §10.1's Manage mode is where it belongs.
+
+#### The measure tool is universal
+
+**Present at every rung, including Blackout.** §3.1 restricts identity, hindsight and crutches and
+never restricts risk arithmetic, and a ruler that reads out in ATR and R is risk arithmetic: on a
+chart with no ticker and no absolute price those are the only units that survive normalisation.
+Withholding it would not make Blackout a harder reading test; it would make the arithmetic
+guesswork. It sits beside the price axis and the ATR badge, and there is no field that could remove
+it.
+
+#### The stop-placement algorithms are Sandbox only
+
+Chandelier Exit, Supertrend and Parabolic SAR are causal, cheap to build, and **literally
+stop-placement algorithms**. In a game whose entire skill is placing a stop, showing one is showing
+the answer key. Sandbox is unrated and §3.2 calls it "the learning surface, not a tier", so seeing
+what a Chandelier would have suggested is a legitimate thing to learn from when nothing is at
+stake. They appear on **no rated rung**, and a test asserts it.
+
+#### The formulas, because there is no canonical one
+
+TA-Lib and TradingView disagree on weekly BTCUSDT ATR(7) by **12%** — 998.11 against 891.05 — for a
+formula published in a book in 1978. A player who reads an RSI of 71 and places a stop on it is
+entitled to know which RSI. Every choice below is written out in `src/core/indicators.ts` and each
+one is a place two respectable implementations differ.
+
+| Indicator | The choice, where there is one |
+| --- | --- |
+| **EMA** | Seeded on the **SMA of the first *n* values**, nothing emitted before. Seeding on the first value converges to the same curve but is visibly wrong early — a 200-EMA seeded that way is essentially the first close for a hundred bars. |
+| **Wilder's smoothing** | `α = 1/n`, **not** an EMA's `2/(n+1)`. Conflating the two is the single most common source of two implementations disagreeing, and it is most of that ATR gap. |
+| **Bollinger** | **Population** standard deviation, divisor *n* — Bollinger's own definition and TradingView's. The sample divisor *n−1* makes the bands about 12% wider at the default settings. |
+| **Keltner** | Raschke's modern form: EMA of close, banded by **Wilder-smoothed ATR** — the same ATR the badge and every stop distance already use. Not Keltner's original SMA of typical price. |
+| **Donchian** | The current bar **counts**, so "price is at the top of its range" is true when price is at the top of its range. |
+| **RSI** | Wilder's smoothing, not an EMA of the same period. Average loss of zero gives **100** by definition; a flat series with neither gains nor losses returns **nothing** rather than an invented 50. |
+| **MACD** | The signal EMA is seeded on the first nine *defined* MACD values. Treating the warm-up as zeros drags the early signal toward zero and manufactures histogram crossings that are artefacts of the warm-up. |
+
+Every indicator returns **one value per bar with nulls through the warm-up**, so an index into the
+output is always an index into the input. The off-by-one that shifts an indicator a bar into the
+future is the one this shape exists to prevent, and every one of them is held to
+`tests/lookahead.test.ts` — the same harness the Layer 2 detectors pass.
+
+#### What is excluded from the codebase, not merely from the toolbar
+
+Recorded as data in `src/core/tiers.ts`, so adding one means deleting the line that argues against
+it.
+
+- **ZigZag, Auto Fib, Auto Trendlines, Auto Pitchfork, auto key levels** — they repaint. A pivot is
+  not knowable until price has moved away from it, so the chart shows turning points nobody could
+  have drawn. Two phases of causality work would be undone quietly by one of these.
+- **Renko, Kagi, Point & Figure, Line Break, Heikin Ashi** — they destroy time and invent prices.
+  The player would place levels in one coordinate system and be scored against real OHLC in another.
+- **Gann, Elliott, Fibonacci circles, spirals, arcs and fans** — scale- and aspect-ratio-dependent.
+  The signal changes when the window is resized.
+- **Pivot Points, session VWAP, seasonality** — they need a session boundary, and §12.2 removes the
+  calendar by design. Anchored VWAP from a swing works and is the more useful variant.
+- **Andrews' Pitchfork** — StockCharts' own definition says "there are no hard rules for point
+  placement… chartists must use judgment". It is not a function of the data.
+
+### 11.5 Mods
 
 Blind Scale, Silent, Iron, Wide and Assist. **Mirror is not among them.** §3.3's table prices it at
 1.05×, but the pull-quote directly beneath calls it "permanent in ranked, not optional… randomise it
@@ -981,7 +1053,7 @@ test says so.
 
 Recorded so nothing here is mistaken for the finished product.
 
-**Not built:** the engine council and every engine in it; per-chart themes and the per-theme ratings
+**Not built:** the engine council and every engine in it; the per-theme ratings
 that depend on them; the Full Desk and News Blind tiers; the Fog mod; ranked sessions, divisions and
 seasons; Manage, Storm, Duel, Racer and Calibration; creator maps and cohort dashboards; the cost
 model; synthetic controls in the corpus; news.

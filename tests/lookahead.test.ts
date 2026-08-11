@@ -15,6 +15,9 @@ import { candidates } from '@/core/geometry/trendlines';
 import { fitChannel } from '@/core/geometry/channels';
 import { levelsFrom } from '@/core/geometry/levels';
 import { volumeProfile } from '@/core/geometry/volumeProfile';
+import {
+  bollinger, chandelier, donchian, ema, keltner, macd, psar, rsi, sma, supertrend, wilder,
+} from '@/core/indicators';
 
 /**
  * The look-ahead suite — §14's exit condition for Phase 0.5.
@@ -283,6 +286,37 @@ describe('Layer 2 geometry, which is what this harness was built a phase early f
 
   it('the volume profile reads only the bars it is handed', () => {
     assertPrefixCausal((prefix) => volumeProfile(prefix, 1), bars);
+  });
+});
+
+describe('every Full Desk indicator is causal', () => {
+  const bars = series(140, 53);
+
+  // An indicator that peeks is the same defect as a detector that peeks, and it is easier to ship
+  // by accident: a rolling window written with `slice(i, i + n)` instead of `slice(i - n, i)` looks
+  // almost identical and is wrong in the one direction that matters. The generic harness does not
+  // need to know what any of these compute.
+  const cases: [string, (b: TimedBar[]) => unknown][] = [
+    ['SMA(20)', (b: TimedBar[]) => sma(b.map((x) => x.c), 20)],
+    ['EMA(20)', (b: TimedBar[]) => ema(b.map((x) => x.c), 20)],
+    ["Wilder(14)", (b: TimedBar[]) => wilder(b.map((x) => x.c), 14)],
+    ['RSI(14)', (b: TimedBar[]) => rsi(b.map((x) => x.c), 14)],
+    ['MACD', (b: TimedBar[]) => macd(b.map((x) => x.c))],
+    ['Bollinger', (b: TimedBar[]) => bollinger(b.map((x) => x.c))],
+    ['Keltner', (b: TimedBar[]) => keltner(b)],
+    ['Donchian', (b: TimedBar[]) => donchian(b)],
+    ['Chandelier', (b: TimedBar[]) => chandelier(b)],
+    ['Supertrend', (b: TimedBar[]) => supertrend(b)],
+    ['Parabolic SAR', (b: TimedBar[]) => psar(b)],
+  ];
+
+  it.each(cases)('%s', (_name, compute) => {
+    assertPrefixCausal(compute, bars);
+  });
+
+  it('is not passing for want of anything to compare', () => {
+    expect(sma(bars.map((b) => b.c), 20).filter((v) => v !== null).length).toBeGreaterThan(50);
+    expect(rsi(bars.map((b) => b.c), 14).filter((v) => v !== null).length).toBeGreaterThan(50);
   });
 });
 
