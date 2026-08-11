@@ -853,7 +853,105 @@ failed breaks are genuinely common in it; whether they are *more* common than ch
 question thresholds can answer, and **2c answers it** by running the same detectors on permuted
 bars and publishing both counts.
 
-### 13.8 How it is tested
+### 13.8 The null — what Layer 2 finds in shuffled bars
+
+§14 makes this Phase 2's exit condition, and is specific about the form: the comparison is
+**published rather than merely passed**. So here it is, and it is not flattering.
+
+Every detector was run over all 1,000 charts and over 20 shuffles of each of those same charts. The
+shuffle keeps each chart's exact distribution of gaps and candle shapes and destroys only the
+**order** — so a detector that beats it is responding to sequence, which is the only thing a chart
+reader can be reading. `npm run null` reproduces the table.
+
+| detector | real | shuffled | ratio | 95% CI | |
+| --- | --- | --- | --- | --- | --- |
+| **compression-expansion** | 7.1% | 3.0% | **2.39×** | [1.84, 2.94] | beats the null |
+| liquidity-sweep | 64.0% | 62.5% | 1.02× | [0.98, 1.07] | no better than chance |
+| v-reversal | 45.8% | 43.8% | 1.05× | [0.98, 1.11] | no better than chance |
+| failed-breakout | 51.7% | 54.7% | 0.95× | [0.89, 1.00] | **noise produces more** |
+| range-reversion | 6.7% | 11.8% | 0.57× | [0.45, 0.69] | **noise produces more** |
+| trend-continuation | 3.8% | 5.5% | 0.69× | [0.51, 0.86] | **noise produces more** |
+| swings per chart (minor) | 63.0 | 65.0 | 0.97× | [0.96, 0.98] | **noise produces more** |
+| swings per chart (major) | 6.8 | 7.2 | 0.95× | [0.91, 0.99] | **noise produces more** |
+| hull edges per chart | 9.2 | 9.6 | 0.96× | [0.95, 0.97] | **noise produces more** |
+| levels per chart | 2.0 | 2.3 | 0.88× | [0.85, 0.90] | **noise produces more** |
+
+**One of ten beats the shuffle.** Seven of ten fire *less* often on real charts than on shuffled
+versions of those same charts.
+
+This is Lo, Mamaysky & Wang's broadening-tops result, at scale. They found head-and-shoulders 1,611
+real against 577 random — a real effect — and broadening tops **725 real against 1,227 random**,
+where noise produced nearly twice as many. Nobody in this space has published that comparison since
+2000. This is ours.
+
+#### What it means, and what it does not
+
+**It is not a bug, and the obvious confound was checked.** Every threshold in Layer 2 is denominated
+in ATR, so each shuffled series is measured against *its own* ATR rather than inheriting the real
+chart's. The median ATR ratio between a shuffle and its source is **0.991**, and repeating the whole
+table with the ATR inherited instead moves every rate by a point or two and changes no verdict.
+
+**§6 already says Layer 2 predicts nothing: "This layer predicts nothing. It draws."** The table is
+that sentence with numbers attached. A swing high is a property of a *path*, and a shuffled path has
+paths' properties. Expecting a geometric detector to find fewer swings in noise is expecting it to
+stop being geometric.
+
+**The one that discriminates is the one with a mechanism.** Compression-expansion beats the shuffle
+2.4-fold because volatility clustering is the most robust stylised fact in empirical finance —
+quiet begets quiet, violent begets violent — and shuffling is precisely the operation that destroys
+it. That is a real, documented market property, and it is the only one of the six themes that
+measures one.
+
+**The limitation that matters most.** This test asks *"is this pattern more common in markets than
+in noise?"* It does **not** ask *"does this pattern tell you what happens next?"* Those come apart:
+a formation could occur at exactly the shuffle rate and still be informative about the future in
+real data. Lo, Mamaysky & Wang measured conditional returns as well as counts; this measures counts
+only. The conditional test is §6 Layer 5's job, and this table raises the prior against it rather
+than settling it.
+
+**What it does not undermine.** A theme tape is a filter, not a forecast. "The Coil" promises that
+these charts share a stated property, and they verifiably do. Nothing on that page claims the
+property is profitable, and after this table nothing should.
+
+#### The efficiency ratio cannot see a shuffle at all
+
+Found while checking whether the table was an artefact, and it is a fact about §6's own **trendiness
+axis** rather than about the null.
+
+    ER = |cₙ − c₀| / Σ|cᵢ − cᵢ₋₁|
+
+The numerator is `|Σr|` and the denominator is `Σ|r|`. Both are sums over the same multiset whatever
+order the returns arrive in, so the ratio is **exactly** order-independent — verified to the last
+digit across five shuffles in `tests/geometry/nullTest.test.ts`. The efficiency ratio measures the
+*composition* of a set of returns and never their *arrangement*.
+
+Two consequences. Any theme gating on it — `trend-continuation` does — gets no discriminating power
+from that gate. And the regime grid that the corpus is stratified over is stratified on a statistic
+that carries no sequential information: it separates charts that *look* trendy from charts that do
+not, which is a real and useful thing for serving variety, but it is not evidence that anything is
+trending in a sense noise could fail to produce.
+
+#### The weaker null, for comparison
+
+Geometric Brownian motion calibrated per chart — the null Lo, Mamaysky & Wang used, reproduced so
+the comparison is theirs as well as ours. It assumes normal log returns, which markets violate
+badly, so beating it can mean nothing more than noticing a fat tail.
+
+| detector | real | GBM | ratio |
+| --- | --- | --- | --- |
+| compression-expansion | 7.1% | 2.4% | 2.98× |
+| failed-breakout | 51.7% | 34.7% | **1.49×** |
+| liquidity-sweep | 64.0% | 86.0% | 0.74× |
+| v-reversal | 45.8% | 57.7% | 0.79× |
+| range-reversion | 6.7% | 23.4% | 0.29× |
+| trend-continuation | 3.8% | 6.3% | 0.60× |
+
+**Failed-breakout beats GBM at 1.49× and loses to the shuffle at 0.95×.** That single row is the
+argument for running two nulls: against normal returns it looks like a discovery, and against the
+real return distribution it disappears. What it was detecting was fat tails, which markets have and
+Brownian motion does not. Anyone publishing only the GBM column would have reported an effect.
+
+### 13.9 How it is tested
 
 Stability is measured in **price space** — Hausdorff distance on swing prices — never on index sets.
 That is a correction to the scope document as first drafted: persistence theory gives stability of
@@ -888,14 +986,19 @@ that depend on them; the Full Desk and News Blind tiers; the Fog mod; ranked ses
 seasons; Manage, Storm, Duel, Racer and Calibration; creator maps and cohort dashboards; the cost
 model; synthetic controls in the corpus; news.
 
-**Layer 2 geometry: computed and published, not drawn.** §13 covers what exists. The primitives are
-pure, causal and tested, the six themes are specified and stored, and **no annotation reaches a
-player** — the round payload is unchanged and `tests/api-leak.test.ts` is untouched by both phases
-that built them. Themes are visible as tapes, which is a filter over charts rather than a drawing
-on one. The permutation null is 2c's job; until it lands, the geometry's only other consumer is
-`/lab/geometry`, a 404 in production. Two pieces are deferred outright with reasons in §13.6,
-round-number levels are measured-and-withheld in §13.5, and news-spike waits for §9 in Phase 7
-rather than naming a cause we cannot observe.
+**Layer 2 geometry: computed, published, and measured against noise.** §13 covers what exists. The
+primitives are pure, causal and tested, the six themes are specified and stored, and **no annotation
+reaches a player** — the round payload is unchanged and `tests/api-leak.test.ts` is untouched by all
+three phases that built them. Themes are visible as tapes, which is a filter over charts rather than
+a drawing on one. Two pieces are deferred outright with reasons in §13.6, round-number levels are
+measured-and-withheld in §13.5, and news-spike waits for §9 in Phase 7 rather than naming a cause we
+cannot observe.
+
+**And §13.8 is the part to read first.** One detector of ten beats a shuffle of the same charts;
+seven fire *less* often on real data than on noise. That is published rather than filed, because it
+is the comparison §14 asked for and because a product claiming to sell calibration cannot decline to
+report its own. What it does not establish is whether these patterns predict anything — that is
+Layer 5's question, and this table raises the prior against it.
 
 **Per-theme player ratings are not built.** §8.4 calls the diagnostic — "you are 1740 overall but
 1490 on failed breakouts" — the most valuable sentence the product can say. The tags it needs now
