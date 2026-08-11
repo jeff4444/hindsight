@@ -42,10 +42,13 @@
  *   no session gap and no open. The gap-fill folklore is contradicted by the evidence anyway.
  * - **distribution-top** has no specifiable definition; Wyckoff phases are a drawing, not a bar
  *   count.
- * - **news-spike** is deferred to Phase 7. The research proposed shipping it as an outlier detector
- *   "labelled as such", and that is one label too many: with no event data, a theme named for a
- *   cause we cannot observe asserts exactly the kind of thing this project refuses to assert
- *   elsewhere. The detector is trivial to add once §9 gives it a timestamp to point at.
+ * - **news-spike** is dropped. It was parked "for Phase 7 with §9", and then §9 was dropped from the
+ *   plan outright — traders are not taught to trade the news — so the deferral has no target left to
+ *   wait for. That is the right outcome anyway: the research graded it as having no chart definition
+ *   at all, and the proposal to ship it as an outlier detector "labelled as such" was one label too
+ *   many. A theme named for a cause we cannot observe asserts exactly what this project refuses to
+ *   assert everywhere else. If the volatility outlier is ever wanted for its own sake it should be
+ *   called what it is and not named after a cause.
  *
  * Nothing here reads the reveal. A theme describes the setup, never the outcome — §12.1 — and a
  * tape filtered on a theme therefore selects on the lead-in alone, which is the rule

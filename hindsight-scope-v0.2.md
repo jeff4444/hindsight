@@ -650,7 +650,24 @@ Offer Standard, Hard and Extra Hard settings that change how far above the playe
 
 ## 9. The News Layer
 
-Deferred to a later phase, but designed now, because the design constraint is load-bearing and it determines a rung on the ladder in §3.
+> **Dropped from the plan.** Not deferred to a phase — removed from the sequence, with the design
+> below kept intact for whenever it is asked for. The reason is a product judgement rather than a
+> technical one: **traders are not taught to trade the news.** Some do, and it is a real discipline,
+> but it is a specialism rather than a foundation, and the whole ladder was being held up waiting
+> for it. §9.1's leakage rule stays worth reading if news ever returns, because it is the part that
+> would be expensive to get wrong.
+>
+> Two things followed immediately from dropping it, both already applied:
+>
+> - **Full Desk shipped and News Blind was deleted.** §3.2 defined FD as the tools rung *plus* news
+>   headlines and NN as "Full Desk except the headlines". With no headlines, those are one rung, and
+>   the deferral had been keeping the ladder's entire top end unbuilt to preserve a distinction that
+>   no longer exists. Full Desk is what survives; News Blind is gone rather than pending.
+> - **The news-spike theme was dropped rather than deferred.** It had been parked "for Phase 7 with
+>   §9", and its deferral target no longer exists. The research already graded it as having no chart
+>   definition at all.
+
+The design, for whenever it is wanted:
 
 
 ### 9.1 The leakage rule
@@ -855,7 +872,7 @@ The dependency order is real and it changed. Layer 0 is now first because three 
 | **4. Debrief and honesty** | Layer 4 with corrected R semantics, style fingerprinting, published engine track records by regime, **synthetic controls running silently**, cost model. | **A first read on whether players beat synthetic charts.** This is the result that determines what the product is allowed to claim. |
 | **5. Modes and maps** | Manage ladder, Storm, Streak, Duel with capped damage, Racer, Calibration mode. Official regime maps, creator maps, cohort dashboards, tier locks. | One external educator running a cohort on it, and a Manage rating that correlates only partly with the Naked rating — which is the evidence that they are different skills. |
 | **6. Base rates and player model** | Layer 5 with bracket-conditioned first-passage statistics; Layer 6 longitudinal behaviour, fed by the rep-generating modes. | An honest answer about whether historical analogues carry information, published either way. |
-| **7. News** | Point-in-time reveal panel; Full Desk versus News Blind as a controlled comparison. | A measurable answer on whether pre-trade news improves player outcomes. |
+| **7. ~~News~~** | **Dropped — see §9.** The rung it was going to define (Full Desk) shipped without it, and the controlled comparison against News Blind died with the tier. Reinstate as a late phase if the feature is ever asked for. | A measurable answer on whether pre-trade news improves player outcomes. |
 
 
 > **Sequencing discipline** — Phase 0 must be genuinely enjoyable before anything else is built. If the raw loop is not fun without the analysis layer, the analysis layer will not save it, and the entire engine programme is wasted effort on a product nobody returns to on day three. Phase 0.5 is the only insertion that is allowed to precede fun, and only because retrofitting it is close to impossible.

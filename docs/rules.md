@@ -991,8 +991,8 @@ primitives are pure, causal and tested, the six themes are specified and stored,
 reaches a player** — the round payload is unchanged and `tests/api-leak.test.ts` is untouched by all
 three phases that built them. Themes are visible as tapes, which is a filter over charts rather than
 a drawing on one. Two pieces are deferred outright with reasons in §13.6, round-number levels are
-measured-and-withheld in §13.5, and news-spike waits for §9 in Phase 7 rather than naming a cause we
-cannot observe.
+measured-and-withheld in §13.5, and news-spike is dropped outright rather than named after a cause
+we cannot observe — §9 news has been dropped from the plan, so its deferral had no target left.
 
 **And §13.8 is the part to read first.** One detector of ten beats a shuffle of the same charts;
 seven fire *less* often on real data than on noise. That is published rather than filed, because it

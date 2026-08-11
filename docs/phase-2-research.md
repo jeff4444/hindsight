@@ -435,7 +435,8 @@ Two of the ten are unbuildable on a 24/7 crypto corpus and one is too vague to s
 graded shippable; **six shipped**.
 
 > **Correction, from building 2b.** `news-spike` was graded "ship as an **outlier detector**,
-> labelled as such". One label too many. §9 news is Phase 7, so there is no event data at all, and a
+> labelled as such". One label too many, and the deferral target has since gone too: §9 news was
+> dropped from the plan entirely, so this is dropped rather than parked. There is no event data, and a
 > theme named for a cause we cannot observe asserts exactly the kind of thing this project refuses
 > to assert everywhere else — the same objection that keeps round-number levels out of the payload
 > and keeps "order flow" off a volume proxy. The detector is trivial to add once §9 supplies a

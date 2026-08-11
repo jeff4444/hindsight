@@ -54,6 +54,7 @@ export function roundPayload(
     timeframes: granted.timeframes,
     volume: granted.volume,
     priceAxis: granted.priceAxis,
+    tools: granted.tools,
     mayPass: granted.mayPass,
     // Gated on the tier for the same reason as the detail: an untimed ruleset must not carry a
     // countdown even if a deadline somehow found its way onto the row.

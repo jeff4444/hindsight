@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { affordances, tierByCode } from '@/core/tiers';
 
 /**
  * §12.1 is the single most important integrity rule in the product, and §12.2 asks for
@@ -86,6 +87,7 @@ describe('POST /api/round leaks nothing about the future or the instrument', () 
         'timeframes',
         'volume',
         'priceAxis',
+        'tools',
         'mayPass',
         'clockMs',
       ].sort(),
@@ -102,6 +104,21 @@ describe('POST /api/round leaks nothing about the future or the instrument', () 
     // §3.1: the price axis and the ATR badge survive every tier. Only an opt-in mod removes one.
     expect(parsed.priceAxis).toBe(true);
     expect(typeof parsed.atr).toBe('number');
+
+    // `tools` is admissible for the same reason `timeframes` is: it is a function of the *tier*
+    // asked for, not of the chart served. Naked grants none, so the list is empty here — and it
+    // would be empty for every chart in the corpus, which is what makes it not a leak.
+    expect(parsed.tools).toEqual([]);
+  });
+
+  it('grants tools by ruleset, never by chart', () => {
+    // The check that keeps the new field honest as the toolbox grows: ask for the same tier twice
+    // and get the same toolbox, whatever came back on the wire.
+    const granted = affordances(tierByCode('FD')!);
+    expect(granted.tools.length).toBeGreaterThan(10);
+    expect(affordances(tierByCode('FD')!).tools).toEqual(granted.tools);
+    // …and no rung that calls itself No Tools quietly acquires one.
+    expect(affordances(tierByCode('NT')!).tools).toEqual([]);
   });
 
   it('sends the clock as a duration, never as a deadline', () => {
