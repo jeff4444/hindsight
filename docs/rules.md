@@ -1139,21 +1139,85 @@ no majority here and no aggregate — every engine gets a row, including every e
 | **Channel** | Donchian / Turtle — Dennis & Eckhardt 1983, rules published by Faith | 19.8% | 2N, **theirs** | **ours** |
 | **Reversion** | Connors & Alvarez, *Short Term Trading Strategies That Work* (2008) | **2.2%** | **ours** | **ours** |
 | **Reversion (Hindsight)** | **Ours** — Connors without Rule 3, as a control on the regime filter | 8.8% | ours | ours |
+| **Sweep** | **Ours** — in the ICT idiom; ICT publishes no spec, so nothing here is theirs | **40.0%** | ours | ours |
+| **Pattern** | Bulkowski, *Encyclopedia of Chart Patterns*; measuring rule after Edwards & Magee | 3.2% | ours | **theirs** |
+| **Geometry** | Carney, *Harmonic Trading*; tolerance and the Crab B-ratio are ours | **0.0%** | **theirs** | **theirs** |
+| **Tape** | Volume Spread Analysis — Williams; every threshold is ours, because his are words | 6.1% | **theirs** | ours |
 | **Engine Zero** | The null — a seeded coin flip, 2 ATR stop, 2R target | 100% | ours | ours |
 
-Every threshold is a named constant in `src/core/engines/manifest.ts`, hashed as **`d034e8b2`**, and a
-test fails if any of them moves. That is not tidiness: 3b asks whether any engine beats the null, and
-that question has a family size. Pre-registering the numbers is what keeps it at four rather than
-*every threshold we tried*.
+Every threshold is a named constant in `src/core/engines/manifest.ts`, hashed as **`1fc650fc`**, and a
+test fails if any of them moves. That is not tidiness: §14.7 asks whether any engine beats the null,
+and that question has a family size. Pre-registering the numbers is what keeps it at eight rather
+than *every threshold we tried*.
 
-### 14.2 No school on this roster has a price target
+> **The guard was decoration for one release.** 3a shipped the hash as `digest(THRESHOLDS)` — computed
+> at read time, so the test asserting the two agree compared a value to itself and could never fail.
+> It is a hand-written literal now, and moving any threshold fails the build. `baseRates.ts` also
+> records the hash it was measured under, so a track record cannot be inherited by a roster that
+> never earned it.
 
-Verified rather than assumed, and it changes what the product may claim. The Turtles exit on a
-trailing breakout; Connors exits on a close above the 5-bar mean. Both are **conditions evaluated
-per bar**, not prices — so at the decision bar there is no take-profit to report.
+**Four of the eight engines pass more than 90% of the time, and one passes always.** That is the
+roster, not a defect in it — see §14.5 for what each one actually did.
+
+### 14.1.1 Three engines could not ship as §5.2 described them
+
+**Sweep was LIQUIDITY, and could not carry ICT's name.** The stop is nearly specifiable ("beyond the
+sweep wick"). The target is fatal: defining "the next liquidity pool" deterministically needs a pivot
+definition, an equal-level tolerance, a minimum touch count, a side convention, a tie-break among
+qualifying pools, and a precedence rule between internal and external liquidity — **six rules, none
+published anywhere authoritative**. The doctrine also makes the target explicitly *revisable*: pick
+"the most obvious" pool and update as structure changes. A rule containing "most obvious" is a
+discretionary loop, and the discretion is what the school considers the skill.
+
+So the engine is ours, named ours, with our pseudocode in §14.8. **§5.2's "minimum 1:2" filter is
+not in it** — that was never an ICT rule, it is our invention, and it silently overrides the pool
+choice whenever the nearest pool sits closer than 2R, which would make the engine stop trading toward
+the level it names on screen. The nearest opposing pool is the target at whatever R it implies, and
+where there is no opposing pool the engine passes.
+
+**Pattern is restricted to what 3.3 days of tape can hold.**
+
+> **Correction to the research as first gathered.** The finding was reported as "80 hourly candles ≈
+> 13 trading days", which assumes a 6.5-hour equity session. This corpus is **24/7 crypto**: 80
+> candles is **3.3 calendar days** and 300 is **12.5**. The window problem is roughly four times
+> worse than reported.
+
+Bulkowski's research base is daily and weekly bars, his identification guidelines are prose with
+escape hatches, and he warns that his own indicator on sub-weekly periods produces "a nasty
+surprise". A double top needing peaks "usually several weeks apart" **cannot exist at either tier**,
+so it is not implemented — an engine claiming to find one in 3.3 days would be finding something else
+and calling it a double top. What ships is flags and pennants, which is also the weakest subset of
+his catalogue. His percentages are **never used as conviction**: they are daily-bar priors applied
+out of domain, and conviction comes from our own replay like every other engine's.
+
+**Tape is directional, and its stop is its own.** §5.2 called VSA "a veto rather than a direction" —
+that is our invention; Williams' signals are explicitly directional, and an upthrust is bearish
+rather than a filter on someone else's trade. What is defensible in that description is the abstain
+rate, so it ships as a directional engine that passes 94% of the time. §5.2 also said neither stop
+nor target is native; **the stop is native** — beyond the signal bar's extreme, where the signal is
+refuted. Only the target is ours.
+
+Exactly one rule in VSA is numeric ("volume lower than each of the previous two bars"). "Narrow",
+"wide" and "ultra-high" are words, and every number in circulation for them comes from vendors. **So
+this engine's determinism is manufactured, not inherited** — it is exactly as reproducible as our
+frozen percentiles and no better. Volume and spread are read as percentile ranks within the lead-in
+rather than multiples of a median, because median-scaling equalises location but not dispersion and
+would make coverage a property of the instrument.
+
+### 14.2 Six of the eight schools have no price target
+
+> **This section read "no school on this roster has a price target" at a roster of four, and that is
+> now wrong.** Pattern and Geometry both publish one. The practice did not change — every target
+> still says whose it is — but the claim did, and an overstatement in our favour is exactly the kind
+> this document exists to catch.
+
+Verified rather than assumed. The Turtles exit on a trailing breakout; Connors exits on a close above
+the 5-bar mean; VSA exits on an opposing signal; Sweep's exit *is* its target. All are **conditions
+evaluated per bar**, not prices — so at the decision bar there is no take-profit to report.
 
 §5.5 demands one anyway, because you place a static bracket and the two have to be comparable. So
-**most targets on this screen are ours**, and each verdict says which side is whose.
+**six of the eight targets on this screen are ours**, and each verdict says which side is whose. The
+two that are not: Bulkowski's measuring rule, and Carney's retracement of the AD leg.
 
 Every engine also emits its *native* exit, resolved by walking the reveal path minute by minute. Both
 records are kept, and the gap between them is the measured cost of forcing a school into a bracket:
@@ -1202,12 +1266,32 @@ being comparable.
 
 Every engine's mean R sits **inside Engine Zero's band**, measured at that engine's own sample size:
 
-| engine | n | mean R | Engine Zero at the same n | |
-| --- | --- | --- | --- | --- |
-| Channel | 198 | −0.027 | [−0.210, +0.165] | inside |
-| Reversion | 22 | +0.156 | [−0.572, +0.492] | inside |
-| Reversion (Hindsight) | 88 | +0.070 | [−0.290, +0.224] | inside |
-| Engine Zero | 1000 | −0.091 | [−0.103, +0.064] | inside |
+| engine | n | win | mean R | Engine Zero at the same n | |
+| --- | --- | --- | --- | --- | --- |
+| Channel | 198 | 39.4% | −0.027 | [−0.210, +0.165] | inside |
+| Reversion | 22 | 50.0% | +0.156 | [−0.572, +0.492] | inside |
+| Reversion (Hindsight) | 88 | 42.0% | +0.070 | [−0.290, +0.224] | inside |
+| Sweep | 400 | 58.3% | −0.008 | [−0.158, +0.106] | inside |
+| Pattern | 32 | 46.9% | −0.037 | [−0.429, +0.490] | inside |
+| **Geometry** | **0** | — | — | — | **never fired** |
+| Tape | 61 | 34.4% | +0.048 | [−0.358, +0.327] | inside |
+| Engine Zero | 1000 | 32.7% | −0.091 | [−0.103, +0.064] | inside |
+
+**Sweep has the best win rate on the roster and loses money.** It wins 58.3% of the time because its
+target is the nearest opposing pool, which is usually close — a high hit rate on a small reward, and
+the mean R says the two cancel almost exactly. It is the clearest demonstration on this page of why
+§4.4 scores percentile rather than win rate.
+
+**Geometry never fired.** Not "rarely" — zero charts in 1,000. Carney's ratios at our published ±5%
+matched on exactly one chart, and that one was rejected because its own AD retracement pointed the
+wrong way. **The tolerance is not the cause**: a diagnostic sweep found the median chart's
+best-fitting XABC misses by **82%**, and even at ±20% — four times the published tolerance — only 17
+charts in 1,000 would admit a pattern at all. The shapes are not there to be found.
+
+It stays on the roster and in the registered family anyway. Dropping an engine because it returned an
+unwelcome answer is the file-drawer problem, and pre-registering the family before touching the
+corpus only means something if the family does not change afterwards. Its slot makes every other
+engine's correction slightly more conservative, and that cost is part of having asked.
 
 **The band is drawn at each engine's own n, and that is not a refinement.** An engine firing on 88
 charts has 3.4× the sampling error of a band computed over 1,000; one firing on 22 has 6.7×. The
@@ -1220,8 +1304,14 @@ Engine Zero's own win rate is **measured, never assumed**. A 2R target on a 2 AT
 proposition: drift moves it, the 60-candle timeout truncates it, and §12.3.2's stop-first convention
 decides every bar that touches both. It came out at 32.7%.
 
-These are raw base rates and **they are not evidence of an edge in either direction**. Four engines
-against a band is still four comparisons, and §13.9 showed what happens without correction: twelve
+**The council is silent on 39.7% of charts**, down from 76.6% at a roster of four, and two or more
+schools now disagree on 10.9%, up from 5.2%. That is the roster doing what §5.5 wanted — a spread of
+opinion needs opinions. Read it with one caveat: almost all the new coverage is Sweep, which takes a
+position on 40% of charts by itself, so the silence fell because one engine is loose rather than
+because six schools found agreement.
+
+These are raw base rates and **they are not evidence of an edge in either direction**. Eight engines
+against a band is eight comparisons, and §13.9 showed what happens without correction: twelve
 comparisons, one hit at 95%, gone once corrected. §14.7 applies the correction.
 
 ### 14.6 What the engines see
@@ -1236,19 +1326,23 @@ load-bearing, and it cannot exist in an 80-candle window at all.
 
 ### 14.7 Does any of it work? The leaderboard, corrected
 
-Reproduce with `npm run leaderboard`. 1,000 charts, 314 symbols, four pre-registered engines,
-thresholds `d034e8b2`. Every bootstrap resamples **whole symbols** — up to eight windows come from
+Reproduce with `npm run leaderboard`. 1,000 charts, 314 symbols, **eight** pre-registered engines,
+thresholds `1fc650fc`. Every bootstrap resamples **whole symbols** — up to eight windows come from
 one instrument and two windows of the same instrument are not independent draws.
 
 Each engine gets one number per chart: its R where it traded, **zero where it passed**. That is a
-portfolio, and it is deliberately not the mean over an engine's own trades — which is a much easier
-question, and the one under which a system that trades twice a decade looks superb.
+portfolio, and it is deliberately not the mean over an engine's own trades — a much easier question,
+and the one under which a system that trades twice a decade looks superb.
 
 | engine | fired | per-chart R | Sharpe |
 | --- | --- | --- | --- |
 | Channel | 198 | −0.0053 | −0.0093 |
 | Reversion | 22 | +0.0034 | +0.0177 |
 | Reversion (Hindsight) | 88 | +0.0061 | +0.0159 |
+| Sweep | 400 | −0.0033 | −0.0053 |
+| Pattern | 32 | −0.0012 | −0.0067 |
+| Geometry | 0 | 0.0000 | — |
+| Tape | 61 | +0.0029 | +0.0083 |
 | Engine Zero | 1000 | −0.0907 | −0.0695 |
 | **Never trade** | 0 | 0.0000 | — |
 
@@ -1258,16 +1352,22 @@ chart. So anything that trades less than it beats it, skill or no skill.
 
 **Question one — which would you rather have been running?** Romano–Wolf StepM against Engine Zero,
 4,000 cluster resamples, α = 0.05, one-sided. StepM rather than Bonferroni because the engines read
-the same charts, so their statistics are correlated, and Bonferroni assumes they are not.
+the same charts, so their statistics are correlated and Bonferroni assumes they are not.
 
 | | Δ vs Engine Zero | t | |
 | --- | --- | --- | --- |
 | Channel | +0.0855 | 1.93 | beats Engine Zero |
 | Reversion | +0.0942 | 2.25 | beats Engine Zero |
 | Reversion (Hindsight) | +0.0969 | 2.29 | beats Engine Zero |
+| Sweep | +0.0875 | 1.95 | beats Engine Zero |
+| Pattern | +0.0895 | 2.15 | beats Engine Zero |
+| **Geometry** | **+0.0907** | **2.20** | beats Engine Zero |
+| Tape | +0.0937 | 2.18 | beats Engine Zero |
 | **Never trade** | **+0.0907** | **2.20** | **beats Engine Zero** |
 
-Three schools clear the null — and so does doing nothing, by the same margin. The gap is abstention.
+Every school clears the null — and so does doing nothing, by the same margin. **Geometry's row is
+identical to the control's, to four decimal places, because it is the same thing**: an engine that
+never trades and a strategy of never trading are one object. The gap is abstention.
 
 **Question two — on the charts it chose, did it beat a coin flip on those same charts?** Paired per
 chart against Engine Zero's own outcome on that chart: same entry, same window, a rule against a
@@ -1279,54 +1379,99 @@ fixed and only trade selection is left.
 | Channel | −0.0070 | −0.28 | 198 trades |
 | Reversion | −0.0006 | −0.07 | 22 trades |
 | Reversion (Hindsight) | −0.0020 | −0.13 | 88 trades |
+| Sweep | +0.0340 | 1.08 | 400 trades |
+| Pattern | +0.0026 | 0.27 | 32 trades |
+| Geometry | 0.0000 | 0.00 | 0 trades |
+| Tape | −0.0166 | −1.02 | 61 trades |
 
-Every one is negative. Hansen's SPA — one test for the whole roster, asked once, so that reporting
-the smallest of three p-values is not on the table — returns **p = 1.00**. There is no evidence of
+Sweep is the best of the eight and does not come close: t = 1.08 on its 400 trades, the largest
+sample any school has. Hansen's SPA — one test for the whole roster, asked once, so that reporting
+the smallest of seven p-values is not on the table — returns **p = 0.56**. There is no evidence of
 superior predictive ability anywhere on this roster.
 
-**Is the ordering real?** No. PBO by combinatorially symmetric cross-validation, all 12,870 balanced
-splits of sixteen blocks, exhaustive: **0.473**. The in-sample winner lands below median out of
-sample about half the time, which is what a leaderboard with no information in it looks like. The
-rank distribution says the same thing directly — the share of 4,000 resamples each engine spends in
-each place:
+> At a roster of four this section said every engine was *negative* against a coin flip. At eight,
+> Sweep and Pattern are fractionally positive. The honest claim was never "they all lose" — it is
+> "none of them can be told apart from a coin flip", which is what SPA measures. A test in
+> `tests/engines.test.ts` fails if the published numbers stop supporting the published sentence, and
+> it is what caught this one.
 
-| | #1 | #2 | #3 | #4 | #5 |
-| --- | --- | --- | --- | --- | --- |
-| Channel | 22.6% | 9.3% | 11.2% | 54.8% | 2.1% |
-| Reversion | 20.0% | 47.6% | 26.3% | 6.0% | 0.1% |
-| Reversion (Hindsight) | 48.6% | 18.6% | 14.8% | 17.5% | 0.5% |
-| Engine Zero | 0.4% | 0.4% | 0.5% | 1.7% | 96.9% |
-| Never trade | 8.4% | 24.0% | 47.1% | 20.1% | 0.4% |
+**Is the ordering real?** It is worse than not-real. PBO by combinatorially symmetric
+cross-validation, all 12,870 balanced splits of sixteen blocks, exhaustive: **0.826**, up from 0.473
+at a roster of four. Above a half means the in-sample winner lands *below* median out of sample more
+often than chance — its median finish is **8th of 9**. Picking the leader on past performance here is
+not merely uninformative, it is actively misleading.
 
-Only one row on that table is stable, and it is Engine Zero finishing last. Nothing else holds a
-place, so **no ranking is published** — this table is published instead, because printing a single
-ordering over these numbers would be the most misleading thing on the page.
+The rank distribution says the same thing directly — the share of 4,000 resamples each engine spends
+in each place:
 
-**Deflation.** With four pre-registered trials, the best of four *skill-free* engines is expected to
-reach a Sharpe of 0.0429 by luck alone (Bailey & López de Prado; E[max] = 1.052 against a
-cross-engine spread of 0.0407). The observed best is **0.0177** — below the noise floor. That floor
-is only honest because the family was frozen before the corpus was touched, which is what the
-manifest hash enforces.
+| | #1 | #2 | #3 | #4 | #5 | #6 | #7 | #8 | #9 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Channel | 15.3% | 9.8% | 5.7% | 4.9% | 3.6% | 6.7% | 17.0% | 35.8% | 1.4% |
+| Reversion | 7.5% | 24.4% | 25.8% | 14.2% | 9.2% | 9.8% | 7.6% | 1.3% | 0.1% |
+| Reversion (Hindsight) | 31.2% | 20.7% | 11.1% | 5.7% | 4.8% | 7.3% | 10.2% | 8.7% | 0.3% |
+| Sweep | 20.2% | 10.8% | 6.6% | 4.8% | 3.1% | 6.2% | 14.2% | 31.6% | 2.4% |
+| Pattern | 3.1% | 8.8% | 12.6% | 13.0% | 13.6% | 19.9% | 22.2% | 6.7% | 0.1% |
+| Geometry | 0.9% | 6.8% | 18.0% | 31.8% | 27.8% | 12.6% | 2.2% | 0.0% | 0.0% |
+| Tape | 21.3% | 17.5% | 13.3% | 7.3% | 6.0% | 9.5% | 13.3% | 11.1% | 0.6% |
+| Engine Zero | 0.4% | 0.3% | 0.1% | 0.4% | 0.1% | 0.3% | 0.7% | 2.5% | 95.2% |
+| Never trade | 0.0% | 0.9% | 6.8% | 17.9% | 31.8% | 27.8% | 12.6% | 2.2% | 0.0% |
 
-**The headline, stated plainly: the only thing on this roster that beats a coin flip is not trading.**
-The schools do not pick better than chance on the charts they choose; they win on the portfolio
-purely by staying out of most of them. That is a real and useful result — restraint is the edge, and
-§4.4 already scores it as a move the player can make — but it is not the result of any published
-school having an edge here, and this project does not get to round it up into one.
+Only one row on that table is stable, and it is Engine Zero finishing last. Four different engines
+take first place in at least 15% of resamples. So **no engine is ranked** — this table is published
+instead, because printing a single ordering over these numbers would be the most misleading thing on
+the page.
 
-**What n = 1,000 can and cannot resolve.** A per-trade edge of about 0.1R on 198 trades sits at the
-edge of detection here; Reversion's 22 trades cannot resolve anything at all, and it is published as
-unmeasurable rather than quietly dropped. So "no edge found" is not "no edge exists" — it is the
-strongest statement this corpus supports, and the corpus is the thing to grow if a stronger one is
-wanted.
+**Deflation.** With eight pre-registered trials, the best of eight *skill-free* engines is expected to
+reach a Sharpe of 0.0403 by luck alone (Bailey & López de Prado; E[max] = 1.459 against a
+cross-engine spread of 0.0276). The observed best is **0.0177** — below the noise floor. Note that
+E[max] rose from 1.052 to 1.459 when the roster grew: **asking more questions raises the bar for
+every answer**, which is the entire reason the family is frozen in advance.
+
+**The headline, unchanged by doubling the roster: the only thing here that beats a coin flip is not
+trading.** Six published schools and one of our own controls, read over 1,000 charts, and not one of
+them picks better than chance on the charts it chooses. They win on the portfolio purely by staying
+out of most of them — and the engine that stays out of *all* of them scores exactly the same as the
+strategy of doing nothing, because it is that strategy.
+
+That is a real and useful result. Restraint is the edge, and §4.4 already scores it as a move you can
+make. But it is not any published school having an edge here, and this project does not get to round
+it up into one.
+
+**What n = 1,000 can and cannot resolve.** A per-trade edge of about 0.1R on 400 trades sits at the
+edge of detection; Reversion's 22 trades and Pattern's 32 cannot resolve anything at all, and both
+are published as unmeasurable rather than quietly dropped. So "no edge found" is not "no edge exists"
+— it is the strongest statement this corpus supports, and the corpus is the thing to grow if a
+stronger one is wanted.
+
+### 14.8 Sweep, in full, because nobody else publishes it
+
+The engine §5.2 called LIQUIDITY, written out so it can be argued with. Every constant is in
+`THRESHOLDS.sweep`; nothing here is ICT's, because ICT publishes no spec.
+
+```
+pools   := swings at the intermediate grade (§13.1), confirmed strictly BEFORE the decision
+           bar, within 60 bars of it
+sweep   := the decision bar reaches at least 0.05 ATR beyond a pool
+           AND closes at least 0.05 ATR back inside it
+           (reaching without closing back is a breakout — a different engine's trade)
+if both sides swept in one bar: pass. An outside bar resolved nowhere.
+direction := the rejection's, not the poke's — a swept HIGH is short, a swept LOW is long
+stop    := beyond the sweep wick by 0.25 ATR
+target  := the NEAREST opposing pool, at whatever R that implies
+           no minimum-R rule, and no adjustment
+if there is no opposing pool in view: pass, rather than invent a price
+```
+
+The last two lines are the ones that matter. §5.2 gave this engine a "minimum 1:2" filter; it is not
+an ICT rule, and it would silently move the target away from the level the engine names on screen
+whenever the nearest pool sits closer than 2R. A poor reward ratio is information about the trade,
+not a number to be corrected.
 
 ## 15. What is not built yet
 
 Recorded so nothing here is mistaken for the finished product.
 
-**Not built:** the four remaining engines — Liquidity, Pattern, Geometry, Tape (§14 has the two whose
-rules are actually published, plus a control and the null); the per-theme ratings; the News Blind
-tier; the Fog mod; ranked sessions, divisions and
+**Not built:** the per-theme ratings; the News Blind tier; the Fog mod; ranked sessions, divisions and
 seasons; Manage, Storm, Duel, Racer and Calibration; creator maps and cohort dashboards; the cost
 model; synthetic controls in the corpus; news.
 
@@ -1338,13 +1483,23 @@ a drawing on one. Two pieces are deferred outright with reasons in §13.6, round
 measured-and-withheld in §13.5, and news-spike is dropped outright rather than named after a cause
 we cannot observe — §9 news has been dropped from the plan, so its deferral had no target left.
 
-**The engine council is measured, and the answer is no.** §14.7 applies the corrections: Romano–Wolf
-StepM over the pre-registered family, Hansen's SPA asked once, PBO over all 12,870 balanced splits,
-and bootstrap rank distributions — all resampling whole symbols. Paired against a coin flip on the
-same charts, every engine on the roster is negative; the ordering has PBO 0.473; the best Sharpe is
-below the deflation floor for four trials. The only thing that beats Engine Zero is not trading, and
-all three schools do most of the time. **No engine is ranked**, and the council says so on screen.
-This is the second independent route to the same answer §13.8 got from the themes.
+**The roster is complete at eight, and the answer is still no.** §14 has all six schools, our control
+on one of them, and the null. §14.7 applies the corrections: Romano–Wolf StepM over the pre-registered
+family, Hansen's SPA asked once, PBO over all 12,870 balanced splits, and bootstrap rank
+distributions — all resampling whole symbols. Paired against a coin flip on the same charts, **no
+engine on the roster can be distinguished from one** (best: Sweep, t = 1.08 on 400 trades; SPA p =
+0.56). The ordering is worse than uninformative, at PBO 0.826. The best Sharpe is below the deflation
+floor for eight trials, and that floor *rose* when the roster grew, which is what asking more
+questions costs.
+
+Two results are worth naming on their own. **Geometry never fired** — zero charts in 1,000, and not
+because of our tolerance: even at four times it, 17 charts in 1,000 would qualify. It scores exactly
+what a strategy of never trading scores, because it is that strategy. And **Sweep has the best win
+rate on the roster at 58.3% while losing money**, which is the clearest demonstration in the document
+of why §4.4 scores percentile instead.
+
+**No engine is ranked**, and the council says so on screen. This is the second independent route to
+the same answer §13.8 got from the themes.
 
 **And §13.8 is the part to read first.** One detector of ten beats a shuffle of the same charts;
 seven fire *less* often on real data than on noise. That is published rather than filed, because it

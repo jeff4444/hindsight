@@ -48,7 +48,7 @@ export interface BaseRate {
 }
 
 /** The corpus this was measured on. A record does not transfer to a different one. */
-export const MEASURED_OVER = { charts: 1000, thresholdHash: 'd034e8b2' } as const;
+export const MEASURED_OVER = { charts: 1000, thresholdHash: '1fc650fc' } as const;
 
 /** The static bracket — the record comparable to a player's, and to the 98-cell achievable set. */
 export const BRACKET: Record<EngineCode, BaseRate> = {
@@ -78,6 +78,55 @@ export const BRACKET: Record<EngineCode, BaseRate> = {
     meanR: 0.07,
     targetRate: 0.273,
     nullBand: { low: -0.29, high: 0.224 },
+  },
+  SWEEP: {
+    n: 400,
+    coverage: 0.4,
+    // The busiest school on the roster by a distance, and the highest win rate — because its target
+    // is the nearest opposing pool, which is often close. A 58% win rate at a sub-1R reward is what
+    // that trade-off looks like, and the mean R says the two cancel almost exactly.
+    winRate: 0.583,
+    meanR: -0.008,
+    targetRate: 0.583,
+    nullBand: { low: -0.158, high: 0.106 },
+  },
+  PATTERN: {
+    n: 32,
+    coverage: 0.032,
+    winRate: 0.469,
+    meanR: -0.037,
+    targetRate: 0.469,
+    nullBand: { low: -0.429, high: 0.49 },
+  },
+  /**
+   * **Zero.** Not a rounding, not a low number — the harmonics never completed.
+   *
+   * Carney's ratios at our published ±5% matched on **one** chart in 1,000, and that one was
+   * rejected because its own AD retracement pointed the wrong way. The tolerance is not the cause: a
+   * diagnostic sweep over the corpus found the median chart's best-fitting XABC misses by **82%**,
+   * and even at ±20% — four times the published tolerance — only 17 charts in 1,000 would admit a
+   * pattern at all.
+   *
+   * It stays on the roster and in the registered family. Dropping an engine because it returned an
+   * unwelcome answer is the file-drawer problem, and the whole point of pre-registering the family
+   * before the corpus was touched is that the family does not change afterwards. Its slot costs the
+   * other engines a slightly more conservative correction, and that cost is part of having asked.
+   */
+  GEOMETRY: {
+    n: 0,
+    coverage: 0,
+    winRate: 0,
+    meanR: 0,
+    targetRate: 0,
+    nullBand: { low: 0, high: 0 },
+  },
+  TAPE: {
+    n: 61,
+    coverage: 0.061,
+    winRate: 0.344,
+    meanR: 0.048,
+    targetRate: 0.344,
+    nullBand: { low: -0.358, high: 0.327 },
   },
   ZERO: {
     n: 1000,
@@ -129,12 +178,22 @@ export const NATIVE: Partial<Record<EngineCode, BaseRate>> = {
   },
 };
 
-/** How often the council has anything to say at all. */
+/**
+ * How often the council has anything to say at all.
+ *
+ * Four more engines halved the silence — 76.6% to 39.7% — and **doubled the disagreement**, 5.2% to
+ * 10.9%. That is the roster working as §5.5 intended: a spread of opinion needs opinions, and with
+ * two engines there was usually only one on offer.
+ *
+ * Almost all of the new coverage is SWEEP, which takes a position on 40% of charts by itself. Read
+ * the silence figure with that in mind: it fell because one engine is loose, not because six schools
+ * suddenly agreed there was a trade.
+ */
 export const COUNCIL_COVERAGE = {
   /** No school took a position. Engine Zero is excluded — it always speaks, so it would mask this. */
-  silent: 0.766,
-  twoOrMoreSpoke: 0.067,
-  disagreed: 0.052,
+  silent: 0.397,
+  twoOrMoreSpoke: 0.168,
+  disagreed: 0.109,
 } as const;
 
 /**
@@ -162,19 +221,36 @@ export const EDGE = {
   charts: 1000,
   symbols: 314,
   resamples: 4000,
+  trials: 8,
   /** The control: a strategy that never trades, tested in the same family as the schools. */
   abstain: { deltaVsZero: 0.0907, t: 2.199, beatsZero: true },
-  /** Paired against a coin flip on the same charts. Negative for every engine on the roster. */
+  /**
+   * Paired against a coin flip on the same charts. No engine on the roster clears it.
+   *
+   * GEOMETRY's row is exactly zero because it never traded — it is, on this corpus, literally the
+   * same object as the "never trade" control, and the two produce identical statistics everywhere.
+   */
   paired: {
     CHANNEL: { delta: -0.007, t: -0.278, trades: 198 },
     REVERSION: { delta: -0.0006, t: -0.068, trades: 22 },
     REVERSION_H: { delta: -0.002, t: -0.13, trades: 88 },
+    SWEEP: { delta: 0.034, t: 1.081, trades: 400 },
+    PATTERN: { delta: 0.0026, t: 0.269, trades: 32 },
+    GEOMETRY: { delta: 0, t: 0, trades: 0 },
+    TAPE: { delta: -0.0166, t: -1.019, trades: 61 },
   },
   /** One test for the whole roster, asked once. */
-  spa: { pValue: 1.0, best: 'Reversion' },
-  pbo: 0.473,
-  /** Best of four skill-free engines is expected to reach this Sharpe. Observed best: 0.0177. */
-  deflationFloor: 0.0429,
+  spa: { pValue: 0.561, best: 'Sweep' },
+  /**
+   * 0.826, and the number moved the wrong way when the roster grew.
+   *
+   * Above a half means the in-sample winner lands *below* median out of sample more often than
+   * chance — picking the leader on past performance is worse than useless here, not merely
+   * uninformative. Its median out-of-sample finish is 8th of 9.
+   */
+  pbo: 0.826,
+  /** Best of eight skill-free engines is expected to reach this Sharpe. Observed best: 0.0177. */
+  deflationFloor: 0.0403,
   observedBestSharpe: 0.0177,
 } as const;
 
@@ -187,10 +263,13 @@ export const EDGE = {
  *
  * The value is the engine's measured win rate. It is deliberately *not* rescaled, curved or
  * confidence-weighted into something that looks more decisive: a 39% win rate should read as 39%.
+ *
+ * An engine with no trades has no conviction to report and returns null rather than 0%, which would
+ * read as "certain it loses" instead of "never fired". GEOMETRY is that engine.
  */
 export function convictionFor(engine: EngineCode): { value: number; source: string } | null {
   const rate = BRACKET[engine];
-  if (!rate) return null;
+  if (!rate || rate.n === 0) return null;
 
   const inside = rate.meanR >= rate.nullBand.low && rate.meanR <= rate.nullBand.high;
   return {

@@ -72,7 +72,10 @@ describe('pre-registration is enforced, not promised', () => {
   });
 
   it('ignores key order, so a reformat is not a retune', () => {
-    const reordered = { zero: THRESHOLDS.zero, channel: THRESHOLDS.channel, reversion: THRESHOLDS.reversion, reversionHindsight: THRESHOLDS.reversionHindsight };
+    // Reversed rather than hand-listed: the first version named the four groups that existed when it
+    // was written, so adding engines silently narrowed what it checked until it failed outright.
+    const reordered = Object.fromEntries(Object.entries(THRESHOLDS).reverse());
+    expect(Object.keys(reordered)).not.toEqual(Object.keys(THRESHOLDS));
     expect(digest(reordered)).toBe(THRESHOLD_HASH);
   });
 
@@ -270,16 +273,24 @@ describe('the council is a spread of opinion, never a consensus', () => {
     // §14.7's headline — "the only thing on this roster that beats a coin flip is not trading" — is
     // rendered as prose in Council.tsx, and prose does not fail a build when the measurement moves.
     // This is what fails instead. Re-run `npm run leaderboard` and rewrite both if it does.
-    for (const paired of Object.values(EDGE.paired)) {
-      expect(paired.delta).toBeLessThanOrEqual(0);
-    }
+    // At a roster of four every paired delta was negative, and this test said so. At eight, SWEEP
+    // and PATTERN are fractionally positive — so the claim is no longer "every engine loses to a
+    // coin flip" but "no engine can be distinguished from one", which is what SPA measures and what
+    // the prose now says. The distinction matters: the first is a stronger statement than the data
+    // supports, and this test failing is what stopped it being published.
     expect(EDGE.spa.pValue).toBeGreaterThan(0.05);
+    for (const paired of Object.values(EDGE.paired)) {
+      expect(Math.abs(paired.t)).toBeLessThan(1.96);
+    }
     // Doing nothing clears Engine Zero by as much as any school does, which is the whole finding.
     expect(EDGE.abstain.beatsZero).toBe(true);
-    // A PBO near a half means the ordering carries no information, so nothing is ranked.
-    expect(Math.abs(EDGE.pbo - 0.5)).toBeLessThan(0.15);
+    // At or above a half: the in-sample winner is no better than chance out of sample, and here it
+    // is reliably worse. Either way there is no ordering to publish.
+    expect(EDGE.pbo).toBeGreaterThanOrEqual(0.5);
     expect(EDGE.observedBestSharpe).toBeLessThan(EDGE.deflationFloor);
     expect(EDGE.charts).toBe(MEASURED_OVER.charts);
+    // The family size the deflation floor was computed against must be the family that ran.
+    expect(EDGE.trials).toBe(REGISTERED.engines.length);
   });
 
   it('says so when an engine is indistinguishable from a coin flip', () => {

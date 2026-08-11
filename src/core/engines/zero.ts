@@ -27,7 +27,7 @@
  *
  * ## It never abstains, and that is the point
  *
- * Every other engine on the roster passes most of the time — the council is silent on 76.6% of
+ * Every other engine on the roster passes most of the time — the council is silent on 39.7% of
  * charts. Engine Zero speaks on all of them, which makes it the only engine with a full-corpus
  * record and therefore the only stable reference the others can be measured against.
  */

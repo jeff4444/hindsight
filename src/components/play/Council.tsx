@@ -8,7 +8,7 @@ import { cx } from '../ui';
  *
  * §5.5: *"The player-facing output is a spread of opinion, never a consensus verdict."* So there is
  * no majority here, no aggregate score, and no arrow. Every engine gets a row, including every
- * engine that passed — and on **76.6%** of charts that is all of them.
+ * engine that passed — and on **39.7%** of charts that is all of them.
  *
  * Three things this panel is built to make impossible to miss, each because the alternative would be
  * a quiet lie:
@@ -18,9 +18,10 @@ import { cx } from '../ui';
  * the same move, and "no school here had a trade" is the most useful sentence a trading product can
  * say.
  *
- * **Whose number is whose.** No school on this roster ships a native price target — the Turtles
- * trail out, Connors exits on a moving-average cross — so most take-profits shown here are ours.
- * Every bracket carries the provenance of each side.
+ * **Whose number is whose.** Six of the eight engines ship no native price target — the Turtles
+ * trail out, Connors exits on a moving-average cross, VSA exits on an opposing signal — so most
+ * take-profits shown here are ours. Only Pattern's measuring rule and Geometry's AD retracement are
+ * the school's. Every bracket carries the provenance of each side.
  *
  * **Nothing here beat a coin flip.** Every engine's mean R sits inside Engine Zero's band at its own
  * sample size, and the conviction line says so in words rather than leaving a percentage to imply
@@ -122,15 +123,17 @@ export function Council({ verdicts, entry }: { verdicts: Verdict[]; entry: numbe
         The null, stated rather than implied — and now the corrected version of it (§14.7).
 
         Each engine's mean R sits inside Engine Zero's band at its own sample size, and the full
-        measurement says why: paired chart by chart against a coin flip on the *same* charts, every
-        engine on this roster is negative. What beats Engine Zero is not trading, which all three
-        schools do most of the time. Without this line a 39% win rate reads as skill.
+        measurement says why: paired chart by chart against a coin flip on the *same* charts, no
+        engine on this roster can be told apart from one (SPA p = 0.56). What beats Engine Zero is
+        not trading, which every school here does most of the time — and which Geometry, firing on
+        no chart at all, does perfectly. Without this line a 58% win rate reads as skill.
       */}
       <p className="text-ink-faint mt-4 max-w-prose text-xs leading-relaxed">
         Every conviction figure above is measured over {EDGE.charts.toLocaleString()} charts, and
         every one of them sits <strong className="text-ink-dim">inside a coin flip’s range</strong>{' '}
-        at that engine’s own sample size. Corrected for testing all four at once, and paired chart by
-        chart against a coin flip on the same charts, no school here picks better than chance —{' '}
+        at that engine’s own sample size. Corrected for testing all {EDGE.trials} at once, and paired
+        chart by chart against a coin flip on the same charts, no school here picks better than
+        chance —{' '}
         <strong className="text-ink-dim">the only thing on this roster that beats a coin flip is not
         trading</strong>. Which is why the rows above are not ranked, and why passing is scored.
       </p>

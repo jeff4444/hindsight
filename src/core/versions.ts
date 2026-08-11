@@ -75,7 +75,7 @@ export const GEOMETRY_VERSION = 'geometry-1';
  * thresholds beside this constant, and a test fails if they drift apart, so a silently retuned
  * threshold cannot inherit an old record.
  */
-export const ENGINE_VERSION = 'engine-1';
+export const ENGINE_VERSION = 'engine-2';
 
 /**
  * The rating system: Glicko-2's constants, the information weight, and the pending policy.
