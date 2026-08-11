@@ -192,7 +192,7 @@ describe('§3.4 asks for a derived tier multiplier rather than an asserted one',
     // "A measured number cannot be argued with; a chosen one always will be." The same chart at a
     // harder tier is a different entity and rates higher, so the gap is the multiplier.
     const offsets = derivedTierOffset(
-      { SBX: [], NT: [1450, 1470], NTZ: [1500, 1520], NTVZ: [1580, 1600] },
+      { SBX: [], FD: [1420, 1440], NT: [1450, 1470], NTZ: [1500, 1520], NTVZ: [1580, 1600] },
       'NTZ',
     );
     expect(offsets.NTZ).toBeCloseTo(0, 12);

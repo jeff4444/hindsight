@@ -6,6 +6,7 @@ import {
   HistogramSeries,
   LineSeries,
   LineStyle,
+  PriceScaleMode,
   createChart,
   createSeriesMarkers,
   type AutoscaleInfo,
@@ -56,6 +57,15 @@ export interface Overlay {
   color: string;
   width?: number;
   dashed?: boolean;
+  /**
+   * Which pane to draw in. 0 is the price pane; 1 is the oscillator pane below it.
+   *
+   * RSI and MACD live in their own scale — an RSI of 71 plotted against a price axis around 100 is
+   * a flat line halfway up the chart — so they need a second pane rather than a second series. The
+   * pane is created when the first overlay asks for it and removed when the last one leaves, so a
+   * player who turns MACD off gets the chart height back.
+   */
+  pane?: number;
 }
 
 export interface ChartHandle {
@@ -70,6 +80,20 @@ export interface ChartHandle {
    * file that has to agree about what index means at the current resolution.
    */
   setOverlays(overlays: Overlay[]): void;
+
+  /**
+   * Horizontal mapping, the counterpart of `priceToY`/`yToPrice`.
+   *
+   * A rail needs only a price, so the trade overlay never needed these. A trendline needs two
+   * corners, which is why they arrive with the drawing tools. Both return null when the index is
+   * off-screen or the chart has not laid out yet — a caller that treats null as zero draws a line
+   * to the left edge, so it is deliberately not a number.
+   */
+  indexToX(index: number): number | null;
+  xToIndex(x: number): number | null;
+
+  /** Switch the price axis between linear and logarithmic. A Full Desk tool (§3.2). */
+  setLogScale(enabled: boolean): void;
   /**
    * Reveal one more display-timeframe hour.
    *
@@ -451,18 +475,26 @@ export const Chart = forwardRef<ChartHandle, { className?: string }>(function Ch
       for (const series of overlays.current) api.removeSeries(series);
       overlays.current = [];
 
+      const wantsOscillator = next.some((overlay) => (overlay.pane ?? 0) > 0);
+
       for (const overlay of next) {
         if (overlay.points.length < 2) continue;
-        const series = api.addSeries(LineSeries, {
-          color: overlay.color,
-          lineWidth: (overlay.width ?? 1) as 1 | 2 | 3 | 4,
-          lineStyle: overlay.dashed ? LineStyle.Dashed : LineStyle.Solid,
-          priceLineVisible: false,
-          lastValueVisible: false,
-          crosshairMarkerVisible: false,
-          // An annotation describes the candles; it does not get a vote on how they are framed.
-          autoscaleInfoProvider: () => null,
-        });
+        const pane = overlay.pane ?? 0;
+        const series = api.addSeries(
+          LineSeries,
+          {
+            color: overlay.color,
+            lineWidth: (overlay.width ?? 1) as 1 | 2 | 3 | 4,
+            lineStyle: overlay.dashed ? LineStyle.Dashed : LineStyle.Solid,
+            priceLineVisible: false,
+            lastValueVisible: false,
+            crosshairMarkerVisible: false,
+            // An annotation describes the candles; it does not get a vote on how they are framed.
+            // In the oscillator pane it is the only thing there, so it must scale itself.
+            ...(pane === 0 ? { autoscaleInfoProvider: () => null } : {}),
+          },
+          pane,
+        );
         series.setData(
           overlay.points
             .slice()
@@ -471,6 +503,35 @@ export const Chart = forwardRef<ChartHandle, { className?: string }>(function Ch
         );
         overlays.current.push(series);
       }
+
+      // Give the height back when the last oscillator leaves. Without this, turning MACD off leaves
+      // a quarter of the frame permanently blank.
+      if (!wantsOscillator && api.panes().length > 1) {
+        try {
+          api.removePane(1);
+        } catch {
+          // Already gone, or the library declined. Nothing here is worth failing a render over.
+        }
+      }
+    },
+
+    indexToX(index) {
+      const scale = chart.current?.timeScale();
+      if (!scale) return null;
+      return scale.logicalToCoordinate(index as never) ?? null;
+    },
+
+    xToIndex(x) {
+      const scale = chart.current?.timeScale();
+      if (!scale) return null;
+      const logical = scale.coordinateToLogical(x);
+      return logical === null ? null : Math.round(logical as number);
+    },
+
+    setLogScale(enabled) {
+      chart.current?.priceScale('right').applyOptions({
+        mode: enabled ? PriceScaleMode.Logarithmic : PriceScaleMode.Normal,
+      });
     },
 
     revealHour(bar, hourIndex) {

@@ -74,17 +74,40 @@ describe('risk arithmetic survives every rung (§3.1)', () => {
 });
 
 describe('the rungs that shipped', () => {
-  it('is Sandbox, NT, NTZ and NTVZ — FD and NN are deferred', () => {
-    // FD is defined entirely by pre-trade news headlines and NN as "Full Desk except the
-    // headlines", so until §9 exists they are one ruleset wearing two names.
-    expect(TIERS.map((tier) => tier.code)).toEqual(['SBX', 'NT', 'NTZ', 'NTVZ']);
+  it('is Sandbox, Full Desk, NT, NTZ and NTVZ — News Blind is deleted, not deferred', () => {
+    // Phase 1.5 deferred FD and NN together, because FD was defined entirely by pre-trade news
+    // headlines and NN as "Full Desk except the headlines" — one ruleset wearing two names.
+    //
+    // News is out of the plan. With no headlines to withhold, Full Desk *is* News Blind, so there
+    // is one rung rather than two and it ships. NN is gone rather than pending, and this assertion
+    // is where someone hunting for a missing rung will land.
+    expect(TIERS.map((tier) => tier.code)).toEqual(['SBX', 'FD', 'NT', 'NTZ', 'NTVZ']);
+    expect(TIERS.map((tier) => tier.code)).not.toContain('NN');
   });
 
   it('rates everything except the sandbox (§3.2)', () => {
     expect(tierByCode('SBX')!.rated).toBe(false);
     expect(tierByCode('SBX')!.xp).toBe(0);
-    for (const code of ['NT', 'NTZ', 'NTVZ'] as const) {
+    for (const code of ['FD', 'NT', 'NTZ', 'NTVZ'] as const) {
       expect(tierByCode(code)!.rated).toBe(true);
+    }
+  });
+
+  it('gives the toolbox to Sandbox and Full Desk, and to nothing that calls itself No Tools', () => {
+    expect(tierByCode('FD')!.tools.length).toBeGreaterThan(10);
+    expect(tierByCode('SBX')!.tools.length).toBeGreaterThanOrEqual(tierByCode('FD')!.tools.length);
+    for (const code of ['NT', 'NTZ', 'NTVZ'] as const) {
+      expect(tierByCode(code)!.tools).toEqual([]);
+    }
+  });
+
+  it('keeps the stop-placement algorithms off every rated rung', () => {
+    // Chandelier, Supertrend and Parabolic SAR are literally stop-placement algorithms, and the
+    // skill this product measures is placing a stop. Showing one on a rated rung is showing the
+    // answer key. Sandbox is unrated and explicitly "the learning surface, not a tier".
+    expect(tierByCode('SBX')!.tools).toContain('stopAlgos');
+    for (const tier of TIERS.filter((t) => t.rated)) {
+      expect(tier.tools, `${tier.code} must not grant stop algorithms`).not.toContain('stopAlgos');
     }
   });
 

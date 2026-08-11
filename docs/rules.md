@@ -499,7 +499,79 @@ The clock is sent as a remaining duration, never a deadline. A wall-clock timest
 client with a skewed clock decide whether its own commit was late. A commit after the deadline is a
 **forfeit**, not a rejection, so running out of time cannot be undone by reloading.
 
-### 11.4 Mods
+### 11.4 Full Desk, and the toolbox
+
+**Full Desk is the top rung and it grants the tools.** 300 candles, three timeframes, volume,
+unlimited time, indicators, drawings and overlays.
+
+It nearly did not ship. §3.2 defined it as the tools rung *plus* pre-trade news headlines, and
+News Blind as "Full Desk except the headlines" — so until a news layer existed the two were one
+ruleset wearing two names, and Phase 1.5 deferred both. **News has since been dropped from the
+plan**, which resolves it rather than postponing it again: with no headlines to withhold, Full Desk
+*is* News Blind. One rung, and it ships. News Blind is deleted, not pending.
+
+What Full Desk does **not** get, despite §3.2 listing it: **post-entry trade management**. That is
+not a tool. §4.2 enumerates the achievable set over a *static* bracket, so a trade that can be
+adjusted mid-flight is no longer described by the distribution it is scored against — a Layer 1
+change wearing a chart affordance's clothes. §10.1's Manage mode is where it belongs.
+
+#### The measure tool is universal
+
+**Present at every rung, including Blackout.** §3.1 restricts identity, hindsight and crutches and
+never restricts risk arithmetic, and a ruler that reads out in ATR and R is risk arithmetic: on a
+chart with no ticker and no absolute price those are the only units that survive normalisation.
+Withholding it would not make Blackout a harder reading test; it would make the arithmetic
+guesswork. It sits beside the price axis and the ATR badge, and there is no field that could remove
+it.
+
+#### The stop-placement algorithms are Sandbox only
+
+Chandelier Exit, Supertrend and Parabolic SAR are causal, cheap to build, and **literally
+stop-placement algorithms**. In a game whose entire skill is placing a stop, showing one is showing
+the answer key. Sandbox is unrated and §3.2 calls it "the learning surface, not a tier", so seeing
+what a Chandelier would have suggested is a legitimate thing to learn from when nothing is at
+stake. They appear on **no rated rung**, and a test asserts it.
+
+#### The formulas, because there is no canonical one
+
+TA-Lib and TradingView disagree on weekly BTCUSDT ATR(7) by **12%** — 998.11 against 891.05 — for a
+formula published in a book in 1978. A player who reads an RSI of 71 and places a stop on it is
+entitled to know which RSI. Every choice below is written out in `src/core/indicators.ts` and each
+one is a place two respectable implementations differ.
+
+| Indicator | The choice, where there is one |
+| --- | --- |
+| **EMA** | Seeded on the **SMA of the first *n* values**, nothing emitted before. Seeding on the first value converges to the same curve but is visibly wrong early — a 200-EMA seeded that way is essentially the first close for a hundred bars. |
+| **Wilder's smoothing** | `α = 1/n`, **not** an EMA's `2/(n+1)`. Conflating the two is the single most common source of two implementations disagreeing, and it is most of that ATR gap. |
+| **Bollinger** | **Population** standard deviation, divisor *n* — Bollinger's own definition and TradingView's. The sample divisor *n−1* makes the bands about 12% wider at the default settings. |
+| **Keltner** | Raschke's modern form: EMA of close, banded by **Wilder-smoothed ATR** — the same ATR the badge and every stop distance already use. Not Keltner's original SMA of typical price. |
+| **Donchian** | The current bar **counts**, so "price is at the top of its range" is true when price is at the top of its range. |
+| **RSI** | Wilder's smoothing, not an EMA of the same period. Average loss of zero gives **100** by definition; a flat series with neither gains nor losses returns **nothing** rather than an invented 50. |
+| **MACD** | The signal EMA is seeded on the first nine *defined* MACD values. Treating the warm-up as zeros drags the early signal toward zero and manufactures histogram crossings that are artefacts of the warm-up. |
+
+Every indicator returns **one value per bar with nulls through the warm-up**, so an index into the
+output is always an index into the input. The off-by-one that shifts an indicator a bar into the
+future is the one this shape exists to prevent, and every one of them is held to
+`tests/lookahead.test.ts` — the same harness the Layer 2 detectors pass.
+
+#### What is excluded from the codebase, not merely from the toolbar
+
+Recorded as data in `src/core/tiers.ts`, so adding one means deleting the line that argues against
+it.
+
+- **ZigZag, Auto Fib, Auto Trendlines, Auto Pitchfork, auto key levels** — they repaint. A pivot is
+  not knowable until price has moved away from it, so the chart shows turning points nobody could
+  have drawn. Two phases of causality work would be undone quietly by one of these.
+- **Renko, Kagi, Point & Figure, Line Break, Heikin Ashi** — they destroy time and invent prices.
+  The player would place levels in one coordinate system and be scored against real OHLC in another.
+- **Gann, Elliott, Fibonacci circles, spirals, arcs and fans** — scale- and aspect-ratio-dependent.
+  The signal changes when the window is resized.
+- **Pivot Points, session VWAP, seasonality** — they need a session boundary, and §12.2 removes the
+  calendar by design. Anchored VWAP from a swing works and is the more useful variant.
+- **Andrews' Pitchfork** — StockCharts' own definition says "there are no hard rules for point
+  placement… chartists must use judgment". It is not a function of the data.
+
+### 11.5 Mods
 
 Blind Scale, Silent, Iron, Wide and Assist. **Mirror is not among them.** §3.3's table prices it at
 1.05×, but the pull-quote directly beneath calls it "permanent in ranked, not optional… randomise it
@@ -780,7 +852,255 @@ envelope is not a goodness-of-fit measure and can go negative.
 **Extended-history geometry.** No Tools shows 300 candles; the minute path covers 80. Out of scope
 until the storage question is answered.
 
-### 13.7 How it is tested
+### 13.7 Themes — the published spec
+
+There is no canonical definition of any of these formations. The two most-used open
+implementations disagree by up to **13.6×** on the same words, swing counts differ 44 / 58 / 530 /
+761 across defensible readings, and the most-cited supporting paper was withdrawn by its own author.
+Even RSI has no canonical implementation — TA-Lib and TradingView disagree on weekly ATR(7) by 12%.
+
+**So the choice is not between the right definition and ours. It is between an undisclosed
+definition and a published one.** Here is ours. Every number is a named constant in
+`src/core/geometry/themes.ts` and moving any of them is a `GEOMETRY_VERSION` bump, because a tag
+stored under one set of numbers is not comparable to a tag stored under another.
+
+| Theme | The rule | Share of corpus |
+| --- | --- | --- |
+| **liquidity-sweep** | A swing of ≥1.0 ATR persistence, touched ≥2 times within 0.3 ATR, exceeded by **0.05–0.75 ATR** and closed back inside within **3 bars**. | 64% |
+| **failed-breakout** | A **close** beyond the 20-bar extreme by ≥0.1 ATR, then a close back inside within **5 bars**. | 52% |
+| **v-reversal** | A leg of ≥**2.0 ATR**, retraced by ≥**38.2%** within **20 bars**. | 46% |
+| **compression-expansion** | 10 bars whose range is under **0.6×** what diffusion predicts (`ATR·√n`), ended by a bar of ≥**1.5 ATR**. | 7% |
+| **range-reversion** | Window range under **0.95×** `ATR·√n`, with ≥**2** swings in each outer **25%** of it, *alternating* between the edges. | 7% |
+| **trend-continuation** | Theil–Sen slope ≥**0.06 ATR/bar**, efficiency ratio ≥**0.20**, and no single bar carrying more than **half** the net move. | 4% |
+
+Two gates apply to every tag before it is stored, and both are load-bearing.
+
+**Knowable by the decision bar.** A theme confirmed at bar 84 of an 80-candle lead-in is a fact
+about the *reveal*. A tape filtered on it would announce the answer before the trade, which is the
+same defect that keeps The Null Set locked.
+
+**Within the last 20 bars.** A theme names the setup facing the player *now*, not an inventory of
+everything that ever happened in the window.
+
+#### The detection lag is stated, not hidden
+
+Lo, Mamaysky & Wang (2000) is the template, and the part worth copying is their lag: "the lag *d*
+ensures that we are computing our conditional returns completely out-of-sample and without any
+look-ahead bias." Here that lag is the `knownAt` on every tag, inherited from the swings the theme
+is built out of — the thing both public implementations of this vocabulary lack.
+
+It is **conservative by construction**, and one consequence is worth stating because it will
+otherwise be rediscovered as a bug. A V-reversal is arithmetically knowable the moment price has
+retraced 38.2% of the leg. This detector waits for the pivot swing to *settle*, which needs a full
+retrace or a break of the pivot. So a shallow V inside a window that never revisits the level is
+never tagged. That is the price of never drawing a pivot that later bars could still deepen — the
+repainting last leg that disqualifies ZigZag.
+
+#### Four thresholds that were wrong, and how we know
+
+The hit rates above are published for a reason: a rule whose hit rate nobody has looked at is not a
+rule, it is a hope. A theme tagging 99% of the corpus is not a filter, and one tagging 0.2% cannot
+fill a tape. `npm run themes` prints the distribution and refuses to stay quiet about either
+failure. On the first pass it caught four:
+
+- **compression** normalised a 10-bar range against `ATR × 10`. A random walk covers `ATR × √10`, so
+  the denominator was three times too large and **99%** of charts looked compressed.
+- **failed-breakout** triggered on a *wick* beyond the level. On any noisy series a high pokes past
+  a 20-bar extreme constantly: **100%**. A close beyond is a commitment; a wick is an excursion, and
+  excursions are what liquidity-sweep is for.
+- **liquidity-sweep** scanned all ~108 settled swings rather than the handful a reader would be
+  watching, so something was always being taken out and given back: **100%**.
+- **range-reversion** asked for closes clustering in the middle *and* a narrow window — conditions
+  that fight each other, since a narrow window is one price traverses repeatedly. **0.7%**.
+
+And two more that only testing found: a **step** passes both of a trend's obvious conditions, since
+it is perfectly efficient and Theil–Sen treats it as a level change rather than an outlier; and
+counting edge visits does not separate a range from a **drift**, which touches both edges once each
+on its way past.
+
+Two further observations the measurement produced, which are facts about the corpus rather than
+about the detectors. The efficiency ratio's 90th percentile here is **0.302**, so §6's `trend`
+bucket at 0.35 is nearly empty — this is a crypto-spot library and it is mostly chop. And sweeps and
+failed breaks are genuinely common in it; whether they are *more* common than chance is not a
+question thresholds can answer, and **2c answers it** by running the same detectors on permuted
+bars and publishing both counts.
+
+### 13.8 The null — what Layer 2 finds in shuffled bars
+
+§14 makes this Phase 2's exit condition, and is specific about the form: the comparison is
+**published rather than merely passed**. So here it is, and it is not flattering.
+
+Every detector was run over all 1,000 charts and over 20 shuffles of each of those same charts. The
+shuffle keeps each chart's exact distribution of gaps and candle shapes and destroys only the
+**order** — so a detector that beats it is responding to sequence, which is the only thing a chart
+reader can be reading. `npm run null` reproduces the table.
+
+| detector | real | shuffled | ratio | 95% CI | |
+| --- | --- | --- | --- | --- | --- |
+| **compression-expansion** | 7.1% | 3.0% | **2.39×** | [1.84, 2.94] | beats the null |
+| liquidity-sweep | 64.0% | 62.5% | 1.02× | [0.98, 1.07] | no better than chance |
+| v-reversal | 45.8% | 43.8% | 1.05× | [0.98, 1.11] | no better than chance |
+| failed-breakout | 51.7% | 54.7% | 0.95× | [0.89, 1.00] | **noise produces more** |
+| range-reversion | 6.7% | 11.8% | 0.57× | [0.45, 0.69] | **noise produces more** |
+| trend-continuation | 3.8% | 5.5% | 0.69× | [0.51, 0.86] | **noise produces more** |
+| swings per chart (minor) | 63.0 | 65.0 | 0.97× | [0.96, 0.98] | **noise produces more** |
+| swings per chart (major) | 6.8 | 7.2 | 0.95× | [0.91, 0.99] | **noise produces more** |
+| hull edges per chart | 9.2 | 9.6 | 0.96× | [0.95, 0.97] | **noise produces more** |
+| levels per chart | 2.0 | 2.3 | 0.88× | [0.85, 0.90] | **noise produces more** |
+
+**One of ten beats the shuffle.** Seven of ten fire *less* often on real charts than on shuffled
+versions of those same charts.
+
+This is Lo, Mamaysky & Wang's broadening-tops result, at scale. They found head-and-shoulders 1,611
+real against 577 random — a real effect — and broadening tops **725 real against 1,227 random**,
+where noise produced nearly twice as many. Nobody in this space has published that comparison since
+2000. This is ours.
+
+#### What it means, and what it does not
+
+**It is not a bug, and the obvious confound was checked.** Every threshold in Layer 2 is denominated
+in ATR, so each shuffled series is measured against *its own* ATR rather than inheriting the real
+chart's. The median ATR ratio between a shuffle and its source is **0.991**, and repeating the whole
+table with the ATR inherited instead moves every rate by a point or two and changes no verdict.
+
+**§6 already says Layer 2 predicts nothing: "This layer predicts nothing. It draws."** The table is
+that sentence with numbers attached. A swing high is a property of a *path*, and a shuffled path has
+paths' properties. Expecting a geometric detector to find fewer swings in noise is expecting it to
+stop being geometric.
+
+**The one that discriminates is the one with a mechanism.** Compression-expansion beats the shuffle
+2.4-fold because volatility clustering is the most robust stylised fact in empirical finance —
+quiet begets quiet, violent begets violent — and shuffling is precisely the operation that destroys
+it. That is a real, documented market property, and it is the only one of the six themes that
+measures one.
+
+**The limitation that matters most.** This test asks *"is this pattern more common in markets than
+in noise?"* It does **not** ask *"does this pattern tell you what happens next?"* Those come apart:
+a formation could occur at exactly the shuffle rate and still be informative about the future in
+real data. Lo, Mamaysky & Wang measured conditional returns as well as counts; this measures counts
+only. The conditional test is §6 Layer 5's job, and this table raises the prior against it rather
+than settling it.
+
+**What it does not undermine.** A theme tape is a filter, not a forecast. "The Coil" promises that
+these charts share a stated property, and they verifiably do. Nothing on that page claims the
+property is profitable, and after this table nothing should.
+
+#### The efficiency ratio cannot see a shuffle at all
+
+Found while checking whether the table was an artefact, and it is a fact about §6's own **trendiness
+axis** rather than about the null.
+
+    ER = |cₙ − c₀| / Σ|cᵢ − cᵢ₋₁|
+
+The numerator is `|Σr|` and the denominator is `Σ|r|`. Both are sums over the same multiset whatever
+order the returns arrive in, so the ratio is **exactly** order-independent — verified to the last
+digit across five shuffles in `tests/geometry/nullTest.test.ts`. The efficiency ratio measures the
+*composition* of a set of returns and never their *arrangement*.
+
+Two consequences. Any theme gating on it — `trend-continuation` does — gets no discriminating power
+from that gate. And the regime grid that the corpus is stratified over is stratified on a statistic
+that carries no sequential information: it separates charts that *look* trendy from charts that do
+not, which is a real and useful thing for serving variety, but it is not evidence that anything is
+trending in a sense noise could fail to produce.
+
+#### The weaker null, for comparison
+
+Geometric Brownian motion calibrated per chart — the null Lo, Mamaysky & Wang used, reproduced so
+the comparison is theirs as well as ours. It assumes normal log returns, which markets violate
+badly, so beating it can mean nothing more than noticing a fat tail.
+
+| detector | real | GBM | ratio |
+| --- | --- | --- | --- |
+| compression-expansion | 7.1% | 2.4% | 2.98× |
+| failed-breakout | 51.7% | 34.7% | **1.49×** |
+| liquidity-sweep | 64.0% | 86.0% | 0.74× |
+| v-reversal | 45.8% | 57.7% | 0.79× |
+| range-reversion | 6.7% | 23.4% | 0.29× |
+| trend-continuation | 3.8% | 6.3% | 0.60× |
+
+**Failed-breakout beats GBM at 1.49× and loses to the shuffle at 0.95×.** That single row is the
+argument for running two nulls: against normal returns it looks like a discovery, and against the
+real return distribution it disappears. What it was detecting was fat tails, which markets have and
+Brownian motion does not. Anyone publishing only the GBM column would have reported an effect.
+
+### 13.9 Do the themes predict anything?
+
+§13.8 asked whether these patterns are *more common* in markets than in noise. This asks the
+question that actually matters for the product: **conditional on a theme at the decision bar, does
+what was achievable afterwards differ?**
+
+The two come apart. A formation could occur at exactly the shuffle rate and still be informative.
+Lo, Mamaysky & Wang measured both; §13.8 was the first, this is the second. `npm run conditional`
+reproduces it over all 1,000 charts.
+
+A theme is computed from the **lead-in alone**. The achievable set is computed from the **reveal**.
+So nothing here can be circular.
+
+#### Difficulty — is a tagged chart easier or harder?
+
+| theme | n | par (tagged) | par (others) | Δ | 95% CI | |
+| --- | --- | --- | --- | --- | --- | --- |
+| liquidity-sweep | 640 | −0.741 | −0.773 | +0.032 | [−0.023, +0.086] | no difference |
+| failed-breakout | 517 | −0.763 | −0.742 | −0.020 | [−0.072, +0.032] | no difference |
+| v-reversal | 458 | −0.735 | −0.768 | +0.032 | [−0.019, +0.083] | no difference |
+| compression-expansion | 71 | −0.809 | −0.749 | −0.061 | [−0.146, +0.029] | no difference |
+| range-reversion | 67 | −0.775 | −0.751 | −0.024 | [−0.119, +0.076] | no difference |
+| trend-continuation | 38 | −0.766 | −0.752 | −0.013 | [−0.150, +0.143] | no difference |
+
+**Six of six: no difference.** That is a good result for the tapes — a theme tape is a fair slice of
+the library rather than a stealth difficulty setting, so the ratings computed on it stay comparable.
+
+#### Direction — did the side the theme named actually pay?
+
+The sharp test. Five themes name a side; the grid is direction-major, so for each chart we can
+compare what the named side achieved against the other side. A positive Δ means the named side beat
+the other by more than it does on charts without the theme.
+
+| theme | n | edge (tagged) | edge (others) | Δ | 95% CI | |
+| --- | --- | --- | --- | --- | --- | --- |
+| liquidity-sweep | 640 | +0.060 | +0.049 | +0.011 | [−0.195, +0.220] | no difference |
+| failed-breakout | 517 | −0.071 | −0.120 | +0.048 | [−0.150, +0.256] | no difference |
+| v-reversal | 458 | +0.100 | −0.096 | +0.196 | [−0.012, +0.402] | no difference |
+| compression-expansion | 71 | −0.144 | −0.054 | −0.090 | [−0.452, +0.277] | no difference |
+| range-reversion | 67 | −1.444 | −1.365 | −0.079 | [−0.306, +0.148] | no difference *(symmetry)* |
+| **trend-continuation** | **38** | **+0.519** | **−0.076** | **+0.595** | **[+0.061, +1.123]** | **higher at 95% — gone once corrected** |
+
+**Twelve comparisons. Zero survive.**
+
+The one row that clears zero at 95% is the smallest group in the table, and it is one of twelve
+tests: at that rate roughly 0.6 false positives are expected by chance. Correcting for the family
+— Bonferroni at 1 − 0.05/12 — its interval covers zero comfortably. Park & Irwin (2007) reviewed 95
+studies of technical analysis and named this exact failure, "data snooping, ex post selection of
+trading rules", so the correction is applied and the uncorrected number is printed beside it rather
+than in place of it.
+
+The most *interesting* row is not that one. It is **v-reversal at +0.196 on n=458** — a near-miss on
+the third-largest sample, which is a better candidate for a real effect than a marginal hit on 38
+charts. It is still a near-miss, and it is recorded here so that if it is ever chased it is chased
+knowingly rather than discovered afresh.
+
+#### What this does and does not settle
+
+**It does not make Layer 2 useless.** §6 already says the layer "predicts nothing. It draws." A
+theme tape is a filter — "these charts share a stated property" — and they verifiably do. Nothing on
+that page claims the property is profitable, and after this table nothing should.
+
+**It does change what the engine council can claim.** §5's six engines read Layer 2 and nothing
+else. Any engine asserting an edge from these themes would now be contradicted by our own published
+table, on our own corpus. What survives is the thing §2 actually promises: *"markets are noisy,
+edges are thin, and competent people disagree. Hindsight demonstrates that empirically instead of
+asserting it."* This table is that demonstration, arriving a phase earlier than expected.
+
+**It is an upper bound, not an edge.** No costs, no slippage, no sizing — and the achievable set is
+the *best available* bracket rather than one anybody would have chosen in advance. Every number
+above flatters the pattern, and they still come out at zero. Bajgrowicz & Scaillet (2012) found
+transaction costs of 16–70bp erased every detected outperformance from 1897–1962 and found none at
+all after 1962.
+
+**One corpus, one asset class, one window.** Crypto spot, 80 candles. A different market or a
+different horizon is a different question, and this says nothing about either.
+
+### 13.10 How it is tested
 
 Stability is measured in **price space** — Hausdorff distance on swing prices — never on index sets.
 That is a correction to the scope document as first drafted: persistence theory gives stability of
@@ -810,17 +1130,28 @@ test says so.
 
 Recorded so nothing here is mistaken for the finished product.
 
-**Not built:** the engine council and every engine in it; per-chart themes and the per-theme ratings
+**Not built:** the engine council and every engine in it; the per-theme ratings
 that depend on them; the Full Desk and News Blind tiers; the Fog mod; ranked sessions, divisions and
 seasons; Manage, Storm, Duel, Racer and Calibration; creator maps and cohort dashboards; the cost
 model; synthetic controls in the corpus; news.
 
-**Layer 2 geometry: computed, not shown.** §13 covers what exists. The primitives are pure, causal
-and tested, and **no annotation reaches a player** — the round payload is unchanged and
-`tests/api-leak.test.ts` is untouched by the phase that built them. The published threshold spec is
-2b's job and the permutation null is 2c's; until both land, the geometry's only consumer is
-`/lab/geometry`, which is a 404 in production. Two pieces are deferred outright with reasons in
-§13.6, and round-number levels are measured-and-withheld in §13.5.
+**Layer 2 geometry: computed, published, and measured against noise.** §13 covers what exists. The
+primitives are pure, causal and tested, the six themes are specified and stored, and **no annotation
+reaches a player** — the round payload is unchanged and `tests/api-leak.test.ts` is untouched by all
+three phases that built them. Themes are visible as tapes, which is a filter over charts rather than
+a drawing on one. Two pieces are deferred outright with reasons in §13.6, round-number levels are
+measured-and-withheld in §13.5, and news-spike is dropped outright rather than named after a cause
+we cannot observe — §9 news has been dropped from the plan, so its deferral had no target left.
+
+**And §13.8 is the part to read first.** One detector of ten beats a shuffle of the same charts;
+seven fire *less* often on real data than on noise. That is published rather than filed, because it
+is the comparison §14 asked for and because a product claiming to sell calibration cannot decline to
+report its own. What it does not establish is whether these patterns predict anything — that is
+Layer 5's question, and this table raises the prior against it.
+
+**Per-theme player ratings are not built.** §8.4 calls the diagnostic — "you are 1740 overall but
+1490 on failed breakouts" — the most valuable sentence the product can say. The tags it needs now
+exist; the ratings on top of them do not.
 
 **Built but unvalidated:** the ladder has three rated rungs and **no tier has passed §3.5's test**,
 because that needs a player pool and there is not one yet. The harness exists and is verified

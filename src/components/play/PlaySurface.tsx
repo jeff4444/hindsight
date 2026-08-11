@@ -44,6 +44,10 @@ import {
 } from './layers';
 import { RankedSummary } from './RankedSummary';
 import { DEFAULT_SPEED, useRevealLoop } from './useRevealLoop';
+import { Toolbar } from './Toolbar';
+import { DrawLayer, type Drawing, type DrawTool } from './DrawLayer';
+import { overlaysFor } from '@/lib/toolOverlays';
+import type { ToolCode } from '@/core/tiers';
 
 export type Phase =
   | 'loading'
@@ -147,6 +151,18 @@ export function PlaySurface({
   // Renamed from `tier` when the ladder landed: a tier is now a *ruleset*, and the thing this
   // selects is a drawing resolution.
   const [timeframe, setTimeframe] = useState<number>(DECISION_TF);
+
+  /* ------------------------------------------------------------------ tools */
+
+  // §3.2's Full Desk affordances. The tier decides which of these controls exist at all; the
+  // player decides which are on. Cleared per round, because a chart is a fresh problem and
+  // inheriting the last one's drawings is the kind of state that makes a screenshot lie.
+  const [tool, setTool] = useState<DrawTool | null>(null);
+  const [activeTools, setActiveTools] = useState<ToolCode[]>([]);
+  const [drawings, setDrawings] = useState<Drawing[]>([]);
+  const [magnet, setMagnet] = useState(true);
+  const [logScale, setLogScale] = useState(false);
+  const nextDrawingId = useRef(1);
 
   // Mutable mirrors for the animation loop, which must not re-subscribe every frame.
   const reveal = useRef<Bar[]>([]);
@@ -578,6 +594,43 @@ export function PlaySurface({
           ? 'loss'
           : 'neutral';
 
+  /**
+   * Repaint the granted overlays whenever the selection or the bars change.
+   *
+   * Computed on the client from the lead-in it already holds. That is safe by construction rather
+   * than by care: §12.1's rule is that the *payload* must not contain the future, and an indicator
+   * derived from bars already on screen adds nothing to what the client knows. Computing it
+   * server-side would mean more payload and the same information.
+   */
+  useEffect(() => {
+    if (!round) return;
+    chart.current?.setOverlays(
+      overlaysFor(activeTools, {
+        bars: round.bars,
+        atr: round.atr,
+        minutes: minutes.current.slice(0, round.bars.length * 60),
+        minutesPerBar: 60,
+      }),
+    );
+  }, [round, activeTools]);
+
+  useEffect(() => {
+    chart.current?.setLogScale(logScale);
+  }, [logScale, round]);
+
+  // A new chart is a new problem. Carrying drawings across would leave last round's trendline
+  // sitting over this round's candles, which is worse than useless — it looks deliberate.
+  //
+  // Adjusted during render rather than in an effect, which is React's own guidance for resetting
+  // state when an input changes: an effect would paint the old drawings over the new chart for one
+  // frame first, and the lint rule that forbids it is right.
+  const [drawnFor, setDrawnFor] = useState<string | undefined>(round?.roundId);
+  if (round?.roundId !== drawnFor) {
+    setDrawnFor(round?.roundId);
+    setDrawings([]);
+    setTool(null);
+  }
+
   return (
     <div
       className={[
@@ -640,6 +693,26 @@ export function PlaySurface({
         )}
       </header>
 
+      {round && phase !== 'summary' && (
+        <Toolbar
+          granted={round.tools}
+          tool={tool}
+          onTool={setTool}
+          active={activeTools}
+          onToggle={(code) =>
+            setActiveTools((current) =>
+              current.includes(code) ? current.filter((c) => c !== code) : [...current, code],
+            )
+          }
+          magnet={magnet}
+          onMagnet={setMagnet}
+          logScale={logScale}
+          onLogScale={setLogScale}
+          // The reveal drives the camera frame by frame; a pointer tool would be fighting it.
+          disabled={phase !== 'placing'}
+        />
+      )}
+
       {/* No stage on the summary: there is no round to draw, and an empty chart frame above the
           ceremony reads as something that failed to load. The ceremony owns the screen. */}
       {phase !== 'summary' && (
@@ -663,6 +736,21 @@ export function PlaySurface({
         error={phase === 'error' ? error : null}
         onRetry={() => void load()}
       >
+        {round && (
+          <DrawLayer
+            chart={chart}
+            tool={phase === 'placing' ? tool : null}
+            drawings={drawings}
+            magnet={magnet}
+            bars={round.bars}
+            atr={round.atr}
+            risk={round.entry ? Math.abs(round.entry - stop) : null}
+            onCommit={(drawing) =>
+              setDrawings((current) => [...current, { ...drawing, id: nextDrawingId.current++ }])
+            }
+            onDelete={(id) => setDrawings((current) => current.filter((d) => d.id !== id))}
+          />
+        )}
         {round && phase !== 'loading' && phase !== 'error' && (
           <InstrumentWatermark
             atr={round.atr}

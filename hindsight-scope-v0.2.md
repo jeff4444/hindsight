@@ -650,7 +650,24 @@ Offer Standard, Hard and Extra Hard settings that change how far above the playe
 
 ## 9. The News Layer
 
-Deferred to a later phase, but designed now, because the design constraint is load-bearing and it determines a rung on the ladder in §3.
+> **Dropped from the plan.** Not deferred to a phase — removed from the sequence, with the design
+> below kept intact for whenever it is asked for. The reason is a product judgement rather than a
+> technical one: **traders are not taught to trade the news.** Some do, and it is a real discipline,
+> but it is a specialism rather than a foundation, and the whole ladder was being held up waiting
+> for it. §9.1's leakage rule stays worth reading if news ever returns, because it is the part that
+> would be expensive to get wrong.
+>
+> Two things followed immediately from dropping it, both already applied:
+>
+> - **Full Desk shipped and News Blind was deleted.** §3.2 defined FD as the tools rung *plus* news
+>   headlines and NN as "Full Desk except the headlines". With no headlines, those are one rung, and
+>   the deferral had been keeping the ladder's entire top end unbuilt to preserve a distinction that
+>   no longer exists. Full Desk is what survives; News Blind is gone rather than pending.
+> - **The news-spike theme was dropped rather than deferred.** It had been parked "for Phase 7 with
+>   §9", and its deferral target no longer exists. The research already graded it as having no chart
+>   definition at all.
+
+The design, for whenever it is wanted:
 
 
 ### 9.1 The leakage rule
@@ -850,12 +867,12 @@ The dependency order is real and it changed. Layer 0 is now first because three 
 | **0.5. Corpus integrity** | Layer 0. Lower-timeframe resolution paths, causality metadata, survivorship-free sampling, permutation generator, deterministic chart selection. | A trade resolves identically on every run, and a look-ahead test suite passes. Cheap now, extremely expensive later. |
 | **1. Benchmark** | Layer 1: the enumerated achievable set, oracle bound, axis decomposition, percentile scoring, MFE and MAE reporting, daily challenge, share card, scored pass with quota. | A meaningful percentile with zero users, and a debrief screen worth screenshotting before any engine exists. |
 | **1.5. Ladder and rating** | §3 tiers FD through NTZ, mods, per-tier and overall Glicko-2, chart rating with pending state and auto-retirement, themes, practice mode. | Two tiers validated by the §3.5 test: the expert-novice gap is measurably wider at the more restricted tier. |
-| **2. Geometry** | Layer 2 in three milestones — **2a the primitives** (persistence swings, hull trendlines, Theil–Sen channels, KDE levels, round numbers, volume profile from the stored minute bars), **2b the published spec** (every threshold named, defaulted and versioned; a stated detection lag; the seven shippable themes), **2c the null** (the same detectors run on permuted bars, counts published beside the real ones). | Annotations a competent trader agrees with; **stable in price space** under a quarter-tick perturbation; and demonstrably no better than chance at finding structure in permuted bars, with that comparison published rather than merely passed. |
+| **2. Geometry** | Layer 2 in three milestones — **2a the primitives** (persistence swings, hull trendlines, Theil–Sen channels, KDE levels, round numbers, volume profile from the stored minute bars), **2b the published spec** (every threshold named, defaulted and versioned; a stated detection lag; the shippable themes — **six, not seven: news-spike is deferred to Phase 7 with §9, because with no event data a theme named for a cause asserts exactly what this document refuses to assert elsewhere**), **2c the null** (the same detectors run on permuted bars, counts published beside the real ones). | Annotations a competent trader agrees with; **stable in price space** under a quarter-tick perturbation; and the permuted-bar comparison published rather than merely passed. **Correction to v0.2 as first drafted:** this said "demonstrably no better than chance at finding structure in permuted bars", which is not an achievable condition and not the interesting one. A swing high is a property of a *path*, and a shuffled path has paths' properties — a geometric detector that found no swings in noise would have stopped being geometric. The condition that matters is the one §6 states: a layer finding structure in shuffled data *at the same rate as in real data* is telling you nothing. Measured, and published in `docs/rules.md` §13.8: **one detector of ten beats a shuffle of the same charts, and seven fire less often on real data than on noise.** The one that wins — compression-expansion, at 2.4× — is the one with a documented mechanism behind it, since volatility clustering is exactly what shuffling destroys. |
 | **3. Council** | Channel and Liquidity first — they are the pair guaranteed to disagree — then Reversion, Pattern, Geometry, Tape. Engine contract, published selection rules, versioning, disagreement-as-difficulty. **Engine Zero from day one.** | Two engines that disagree usefully, are auditable, and whose disagreement predicts chart difficulty. |
 | **4. Debrief and honesty** | Layer 4 with corrected R semantics, style fingerprinting, published engine track records by regime, **synthetic controls running silently**, cost model. | **A first read on whether players beat synthetic charts.** This is the result that determines what the product is allowed to claim. |
 | **5. Modes and maps** | Manage ladder, Storm, Streak, Duel with capped damage, Racer, Calibration mode. Official regime maps, creator maps, cohort dashboards, tier locks. | One external educator running a cohort on it, and a Manage rating that correlates only partly with the Naked rating — which is the evidence that they are different skills. |
 | **6. Base rates and player model** | Layer 5 with bracket-conditioned first-passage statistics; Layer 6 longitudinal behaviour, fed by the rep-generating modes. | An honest answer about whether historical analogues carry information, published either way. |
-| **7. News** | Point-in-time reveal panel; Full Desk versus News Blind as a controlled comparison. | A measurable answer on whether pre-trade news improves player outcomes. |
+| **7. ~~News~~** | **Dropped — see §9.** The rung it was going to define (Full Desk) shipped without it, and the controlled comparison against News Blind died with the tier. Reinstate as a late phase if the feature is ever asked for. | A measurable answer on whether pre-trade news improves player outcomes. |
 
 
 > **Sequencing discipline** — Phase 0 must be genuinely enjoyable before anything else is built. If the raw loop is not fun without the analysis layer, the analysis layer will not save it, and the entire engine programme is wasted effort on a product nobody returns to on day three. Phase 0.5 is the only insertion that is allowed to precede fun, and only because retrofitting it is close to impossible.
