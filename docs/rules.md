@@ -647,14 +647,180 @@ achievable versions that produced it, because §12.4 makes population statistics
 a change of rule — a retirement decided under one score map has to be re-derivable, and thrown away
 rather than inherited if the map moves.
 
-## 13. What is not built yet
+## 13. Layer 2 geometry
+
+The primitives exist and **nothing here reaches a player yet**. Phase 2a built the computation;
+2b publishes the thresholds and wires it up; 2c publishes the permutation null beside it. Every
+number below is a default that 2b may move, and the point of writing them down now is that a moved
+default should have to argue with a recorded one.
+
+### 13.1 Swing points are graded, and nothing unsettled is drawn
+
+A swing high has persistence *p* iff price must retrace *p* before exceeding it. That is what a
+trader means by a significant high, and it carries a theorem: **a peak of persistence p is destroyed
+only by a perturbation of sup-norm ≥ p/2**, which turns the quarter-tick stability requirement from
+a hope into a proof.
+
+Persistence is `min(leftDrop, rightDrop)`, and `rightDrop` only grows, so the value is final the
+moment either the right side has retraced as far as the left had or price exceeds the peak. **Until
+one of those happens the swing is not emitted.** That is the whole of the anti-repainting rule: an
+open peak is ZigZag's revisable last leg, and drawing it is the failure that disqualifies ZigZag.
+
+`knownAt` is the settling bar, never the extremum's own bar. The lag is real — commonly five to
+twenty bars on an hourly chart — and pre-confirmation stamping is one of the two look-ahead bugs
+shipped in public packages.
+
+The three nested grades are cuts on the one computation, at **0.5, 1.0 and 2.0 ATR** of persistence.
+Sized from the one genuinely empirical result in the directional-change literature: average
+overshoot exponent 1.04, so the expected leg is about twice the threshold, making these legs of
+roughly one, two and four ATR. The event-count power law from the same paper justifies nothing here
+— its exponent is 2.02 ± 0.098 against a Brownian first-passage prediction of exactly 2, so it is a
+diffusion identity, not a market regularity.
+
+On a representative 80-bar chart the three grades emit **108, 48 and 12** swings. Forty-eight marks
+on eighty candles is a fog, not an annotation; 2b should default to the top of the ladder.
+
+### 13.2 Geometry is computed in linear tick space, not log space
+
+**Correction to the scope document as first drafted.** §6 specified "constrained slope optimisation
+in log space" for trendlines. That is wrong here for two independent reasons.
+
+The rendered price axis is linear — the log toggle is an unbuilt Standard-tier tool — so a line
+straight in log space is a *curve* on the chart the player is looking at. Over a lead-in running 100
+to 115 the log-space line sits about **26 ticks** below the linear one at the midpoint. A trader
+draws on what they see.
+
+And bar indices are integers while prices are tick-quantised, so in tick space the hull's
+orientation predicate is exact in float64 with eight orders of magnitude of headroom. No epsilon
+appears in the turn test, which matters because a tolerance there would smuggle back the free
+parameter the hull existed to remove.
+
+Log space survives where it belongs: kernel bandwidths, which are widths rather than straight lines
+and must mean the same thing on a $60,000 instrument and a $1.08 one.
+
+### 13.3 Geometry that becomes a stored chart property is pinned to the base window
+
+The same argument that pinned ATR (§11.2), with a different conclusion about scope.
+
+Persistence is not invariant under extending history leftwards: older bars can change a peak's left
+drop, so No Tools and Naked genuinely disagree about the same swing. For ATR that was fatal, because
+the 98-cell grid is denominated in it. For geometry it is not — geometry feeds display and the
+engine council, never the achievable set, so percentiles stay comparable across tiers.
+
+But the moment a geometry-derived value becomes a *stored chart property* — a theme tag — it has to
+be one number per chart, not one per tier. So:
+
+> **Geometry rendered for a player is computed over the bars that tier grants. Any geometry that
+> becomes a stored chart property is computed over the pinned base 80-candle lead-in.**
+
+Related: the volume profile is a statement about the base window, because that is where the
+one-minute detail is stored. The extended lead-in No Tools grants has no minute detail, and
+backfilling it would cost roughly 264 MB across the corpus.
+
+### 13.4 The volume profile is built, not synthesised
+
+Spreading a bar's volume across its range is a fabrication that looks plausible and encodes nothing.
+But TradingView does not do that either — it "loads all 1-minute bars that were traded in that daily
+session", which is exactly what the corpus stores: 4,800 lead-in minute bars with volume. So the
+point of control and the 70% value area are built at **the same construction, not an approximation
+of it**, and can be claimed at parity honestly.
+
+No delta and no up/down split. TradingView's own is inferred from lower-timeframe bar direction, so
+anything branded order flow there is already a proxy. Building the identical proxy would be fine;
+calling it order flow would not.
+
+### 13.5 Round-number levels are analysis-only, and the measurement says why
+
+`src/core/geometry/roundNumbers.ts` computes levels on the **real** price lattice, because that is
+where Osler's order-book clustering lives — 14.3% of executed stop-loss buys at rates ending [01,10]
+against 6.9% at [91,00] — and a level computed on the indexed price would be a property of our own
+normalisation rather than of the market.
+
+`npm run leak` measured what drawing them costs under §12.2, and the answer settled it:
+
+| what is drawn | signatures naming exactly one chart | median charts left | median instruments left |
+| --- | --- | --- | --- |
+| the whole round grid | **890 / 944 (94%)** | 1 | **1** of 314 |
+| a single level | 0 / 33 | 23 | 21 of 314 |
+
+The leak is in the **spacing**, not in any level's position. Consecutive round levels are
+`0.25 · 10^m` apart in real price, so displayed they are `S = 0.25 · 10^m · factor` apart; §12.2
+fixes `factor = 100 / firstOpen` by indexing every first candle to 100, and rearranging gives
+`firstOpen = 25 · 10^m / S` — the instrument's real opening price, exactly, up to an unknown power
+of ten, read off the chart with a ruler.
+
+That is measured inside a corpus of a thousand windows. The real attacker searches every
+symbol-month of public OHLCV, where the same mantissa is more identifying rather than less.
+
+**So the module does not reach a player.** It keeps its evidence-faithful construction for theme
+tagging, engine logic and the 2c null, all of which use the levels without exposing a position.
+`tests/geometry/roundNumbers.boundary.test.ts` fails if anything under `src/app` imports it.
+
+### 13.6 Deferred, with the reason
+
+**The L∞ "tightest containing channel".** Theil–Sen ships instead: 29.3% breakdown point, pure order
+statistics so it is bit-reproducible with no solver, one interpretable parameter. The Chebyshev LP
+is provably tightest and parameter-free, and both of those hide a trap — an LP optimum sits at a
+vertex, so the channel is set by **exactly three bars** and its breakdown point is **zero**, and with
+four or more residuals tied at ±t (routine on tick-quantised data) the optimum is not unique and the
+answer depends on the solver's pivoting rule. Two clients would return different channels for
+identical input. It is a genuinely different object and may return when something needs it, with
+canonical tie-breaking written down first.
+
+**Trendline selection has no literature.** The candidate set is exact — any non-crossing line
+touching two or more points is a hull edge, so there are exactly *h−1* of them — but which one is
+"the trendline" is folklore. The rule is the most recent edge, ties broken by span, and it is
+defended on determinism rather than on evidence. Its known cost, visible the first time you look at
+a chart: the final bar is always a hull vertex, so the selected line is often short. A minimum-span
+filter would fix it and would be a parameter.
+
+R² is rejected outright. A supporting line has all its residuals on one side, so R² of a one-sided
+envelope is not a goodness-of-fit measure and can go negative.
+
+**Extended-history geometry.** No Tools shows 300 candles; the minute path covers 80. Out of scope
+until the storage question is answered.
+
+### 13.7 How it is tested
+
+Stability is measured in **price space** — Hausdorff distance on swing prices — never on index sets.
+That is a correction to the scope document as first drafted: persistence theory gives stability of
+critical *values* "in sharp contrast to the lack of stability of critical points", so an index-set
+test would fail on correct code. In a flat region one tick of jitter moves the argmax arbitrarily far
+along the time axis while the price does not move at all. Under a quarter-tick perturbation, 230 of
+231 swings come through at exactly the same snapped price.
+
+Six metamorphic relations, ordered by how much distinct code each exercises: invertive (reflection),
+multiplicative, inclusive (no repainting), permutative (an **anti**-relation — the output must
+change), volume-only, additive. The invertive one alone covers half the module surface, because it
+is what catches a copy-paste asymmetry between the high-side and low-side paths — which is why the
+detectors take a sign parameter instead of having two bodies.
+
+Two canaries, both asserted to be *caught*, so the suite cannot quietly become decoration: a
+quantised accumulator whose answer changes with its bin width, and a boolean threshold that flickers
+where the graded one holds.
+
+Every detector is plugged into `tests/lookahead.test.ts`. Swings and levels pass the strong form —
+replace the future wholesale and nothing visible before the cut moves — which is the exact bug
+shipped in `smartmoneyconcepts`, where appending bars takes the liquidity pools labelled inside a
+*fixed* window from three to nine. Hull-derived lines pass the weaker prefix form and must therefore
+be **computed on the prefix, never filtered from a whole-series result**; the two disagree, and the
+test says so.
+
+## 14. What is not built yet
 
 Recorded so nothing here is mistaken for the finished product.
 
-**Not built:** the engine council and every engine in it; Layer 2 geometry; per-chart themes and the
-per-theme ratings that depend on them; the Full Desk and News Blind tiers; the Fog mod; ranked
-sessions, divisions and seasons; Manage, Storm, Duel, Racer and Calibration; creator maps and cohort
-dashboards; the cost model; synthetic controls in the corpus; news.
+**Not built:** the engine council and every engine in it; per-chart themes and the per-theme ratings
+that depend on them; the Full Desk and News Blind tiers; the Fog mod; ranked sessions, divisions and
+seasons; Manage, Storm, Duel, Racer and Calibration; creator maps and cohort dashboards; the cost
+model; synthetic controls in the corpus; news.
+
+**Layer 2 geometry: computed, not shown.** §13 covers what exists. The primitives are pure, causal
+and tested, and **no annotation reaches a player** — the round payload is unchanged and
+`tests/api-leak.test.ts` is untouched by the phase that built them. The published threshold spec is
+2b's job and the permutation null is 2c's; until both land, the geometry's only consumer is
+`/lab/geometry`, which is a 404 in production. Two pieces are deferred outright with reasons in
+§13.6, and round-number levels are measured-and-withheld in §13.5.
 
 **Built but unvalidated:** the ladder has three rated rungs and **no tier has passed §3.5's test**,
 because that needs a player pool and there is not one yet. The harness exists and is verified

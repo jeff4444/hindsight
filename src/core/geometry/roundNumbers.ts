@@ -21,22 +21,44 @@
  * So the levels are computed on the true price and mapped forward through `index_factor` and the
  * mirror. That is honest, and it has a cost under §12.2 that is stated rather than waved at.
  *
- * ## The cost, and the standard it is held to
+ * ## The cost was measured, and it is too high to draw
  *
- * A displayed level at, say, 103.47 tells a determined player that `realPrice = 103.47 / factor` is
- * a round number — which pins the *mantissa* of the chart's opening price to a small set, with the
- * decade still unknown. §12.2's standard is that the identity-lookup exploit be **uneconomic**, not
- * that it be impossible, and whether this crosses that line is a measurement, not an opinion:
- * `scripts/round-number-leak.ts` computes it against the real corpus and `docs/rules.md` carries
- * the number whichever way it came out.
+ * §12.2's standard is that the identity-lookup exploit be **uneconomic**, not that it be
+ * impossible. `scripts/round-number-leak.ts` put a number on it against the real corpus, and the
+ * number settled the question:
  *
- * Two structural mitigations, neither of which relies on obscurity:
+ * > **Drawing the grid names a single chart 94% of the time** — 890 of 944 distinct signatures
+ * > across 1,000 charts identify exactly one, and the median chart is alone in its signature. The
+ * > instruments still possible drop from 314 to **one**.
  *
- * - **This module cannot run on the client.** It takes the real price as an argument, and the
- *   client is never given `index_factor` — `tests/api-leak.test.ts` pins the payload's key set, so
- *   adding it would fail a test rather than slip through review.
- * - **Levels are emitted unlabelled.** A round-number level and a density level are both just
- *   levels. Knowing that *one* of the drawn levels is round is much weaker than knowing which.
+ * The mechanism is worse than it first looks, and it is the *spacing* rather than any single
+ * level's position that does the damage. Consecutive round levels are `0.25 · 10^m` apart in real
+ * price, so displayed they are `S = 0.25 · 10^m · factor` apart. §12.2 indexes every first candle
+ * to 100, which fixes `factor = 100 / firstOpen`, and rearranging gives
+ *
+ *     firstOpen = 25 · 10^m / S
+ *
+ * — the instrument's real opening price, exactly, up to an unknown power of ten. Not a range: the
+ * whole mantissa, read straight off the chart with a ruler.
+ *
+ * Hiding the spacing by drawing only one level pins the mantissa to the 36-value grid instead of to
+ * a point, which leaves 23 charts and 21 instruments indistinguishable at the median. Better by a
+ * factor of twenty, and still a fifteen-fold narrowing of the instrument set from a single drawn
+ * line. And the corpus is a few hundred windows; the real attacker searches every symbol-month of
+ * public OHLCV, where the same mantissa is more identifying rather than less.
+ *
+ * ## So this module is analysis-only
+ *
+ * It keeps the evidence-faithful construction, because Osler's result is real and the levels are
+ * genuinely where stops cluster. It does not reach a player. The uses that remain are the ones that
+ * never expose a position: theme tagging (§8.4), engine logic (§5), and the permutation null in 2c.
+ *
+ * Two structural guards, neither relying on anyone remembering:
+ *
+ * - **It cannot run on the client.** It takes the real price as an argument, and the client is
+ *   never given `index_factor` — `tests/api-leak.test.ts` pins the payload's key set.
+ * - **`tests/geometry/roundNumbers.boundary.test.ts` fails if anything under `src/app` imports
+ *   this file.** A future wiring-up has to delete a test that explains why it exists.
  */
 
 import { normalizePrice } from '../normalize';
@@ -56,6 +78,24 @@ export interface RoundLevel {
 
 /** Fractions of the decade step that carry a level. §6's published rule. */
 export const SUBDIVISION = 0.25;
+
+/**
+ * The measurement, pinned here so it travels with the code that caused it.
+ *
+ * Produced by `npm run leak` against a 1,000-chart, 314-instrument corpus. Re-run it after any
+ * change to the corpus or to `SUBDIVISION`; if `gridNamesOneChart` ever falls below about 0.1 the
+ * argument in this file's header needs revisiting rather than inheriting.
+ */
+export const LEAK_MEASUREMENT = {
+  corpusCharts: 1000,
+  corpusInstruments: 314,
+  /** Share of grid signatures that identify exactly one chart. */
+  gridNamesOneChart: 890 / 944,
+  /** Median charts left indistinguishable when only one level is drawn. */
+  singleLevelMedianCharts: 23,
+  /** Median instruments left possible when only one level is drawn. */
+  singleLevelMedianInstruments: 21,
+} as const;
 
 /**
  * The decade step for a price: 10^floor(log10 P).

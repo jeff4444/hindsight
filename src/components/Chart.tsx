@@ -4,6 +4,8 @@ import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import {
   CandlestickSeries,
   HistogramSeries,
+  LineSeries,
+  LineStyle,
   createChart,
   createSeriesMarkers,
   type AutoscaleInfo,
@@ -39,9 +41,35 @@ export interface PriceRange {
   max: number;
 }
 
+/**
+ * A polyline drawn over the candles, in chart coordinates rather than pixels.
+ *
+ * Layer 2's output is geometry, so it is expressed as geometry and the index-to-time mapping stays
+ * inside this component where it belongs. A horizontal level is a two-point line, a trendline is
+ * its two anchors, a channel rail is the same, and a swing is a short dash centred on its bar.
+ *
+ * Overlays never drive the vertical autoscale. A level several ATR away from the candles should be
+ * off-screen, not a reason to squash the chart that produced it.
+ */
+export interface Overlay {
+  points: { index: number; price: number }[];
+  color: string;
+  width?: number;
+  dashed?: boolean;
+}
+
 export interface ChartHandle {
   /** The authoritative display-timeframe candles: the history the decision is made on. */
   setBars(bars: Bar[]): void;
+
+  /**
+   * Replace every drawn overlay.
+   *
+   * Wholesale replacement rather than incremental add and remove: annotation sets are small, they
+   * change together when the viewer moves, and a diffing path would be the third place in this
+   * file that has to agree about what index means at the current resolution.
+   */
+  setOverlays(overlays: Overlay[]): void;
   /**
    * Reveal one more display-timeframe hour.
    *
@@ -134,6 +162,7 @@ export const Chart = forwardRef<ChartHandle, { className?: string }>(function Ch
   const candles = useRef<ISeriesApi<'Candlestick'> | null>(null);
   const volume = useRef<ISeriesApi<'Histogram'> | null>(null);
   const markers = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
+  const overlays = useRef<ISeriesApi<'Line'>[]>([]);
 
   const forced = useRef<PriceRange | null>(null);
   const guard = useRef<PriceRange | null>(null);
@@ -384,6 +413,10 @@ export const Chart = forwardRef<ChartHandle, { className?: string }>(function Ch
       markers.current = null;
       candles.current = null;
       volume.current = null;
+      // Series handles do not outlive the chart that made them. Dropping these with the rest is
+      // what stops a remount — StrictMode's double effect, or a hot reload — from trying to remove
+      // a series belonging to a chart that no longer exists.
+      overlays.current = [];
       chart.current = null;
       forced.current = null;
       guard.current = null;
@@ -409,6 +442,35 @@ export const Chart = forwardRef<ChartHandle, { className?: string }>(function Ch
       minutes.current = detail;
       visibleHours.current = hours;
       draw();
+    },
+
+    setOverlays(next) {
+      const api = chart.current;
+      if (!api) return;
+
+      for (const series of overlays.current) api.removeSeries(series);
+      overlays.current = [];
+
+      for (const overlay of next) {
+        if (overlay.points.length < 2) continue;
+        const series = api.addSeries(LineSeries, {
+          color: overlay.color,
+          lineWidth: (overlay.width ?? 1) as 1 | 2 | 3 | 4,
+          lineStyle: overlay.dashed ? LineStyle.Dashed : LineStyle.Solid,
+          priceLineVisible: false,
+          lastValueVisible: false,
+          crosshairMarkerVisible: false,
+          // An annotation describes the candles; it does not get a vote on how they are framed.
+          autoscaleInfoProvider: () => null,
+        });
+        series.setData(
+          overlay.points
+            .slice()
+            .sort((a, b) => a.index - b.index)
+            .map((point) => ({ time: timeframeBarTime(point.index), value: point.price })),
+        );
+        overlays.current.push(series);
+      }
     },
 
     revealHour(bar, hourIndex) {
