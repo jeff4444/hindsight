@@ -431,7 +431,28 @@ consecutive); and Bassetti's Basing Point procedure with its stated 3% and 6% pa
 | **gap-fill** | **Meaningless on 24/7 spot** — and the evidence contradicts the folklore: fill probability within 5 days ~20%, gaps show continuation not reversion | Drop |
 | **opening-drive** | Real taxonomy (Steidlmayer/Dalton), but **structurally broken on 24/7 spot** — no open, no initial balance | Drop |
 
-Two of the ten are unbuildable on a 24/7 crypto corpus and one is too vague to specify. **Seven ship.**
+Two of the ten are unbuildable on a 24/7 crypto corpus and one is too vague to specify. Seven were
+graded shippable; **six shipped**.
+
+> **Correction, from building 2b.** `news-spike` was graded "ship as an **outlier detector**,
+> labelled as such". One label too many. §9 news is Phase 7, so there is no event data at all, and a
+> theme named for a cause we cannot observe asserts exactly the kind of thing this project refuses
+> to assert everywhere else — the same objection that keeps round-number levels out of the payload
+> and keeps "order flow" off a volume proxy. The detector is trivial to add once §9 supplies a
+> timestamp to point at.
+>
+> Measurement then corrected four of the six that did ship, and each was wrong for its own reason
+> rather than by a shared mis-tuning: compression normalised a 10-bar range against `ATR × 10` where
+> diffusion says `ATR × √10` (**99%** of the corpus tagged); the failed breakout triggered on a wick
+> rather than a close (**100%**); the sweep scanned all ~108 settled swings rather than the handful a
+> reader watches (**100%**); and range-reversion paired two conditions that fight each other, since
+> a window narrow against diffusion is one price traverses repeatedly rather than sits in the middle
+> of (**0.7%**). Two more surfaced only under test: a step change passes both of a trend's obvious
+> conditions, and counting edge visits does not separate a range from a drift.
+>
+> The lesson worth carrying to 2c: **a detector's hit rate is part of its specification.** None of
+> these were visible in the code, in the citations, or in the design. All six were visible in one
+> table of corpus shares.
 
 ---
 

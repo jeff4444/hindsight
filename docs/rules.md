@@ -780,7 +780,80 @@ envelope is not a goodness-of-fit measure and can go negative.
 **Extended-history geometry.** No Tools shows 300 candles; the minute path covers 80. Out of scope
 until the storage question is answered.
 
-### 13.7 How it is tested
+### 13.7 Themes — the published spec
+
+There is no canonical definition of any of these formations. The two most-used open
+implementations disagree by up to **13.6×** on the same words, swing counts differ 44 / 58 / 530 /
+761 across defensible readings, and the most-cited supporting paper was withdrawn by its own author.
+Even RSI has no canonical implementation — TA-Lib and TradingView disagree on weekly ATR(7) by 12%.
+
+**So the choice is not between the right definition and ours. It is between an undisclosed
+definition and a published one.** Here is ours. Every number is a named constant in
+`src/core/geometry/themes.ts` and moving any of them is a `GEOMETRY_VERSION` bump, because a tag
+stored under one set of numbers is not comparable to a tag stored under another.
+
+| Theme | The rule | Share of corpus |
+| --- | --- | --- |
+| **liquidity-sweep** | A swing of ≥1.0 ATR persistence, touched ≥2 times within 0.3 ATR, exceeded by **0.05–0.75 ATR** and closed back inside within **3 bars**. | 64% |
+| **failed-breakout** | A **close** beyond the 20-bar extreme by ≥0.1 ATR, then a close back inside within **5 bars**. | 52% |
+| **v-reversal** | A leg of ≥**2.0 ATR**, retraced by ≥**38.2%** within **20 bars**. | 46% |
+| **compression-expansion** | 10 bars whose range is under **0.6×** what diffusion predicts (`ATR·√n`), ended by a bar of ≥**1.5 ATR**. | 7% |
+| **range-reversion** | Window range under **0.95×** `ATR·√n`, with ≥**2** swings in each outer **25%** of it, *alternating* between the edges. | 7% |
+| **trend-continuation** | Theil–Sen slope ≥**0.06 ATR/bar**, efficiency ratio ≥**0.20**, and no single bar carrying more than **half** the net move. | 4% |
+
+Two gates apply to every tag before it is stored, and both are load-bearing.
+
+**Knowable by the decision bar.** A theme confirmed at bar 84 of an 80-candle lead-in is a fact
+about the *reveal*. A tape filtered on it would announce the answer before the trade, which is the
+same defect that keeps The Null Set locked.
+
+**Within the last 20 bars.** A theme names the setup facing the player *now*, not an inventory of
+everything that ever happened in the window.
+
+#### The detection lag is stated, not hidden
+
+Lo, Mamaysky & Wang (2000) is the template, and the part worth copying is their lag: "the lag *d*
+ensures that we are computing our conditional returns completely out-of-sample and without any
+look-ahead bias." Here that lag is the `knownAt` on every tag, inherited from the swings the theme
+is built out of — the thing both public implementations of this vocabulary lack.
+
+It is **conservative by construction**, and one consequence is worth stating because it will
+otherwise be rediscovered as a bug. A V-reversal is arithmetically knowable the moment price has
+retraced 38.2% of the leg. This detector waits for the pivot swing to *settle*, which needs a full
+retrace or a break of the pivot. So a shallow V inside a window that never revisits the level is
+never tagged. That is the price of never drawing a pivot that later bars could still deepen — the
+repainting last leg that disqualifies ZigZag.
+
+#### Four thresholds that were wrong, and how we know
+
+The hit rates above are published for a reason: a rule whose hit rate nobody has looked at is not a
+rule, it is a hope. A theme tagging 99% of the corpus is not a filter, and one tagging 0.2% cannot
+fill a tape. `npm run themes` prints the distribution and refuses to stay quiet about either
+failure. On the first pass it caught four:
+
+- **compression** normalised a 10-bar range against `ATR × 10`. A random walk covers `ATR × √10`, so
+  the denominator was three times too large and **99%** of charts looked compressed.
+- **failed-breakout** triggered on a *wick* beyond the level. On any noisy series a high pokes past
+  a 20-bar extreme constantly: **100%**. A close beyond is a commitment; a wick is an excursion, and
+  excursions are what liquidity-sweep is for.
+- **liquidity-sweep** scanned all ~108 settled swings rather than the handful a reader would be
+  watching, so something was always being taken out and given back: **100%**.
+- **range-reversion** asked for closes clustering in the middle *and* a narrow window — conditions
+  that fight each other, since a narrow window is one price traverses repeatedly. **0.7%**.
+
+And two more that only testing found: a **step** passes both of a trend's obvious conditions, since
+it is perfectly efficient and Theil–Sen treats it as a level change rather than an outlier; and
+counting edge visits does not separate a range from a **drift**, which touches both edges once each
+on its way past.
+
+Two further observations the measurement produced, which are facts about the corpus rather than
+about the detectors. The efficiency ratio's 90th percentile here is **0.302**, so §6's `trend`
+bucket at 0.35 is nearly empty — this is a crypto-spot library and it is mostly chop. And sweeps and
+failed breaks are genuinely common in it; whether they are *more* common than chance is not a
+question thresholds can answer, and **2c answers it** by running the same detectors on permuted
+bars and publishing both counts.
+
+### 13.8 How it is tested
 
 Stability is measured in **price space** — Hausdorff distance on swing prices — never on index sets.
 That is a correction to the scope document as first drafted: persistence theory gives stability of
@@ -815,12 +888,18 @@ that depend on them; the Full Desk and News Blind tiers; the Fog mod; ranked ses
 seasons; Manage, Storm, Duel, Racer and Calibration; creator maps and cohort dashboards; the cost
 model; synthetic controls in the corpus; news.
 
-**Layer 2 geometry: computed, not shown.** §13 covers what exists. The primitives are pure, causal
-and tested, and **no annotation reaches a player** — the round payload is unchanged and
-`tests/api-leak.test.ts` is untouched by the phase that built them. The published threshold spec is
-2b's job and the permutation null is 2c's; until both land, the geometry's only consumer is
-`/lab/geometry`, which is a 404 in production. Two pieces are deferred outright with reasons in
-§13.6, and round-number levels are measured-and-withheld in §13.5.
+**Layer 2 geometry: computed and published, not drawn.** §13 covers what exists. The primitives are
+pure, causal and tested, the six themes are specified and stored, and **no annotation reaches a
+player** — the round payload is unchanged and `tests/api-leak.test.ts` is untouched by both phases
+that built them. Themes are visible as tapes, which is a filter over charts rather than a drawing
+on one. The permutation null is 2c's job; until it lands, the geometry's only other consumer is
+`/lab/geometry`, a 404 in production. Two pieces are deferred outright with reasons in §13.6,
+round-number levels are measured-and-withheld in §13.5, and news-spike waits for §9 in Phase 7
+rather than naming a cause we cannot observe.
+
+**Per-theme player ratings are not built.** §8.4 calls the diagnostic — "you are 1740 overall but
+1490 on failed breakouts" — the most valuable sentence the product can say. The tags it needs now
+exist; the ratings on top of them do not.
 
 **Built but unvalidated:** the ladder has three rated rungs and **no tier has passed §3.5's test**,
 because that needs a player pool and there is not one yet. The harness exists and is verified

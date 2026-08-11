@@ -19,7 +19,8 @@
     "retire": "tsx --env-file-if-exists=.env.local scripts/retire.ts",
     "fairness": "tsx --env-file-if-exists=.env.local scripts/fairness.ts",
     "ladder": "tsx --env-file-if-exists=.env.local scripts/ladder.ts",
-    "leak": "tsx --env-file-if-exists=.env.local scripts/round-number-leak.ts"
+    "leak": "tsx --env-file-if-exists=.env.local scripts/round-number-leak.ts",
+    "themes": "tsx --env-file-if-exists=.env.local scripts/themes.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",

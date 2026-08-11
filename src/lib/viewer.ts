@@ -289,22 +289,33 @@ export interface Tape {
 
 export async function listTapes(): Promise<Tape[]> {
   const supabase = serviceClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('tapes')
-    .select('slug, name, blurb, tier, er_buckets, vol_buckets, locked_reason, sort')
+    .select('slug, name, blurb, tier, er_buckets, vol_buckets, themes, locked_reason, sort')
     .eq('published', true)
     .order('sort');
 
+  // A failed query used to fall through `data ?? []` and render as *an empty library* — a page
+  // saying there is nothing to play, which is indistinguishable from the truth and looks like a
+  // product decision rather than a broken deploy. Adding one column to the select was enough to
+  // trigger it. Fail loudly instead: an error page is a bug report, an empty page is not.
+  if (error) throw new Error(`could not list tapes: ${error.message}`);
+
   const tapes = data ?? [];
 
-  // The chart count is the honest size of the tape, so it is counted rather than guessed.
+  // The chart count is the honest size of the tape, so it is counted rather than guessed. It has to
+  // stay in step with the predicates in `issue_round`, or a tape advertises a size it cannot serve.
   const counted = await Promise.all(
     tapes.map(async (t) => {
       let query = supabase.from('charts').select('id', { count: 'exact', head: true });
       const er = t.er_buckets as string[] | null;
       const vol = t.vol_buckets as string[] | null;
+      const themes = t.themes as string[] | null;
       if (er) query = query.in('regime_er_bucket', er);
       if (vol) query = query.in('regime_vol_bucket', vol);
+      // `overlaps`, matching the `&&` the issuance function runs: a chart qualifies if it carries
+      // *any* of the tape's themes.
+      if (themes) query = query.overlaps('themes', themes);
       const { count } = await query;
       return {
         slug: t.slug as string,
