@@ -48,7 +48,7 @@ export interface BaseRate {
 }
 
 /** The corpus this was measured on. A record does not transfer to a different one. */
-export const MEASURED_OVER = { charts: 1000, thresholdHash: '1fc650fc' } as const;
+export const MEASURED_OVER = { charts: 1000, thresholdHash: '388f4588' } as const;
 
 /** The static bracket — the record comparable to a player's, and to the 98-cell achievable set. */
 export const BRACKET: Record<EngineCode, BaseRate> = {
@@ -79,16 +79,25 @@ export const BRACKET: Record<EngineCode, BaseRate> = {
     targetRate: 0.273,
     nullBand: { low: -0.29, high: 0.224 },
   },
+  /**
+   * Re-registered at `engine-3`, and the result is the most instructive on the page.
+   *
+   * The sweep and rejection thresholds went from 0.05 ATR to 0.25 — a stricter definition of what
+   * counts as a stop run, chosen for internal consistency with the engine's own stop buffer and not
+   * from anything measured. Coverage more than halved, 400 charts to 184.
+   *
+   * **The win rate went up and the expectancy went down.** 58.3% to 63.0%, and −0.008R to −0.127R.
+   * Demanding a more decisive sweep selected trades that hit their (nearby) target more often and
+   * lost more when they did not. It is the same lesson §4.4 is built on, arriving from a direction
+   * nobody chose: a win rate is not a result.
+   */
   SWEEP: {
-    n: 400,
-    coverage: 0.4,
-    // The busiest school on the roster by a distance, and the highest win rate — because its target
-    // is the nearest opposing pool, which is often close. A 58% win rate at a sub-1R reward is what
-    // that trade-off looks like, and the mean R says the two cancel almost exactly.
-    winRate: 0.583,
-    meanR: -0.008,
-    targetRate: 0.583,
-    nullBand: { low: -0.158, high: 0.106 },
+    n: 184,
+    coverage: 0.184,
+    winRate: 0.63,
+    meanR: -0.127,
+    targetRate: 0.63,
+    nullBand: { low: -0.23, high: 0.191 },
   },
   PATTERN: {
     n: 32,
@@ -181,19 +190,21 @@ export const NATIVE: Partial<Record<EngineCode, BaseRate>> = {
 /**
  * How often the council has anything to say at all.
  *
- * Four more engines halved the silence — 76.6% to 39.7% — and **doubled the disagreement**, 5.2% to
- * 10.9%. That is the roster working as §5.5 intended: a spread of opinion needs opinions, and with
- * two engines there was usually only one on offer.
+ * Four more engines took the silence from 76.6% at a roster of two schools to **56.5%** at six, and
+ * disagreement from 5.2% to 7.5%. That is the roster working as §5.5 intended: a spread of opinion
+ * needs opinions, and with two engines there was usually only one on offer.
  *
- * Almost all of the new coverage is SWEEP, which takes a position on 40% of charts by itself. Read
- * the silence figure with that in mind: it fell because one engine is loose, not because six schools
- * suddenly agreed there was a trade.
+ * These figures moved twice. Under `engine-2` they were 39.7% and 10.9%, because SWEEP alone took
+ * 40% of charts on a definition loose enough that "swept" meant "touched". Tightening it at
+ * `engine-3` handed 216 charts back to silence. **A coverage number is a statement about our
+ * thresholds before it is a statement about the market**, which is the argument for publishing the
+ * thresholds.
  */
 export const COUNCIL_COVERAGE = {
   /** No school took a position. Engine Zero is excluded — it always speaks, so it would mask this. */
-  silent: 0.397,
-  twoOrMoreSpoke: 0.168,
-  disagreed: 0.109,
+  silent: 0.565,
+  twoOrMoreSpoke: 0.123,
+  disagreed: 0.075,
 } as const;
 
 /**
@@ -221,7 +232,12 @@ export const EDGE = {
   charts: 1000,
   symbols: 314,
   resamples: 4000,
-  trials: 8,
+  /**
+   * **Specifications tried, not engines shipped.** Nine, over eight engines — Sweep was replayed
+   * under two. See `REGISTERED.trials`: the deflation floor prices the search, and a search that
+   * reconsidered a threshold after seeing a result is a larger search.
+   */
+  trials: 9,
   /** The control: a strategy that never trades, tested in the same family as the schools. */
   abstain: { deltaVsZero: 0.0907, t: 2.199, beatsZero: true },
   /**
@@ -234,24 +250,41 @@ export const EDGE = {
     CHANNEL: { delta: -0.007, t: -0.278, trades: 198 },
     REVERSION: { delta: -0.0006, t: -0.068, trades: 22 },
     REVERSION_H: { delta: -0.002, t: -0.13, trades: 88 },
-    SWEEP: { delta: 0.034, t: 1.081, trades: 400 },
+    SWEEP: { delta: 0.0237, t: 1.236, trades: 184 },
     PATTERN: { delta: 0.0026, t: 0.269, trades: 32 },
     GEOMETRY: { delta: 0, t: 0, trades: 0 },
     TAPE: { delta: -0.0166, t: -1.019, trades: 61 },
   },
   /** One test for the whole roster, asked once. */
-  spa: { pValue: 0.561, best: 'Sweep' },
+  spa: { pValue: 0.463, best: 'Sweep' },
   /**
-   * 0.826, and the number moved the wrong way when the roster grew.
-   *
-   * Above a half means the in-sample winner lands *below* median out of sample more often than
-   * chance — picking the leader on past performance is worse than useless here, not merely
-   * uninformative. Its median out-of-sample finish is 8th of 9.
+   * 0.730 — above a half, so the in-sample winner lands *below* median out of sample more often
+   * than chance. Picking the leader on past performance is worse than useless here, not merely
+   * uninformative. Its median out-of-sample finish is 7th of 9.
    */
-  pbo: 0.826,
-  /** Best of eight skill-free engines is expected to reach this Sharpe. Observed best: 0.0177. */
-  deflationFloor: 0.0403,
+  pbo: 0.73,
+  /** Best of nine skill-free specifications is expected to reach this Sharpe. Observed: 0.0177. */
+  deflationFloor: 0.0556,
   observedBestSharpe: 0.0177,
+  /**
+   * What one threshold choice did to the ordering, with nothing about the world changing.
+   *
+   * Under `engine-2` Sweep beat Engine Zero and took first place in 20.2% of bootstrap resamples.
+   * Under `engine-3` — a stricter sweep, chosen on reasoning rather than on any measurement — it is
+   * the **only** engine that fails to beat Engine Zero, and it finishes **8th of 9 in 72%** of
+   * resamples. Same corpus, same code, one constant.
+   *
+   * This is the most direct evidence in the project for why the family has to be counted, and it is
+   * the reason `trials` is 9 rather than 8.
+   */
+  reregistration: {
+    from: 'engine-2',
+    to: 'engine-3',
+    sweepCoverageBefore: 0.4,
+    sweepCoverageAfter: 0.184,
+    sweepFirstPlaceBefore: 0.202,
+    sweepLastPlaceAfter: 0.72,
+  },
 } as const;
 
 /**

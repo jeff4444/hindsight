@@ -34,7 +34,7 @@
  *
  * The research measured what faithful engines actually do on this corpus, and the answer decides how
  * this file reads: **CHANNEL fires on 19.8% of charts, REVERSION as published on 2.2%, and the
- * council is silent on 39.7%, and GEOMETRY fires on nothing at all.**
+ * council is silent on 56.5%, and GEOMETRY fires on nothing at all.**
  *
  * That is not a broken roster. §4.4 already scores restraint as a move a *player* can make, and an
  * engine that passes is making the same move for the same reason. "No school on this roster had a

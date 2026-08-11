@@ -10,7 +10,7 @@
  *
  * ## The unit of observation, decided before anything else
  *
- * Engines abstain on different charts — the council is silent on 39.7% of them, and one engine
+ * Engines abstain on different charts — the council is silent on 56.5% of them, and one engine
  * abstains on every single one — so there is no
  * common set of trades to compare. **Every engine is therefore given a full-length vector over all
  * charts: its R where it traded, and zero where it passed.**

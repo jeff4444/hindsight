@@ -112,10 +112,22 @@ export const THRESHOLDS = {
     poolGrade: 'intermediate',
     /** How far back a pool may sit, in bars. Ours. */
     lookbackBars: 60,
-    /** Minimum penetration beyond the pool, in ATR, before a wick counts as a sweep. Ours. */
-    minPenetrationAtr: 0.05,
-    /** The close must return this far back inside the pool, in ATR. Ours. */
-    minRejectionAtr: 0.05,
+    /**
+     * Minimum penetration beyond the pool, in ATR, before a wick counts as a sweep.
+     *
+     * **Re-registered at 0.25 from 0.05 (`engine-2` → `engine-3`), and the reason is internal
+     * consistency rather than anything measured.** The engine already treated 0.25 ATR as the
+     * distance that counts as "clearly beyond a level" — that is what `stopBufferAtr` is — while
+     * asking only 0.05 ATR of the sweep itself. Two notions of "beyond" differing fivefold inside
+     * one engine is a spec defect, and 0.05 ATR is a twentieth of a typical bar's range: inside the
+     * noise, so it made "swept" mean "touched".
+     *
+     * A stop run has to actually run the stops. Stops rest a little way beyond a swing, so the bar
+     * must clear the level by a distance a trader would recognise as clearing it.
+     */
+    minPenetrationAtr: 0.25,
+    /** The close must return this far back inside the pool, in ATR. Ours; 0.25 for the same reason. */
+    minRejectionAtr: 0.25,
     /** Stop buffer beyond the sweep wick, in ATR. Ours; the "beyond the wick" part is the idiom's. */
     stopBufferAtr: 0.25,
   },
@@ -299,10 +311,14 @@ export function digest(value: unknown): string {
  * > record stayed attached to it. A pre-registration you compute at read time is not a
  * > pre-registration. It is written out by hand below, and 3c's four engines are the change that
  * > would have slipped through.
+ *
+ * `engine-3` is the first deliberate re-registration: Sweep's penetration and rejection thresholds
+ * moved after the corpus had been replayed under `engine-2`. Everything downstream was re-measured
+ * rather than inherited, and `REGISTERED.trials` counts the discarded specification.
  */
-export const THRESHOLD_HASH = '1fc650fc';
+export const THRESHOLD_HASH = '388f4588';
 
-/** The registered family, and its size. 3b's corrections are computed against this number. */
+/** The registered family, and its size. §14.7's corrections are computed against these numbers. */
 export const REGISTERED = {
   version: ENGINE_VERSION,
   hash: THRESHOLD_HASH,
@@ -322,4 +338,29 @@ export const REGISTERED = {
     'TAPE',
     'ZERO',
   ] as const,
+
+  /**
+   * **Specifications tried on this corpus — which is larger than the roster, and has to be.**
+   *
+   * The deflation floor asks how high the best of N *skill-free* strategies is expected to reach by
+   * luck. N is not the number of engines shipped; it is the number of things tried. Every
+   * specification that has ever been replayed over these 1,000 charts counts, including the ones
+   * that were replaced, because the replacement was chosen by somebody who had seen the first
+   * result. That is the whole mechanism Bailey & López de Prado's deflation exists to price.
+   *
+   * The manifest header states the rule: a threshold may move, but the honest response is to bump
+   * `ENGINE_VERSION`, re-run everything, and **treat the family as larger** — not to keep the old
+   * track record. This is the counter that makes "treat the family as larger" a number rather than
+   * a sentiment.
+   *
+   * | version | what was tried |
+   * | --- | --- |
+   * | `engine-1` | CHANNEL, REVERSION, REVERSION_H, ZERO |
+   * | `engine-2` | …plus SWEEP, PATTERN, GEOMETRY, TAPE |
+   * | `engine-3` | SWEEP re-specified: penetration and rejection 0.05 → 0.25 ATR |
+   *
+   * Eight engines, nine specifications. The extra trial is Sweep's first one, and it counts against
+   * every engine's result even though it was discarded — that is the cost of having looked.
+   */
+  trials: 9,
 } as const;

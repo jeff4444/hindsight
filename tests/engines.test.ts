@@ -79,6 +79,13 @@ describe('pre-registration is enforced, not promised', () => {
     expect(digest(reordered)).toBe(THRESHOLD_HASH);
   });
 
+  it('never counts fewer trials than it has engines', () => {
+    // `trials` prices the search: every specification ever replayed over the corpus, including the
+    // ones that were replaced. It can exceed the roster — Sweep was replayed under two — but it can
+    // never be smaller, which would mean an engine ran without being counted as an attempt.
+    expect(REGISTERED.trials).toBeGreaterThanOrEqual(REGISTERED.engines.length);
+  });
+
   it('refuses to run an unregistered engine', () => {
     // 3b corrects against REGISTERED.engines. An engine that ran without being registered would be
     // a free extra trial no correction accounts for.
@@ -290,7 +297,7 @@ describe('the council is a spread of opinion, never a consensus', () => {
     expect(EDGE.observedBestSharpe).toBeLessThan(EDGE.deflationFloor);
     expect(EDGE.charts).toBe(MEASURED_OVER.charts);
     // The family size the deflation floor was computed against must be the family that ran.
-    expect(EDGE.trials).toBe(REGISTERED.engines.length);
+    expect(EDGE.trials).toBe(REGISTERED.trials);
   });
 
   it('says so when an engine is indistinguishable from a coin flip', () => {
