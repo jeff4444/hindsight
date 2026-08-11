@@ -1,5 +1,5 @@
 import type { Bar } from '@/core/bars';
-import type { ModCode, TierCode } from '@/core/tiers';
+import type { ModCode, TierCode, ToolCode } from '@/core/tiers';
 import type { Direction, Outcome } from '@/core/resolve';
 
 /**
@@ -46,6 +46,15 @@ export interface RoundPayload {
   volume: boolean;
   /** Whether the price axis is drawn. Removed only by the Blind Scale mod, never by a tier (§3.1). */
   priceAxis: boolean;
+  /**
+   * Indicators, drawings and overlays this tier grants. Empty at every rung below Full Desk.
+   *
+   * A description of the **ruleset**, not of the chart — the same category as `timeframes` and
+   * `volume`, and it says nothing about which instrument this is or what happens next. The measure
+   * tool is deliberately absent because it is universal (§3.1); a client that finds no `measure`
+   * entry here should still draw one.
+   */
+  tools: ToolCode[];
   /** Whether a pass is available. Removed by Iron (§3.3). */
   mayPass: boolean;
   /**
