@@ -158,3 +158,28 @@ describe('a Manage tick never carries a candle that has not printed', () => {
     expect(status).toBe(404);
   });
 });
+
+describe('a position that has already stopped out is over', () => {
+  beforeEach(() => {
+    round = {
+      id: 'r1',
+      chart_id: 'c1',
+      session_id: 'session-1',
+      committed_at: null,
+      manage_stop: 98,
+      manage_opened_at: new Date(Date.now() - 20 * MANAGE_MS_PER_BAR).toISOString(),
+      manage_events: [],
+    };
+  });
+
+  it('refuses an action once the round has been committed', async () => {
+    // Found by playing it. The reveal kept advancing and the controls stayed live long after the
+    // stop had been hit, so a partial and a close were recorded at bars 46 and 54 on a position that
+    // closed at bar 9. The walk discarded them correctly, but the player had spent forty bars
+    // managing something that no longer existed — which is worse than a wrong number, because it
+    // teaches a habit against a position that was not there.
+    round.committed_at = new Date().toISOString();
+    const { status } = await post({ op: 'partial' });
+    expect(status).toBe(409);
+  });
+});

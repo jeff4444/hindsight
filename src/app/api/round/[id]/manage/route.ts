@@ -177,7 +177,38 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
   /* ------------------------------------------------------- resolve, or wait */
 
-  const done = closed || revealed >= REVEAL_BARS;
+  /*
+   * Has the stop already taken the position out, inside the part of the reveal the player has seen?
+   *
+   * Found by playing it: the reveal kept advancing and the controls stayed live long after the stop
+   * had been hit, so a partial and a close were recorded at bars 46 and 54 on a position that closed
+   * at bar 9. The walk discarded them correctly — it terminates at the stop — but the player had
+   * spent forty bars managing a position that no longer existed, which is worse than a wrong number.
+   *
+   * So every tick resolves against the full path and asks whether the exit has *already happened* in
+   * revealed time. The full path is the truth either way; this only decides whether the round is over
+   * yet. Resolving against a truncated path instead would report a timeout at the truncation, which
+   * is a different outcome entirely.
+   */
+  const revealedMinutes = revealed * PATH_BARS_PER_DISPLAY_BAR;
+  const fullPath = unpackPath(fromPgHex(chart.resolution_path as string));
+  let stoppedAlready = false;
+  if (fullPath.length > 0) {
+    try {
+      const soFar = resolvePlayerManaged(
+        { entry, stop: round.manage_stop as number },
+        fullPath,
+        events,
+        atr,
+        SPOT_COSTS,
+      );
+      stoppedAlready = soFar.exitPathIndex < revealedMinutes && soFar.exitPathIndex < fullPath.length - 1;
+    } catch {
+      stoppedAlready = false;
+    }
+  }
+
+  const done = closed || stoppedAlready || revealed >= REVEAL_BARS;
   const revealBars = chart.reveal_bars as Bar[];
 
   if (!done) {
@@ -192,12 +223,11 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     });
   }
 
-  const path = unpackPath(fromPgHex(chart.resolution_path as string));
   let resolution;
   try {
     resolution = resolvePlayerManaged(
       { entry, stop: round.manage_stop as number },
-      path,
+      fullPath,
       events,
       atr,
       // Net, exactly as the grid was enumerated (§16.1). A player scored gross against a net
@@ -241,9 +271,12 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   return NextResponse.json({
     open: false,
     stop: round.manage_stop as number,
-    revealed: REVEAL_BARS,
+    // The bars that actually elapsed, not the window's length. A player stopped out at bar 9 was
+    // shown nine candles, and reporting sixty would tell them the window played out when it did not.
+    revealed,
     // The whole window, now that every decision is behind the player. This is the same moment Naked
-    // releases its reveal: after the last thing the score depends on.
+    // releases its reveal: after the last thing the score depends on. A player stopped out at bar 9
+    // sees the remaining fifty-one — the trade is over, so there is nothing left to leak into.
     bars: revealBars,
     events,
     done: true,
