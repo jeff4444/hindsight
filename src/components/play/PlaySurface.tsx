@@ -179,6 +179,8 @@ export function PlaySurface({
   const [score, setScore] = useState<ScorePayload | null>(null);
   /** §5's council, released with the reveal rather than at issuance — see the note on RevealPayload. */
   const [verdicts, setVerdicts] = useState<Verdict[]>([]);
+  /** §4.7's stake. Null until the player makes one — an untouched control is not a forecast. */
+  const [confidence, setConfidence] = useState<number | null>(null);
   /** §5.12's per-round evidence. Absent on a pass and wherever no school traded, which is most charts. */
   const [style, setStyle] = useState<RevealPayload['style']>(null);
   const [daily, setDaily] = useState<DailyPayload | null>(null);
@@ -316,6 +318,7 @@ export function PlaySurface({
     setScore(null);
     setVerdicts([]);
     setStyle(null);
+    setConfidence(null);
     resultRef.current = null;
     setRevealed(0);
     setRevealTotal(0);
@@ -967,7 +970,11 @@ export function PlaySurface({
               mayPass={round.mayPass && (ranked ? ranked.mayPass : true)}
               passesLeft={ranked ? ranked.passesLeft : null}
               onPass={() => void submit({ pass: true })}
-              onCommit={() => void submit({ stop, target })}
+              onCommit={() =>
+                void submit({ stop, target, ...(confidence === null ? {} : { confidence }) })
+              }
+              confidence={confidence}
+              onConfidence={setConfidence}
             />
             <HotkeyHint />
           </>
