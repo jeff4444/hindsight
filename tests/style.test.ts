@@ -133,6 +133,15 @@ describe('the sentence is refused until the sample supports it', () => {
     expect(describeStyle(fingerprint(many(STYLE_SPEC.minCharts - 1, true), ENGINES))).toBeNull();
   });
 
+  it('names the engine the way the roster does, not the way the enum does', () => {
+    // The list beside this sentence says "Reversion (Hindsight)"; the sentence said REVERSION_H
+    // until a rendered page showed the two disagreeing. The lookup is passed in rather than
+    // imported so `src/core` keeps no opinion about display names.
+    const line = describeStyle(fingerprint(many(40, true), ENGINES), () => 'Channel')!;
+    expect(line).toContain('Channel');
+    expect(line).not.toContain('CHANNEL');
+  });
+
   it('speaks once an engine clears the floor', () => {
     const line = describeStyle(fingerprint(many(STYLE_SPEC.minCharts, true), ENGINES));
     expect(line).not.toBeNull();

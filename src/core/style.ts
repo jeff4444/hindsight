@@ -181,17 +181,28 @@ export function fingerprint(rounds: readonly StyleRound[], engines: readonly Eng
  * Deliberately returns null rather than a hedge. A fingerprint drawn from nine charts is not a
  * weaker version of this claim, it is a different claim, and the product does not get to make it.
  */
-export function describe(affinities: readonly Affinity[]): string | null {
+export function describe(
+  affinities: readonly Affinity[],
+  /**
+   * How to name an engine to a reader.
+   *
+   * Defaults to the code, which is right for a test or a script and wrong for a screen: the roster
+   * calls it "Reversion (Hindsight)" and only this file ever called it `REVERSION_H`. Passing the
+   * lookup in keeps the sentence in the same language as the list beside it.
+   */
+  nameOf: (engine: EngineCode) => string = (engine) => engine,
+): string | null {
   const reportable = affinities.filter((a) => a.reportable && a.matched > 0);
   if (reportable.length === 0) return null;
 
   const closest = [...reportable].sort((a, b) => b.share - a.share)[0];
+  const name = nameOf(closest.engine);
   const gap = closest.playerMeanR - closest.engineMeanR;
   const verb = gap >= 0 ? 'ahead of' : 'behind';
 
   return (
-    `${(closest.share * 100).toFixed(0)}% of your brackets on the charts ${closest.engine} traded ` +
-    `looked like ${closest.engine}'s, over ${closest.charts} charts — and you are ` +
+    `${(closest.share * 100).toFixed(0)}% of your brackets on the charts ${name} traded ` +
+    `looked like ${name}'s, over ${closest.charts} charts — and you are ` +
     `${Math.abs(gap).toFixed(2)}R ${verb} it on those same charts.`
   );
 }
