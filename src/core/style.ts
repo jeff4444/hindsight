@@ -23,6 +23,13 @@
  * bracket look like Channel's? That is well defined whenever the engine spoke, it does not compete
  * with the other engines for a label, and it survives a roster where most engines are usually silent.
  *
+ * ## Engine Zero is not in this
+ *
+ * The null speaks on every chart and its bracket is a fixed 2 ATR stop with a 2R target, so
+ * resembling it means "you place 2 ATR stops" rather than "your brackets are random" — and leaving
+ * it in would give every round a denominator of at least one, making the single engine that is not
+ * a school the only one that always qualifies. §5.12 asks which *school* a player trades as.
+ *
  * ## What "looks like" means, and where the number came from
  *
  * A bracket has three parts a player controls: which way, how far the stop, and how much reward for
@@ -147,7 +154,13 @@ const mean = (xs: number[]) => (xs.length === 0 ? 0 : xs.reduce((a, b) => a + b,
  * Channel" would make an abstaining player look like the opposite of every school at once.
  */
 export function fingerprint(rounds: readonly StyleRound[], engines: readonly EngineCode[]): Affinity[] {
-  return engines.map((engine) => {
+  // The null is filtered here as well as at the write, because the two protect against different
+  // things. The writer stops new evidence naming it; this stops *stored* evidence doing so — rounds
+  // written before the exclusion existed still carry a ZERO entry, and without this they would show
+  // up as an affinity to a coin flip for as long as those rows live.
+  return engines
+    .filter((engine) => engine !== 'ZERO')
+    .map((engine) => {
     const relevant = rounds.filter((round) => round.available[engine] !== undefined);
     const matched = relevant.filter((round) => round.matched.includes(engine));
     return {

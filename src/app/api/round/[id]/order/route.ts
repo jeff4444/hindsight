@@ -276,6 +276,12 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const matched: string[] = [];
 
     for (const verdict of verdicts) {
+      // Engine Zero is excluded, and not as a technicality. §5.12 asks which *school* a player
+      // trades as; the null is a coin flip with a fixed 2 ATR stop and a 2R target, so resembling
+      // it means "you place 2 ATR stops", not "your brackets are random". Worse, it speaks on every
+      // chart — leaving it in would put a denominator of at least one on every round and make the
+      // one engine that is not a school the only one that always qualifies.
+      if (verdict.engine === 'ZERO') continue;
       if (verdict.direction === null || !verdict.bracket) continue;
       const shape = shapeOf(entry, verdict.bracket.stop, verdict.bracket.target, atr);
       if (!shape) continue;

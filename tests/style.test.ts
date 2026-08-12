@@ -159,3 +159,21 @@ describe('the sentence is refused until the sample supports it', () => {
     expect(line).not.toMatch(/good|bad|better than|worse than|should|improve/i);
   });
 });
+
+describe('the null is not a school', () => {
+  it('is excluded from the evidence the round stores', () => {
+    // Engine Zero speaks on every chart and its bracket is a fixed 2 ATR stop with a 2R target, so
+    // "you resemble Engine Zero" means "you place 2 ATR stops" — not "your brackets are random".
+    // Leaving it in would also give every round a denominator of at least one, so the one engine
+    // that is not a school would be the only one ever to clear the sample floor. Guarded here
+    // because the route builds `available` from `council()`, which does include it.
+    // Evidence that *does* name it — rounds written before the exclusion existed — must still not
+    // produce an affinity to it. The filter is in the aggregate as well as at the write.
+    const rounds = Array.from({ length: 60 }, () =>
+      round({ CHANNEL: -0.2, ZERO: 0.5 }, ['CHANNEL', 'ZERO'], 0.1),
+    );
+    const affinities = fingerprint(rounds, ['CHANNEL', 'ZERO']);
+    expect(affinities.some((a) => a.engine === 'ZERO')).toBe(false);
+    expect(describeStyle(affinities)).toContain('CHANNEL');
+  });
+});
