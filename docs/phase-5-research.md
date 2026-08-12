@@ -47,8 +47,8 @@ charts contain value that a set-and-forget bracket structurally cannot capture.*
 > percentile would read 100th almost every round".** That overstates it, and building the grid
 > exposed the overstatement. The 79% figure above is **perfect-foresight** management — exit at the
 > exact extreme the window ever reached — which is a ceiling no rule achieves. Enumerating a grid of
-> seven *mechanical* policies over 250 charts, its oracle beats the bracket oracle on **17.6%** of
-> charts, not 79%.
+> seven *mechanical* policies over the whole corpus, its best cell beats the bracket grid's best on
+> **20.7%** of charts, not 79%.
 >
 > The measurement stands; the inference drawn from it did not. It is corrected here rather than
 > quietly dropped, because the corrected version is what the design actually rests on.
@@ -56,16 +56,16 @@ charts contain value that a set-and-forget bracket structurally cannot capture.*
 Layer 1 scores a player by their rank among 98 enumerated brackets. Scoring a *managed* trade in
 that distribution is wrong for two reasons, and the surviving one is the second:
 
-- **Inflation, but modest.** A realistic policy grid tops the bracket oracle on 17.6% of charts —
-  enough to skew a ladder, not enough to pin every round at the 100th percentile.
-- **The baselines differ, and that is decisive.** Measured net of costs over the same 250 charts:
+- **Inflation, but modest.** A realistic policy grid tops the bracket grid's best cell on 20.7% of
+  charts — enough to skew a ladder, not enough to pin every round at the 100th percentile.
+- **The baselines differ, and that is decisive.** All 1,111 charts, net of costs:
 
-| grid | oracle | par (median cell) |
+| grid | best cell | par (median cell) |
 | --- | --- | --- |
-| bracket (§1's 98) | 4.38R | **−0.880R** |
-| manage (this file's 98) | 4.67R | **−0.458R** |
+| bracket (§1's 98) | 4.55R | **−0.782R** |
+| manage (this file's 98) | 4.51R | **−0.415R** |
 
-**Par is 0.42R apart.** A percentile is a rank against a distribution, so ranking a managed trade in
+The two ceilings are equal to within noise. **Par is 0.367R apart.** A percentile is a rank against a distribution, so ranking a managed trade in
 the bracket distribution would hand it that 0.42R as a gift — and the bracket grid contains no
 managed outcomes at all, so the comparison is between unlike things whatever the numbers do. Every
 downstream construct inherits it: Glicko needs an outcome that varies with skill, chart ratings need
@@ -90,28 +90,35 @@ scores.
 **This is the crux of 5a and it should be settled before any Manage UI exists.** Building the
 real-time interaction first and discovering the scoring afterwards is the expensive order.
 
-### 1.2.1 What the grid found: the worst policy is the one most often taught
+### 1.2.1 What the grid found, after one false start
 
-Mean R by policy across all stops and both directions, 250 charts, net of costs:
+Mean R by policy across all stops and both directions, **all 1,111 charts**, net of costs:
 
 | policy | mean R |
 | --- | --- |
-| trail 3 ATR | **−0.017** |
-| breakeven at 1R, then trail 2 ATR | −0.057 |
-| trail 2 ATR | −0.071 |
-| half off at 1R, breakeven, then trail 2 ATR | −0.071 |
-| trail 1 ATR | −0.080 |
-| hold to the end | −0.100 |
-| **breakeven at 1R** | **−0.117** |
+| trail 1 ATR | **−0.092** |
+| half off at 1R, breakeven, then trail 2 ATR | −0.092 |
+| trail 3 ATR | −0.099 |
+| hold to the end | −0.102 |
+| breakeven at 1R, then trail 2 ATR | −0.103 |
+| trail 2 ATR | −0.110 |
+| **breakeven at 1R** | **−0.134** |
 
-Every policy loses money, which by now is the least surprising sentence in this repository. The
-ordering is the interesting part: **the loosest trail is the best of them and moving to breakeven is
-the worst**, worse even than doing nothing at all. Moving a stop to breakeven is one of the most
-widely taught habits in retail trading, and on this corpus it converts trades that would have
-recovered into scratches.
+> **Correction.** A 250-chart sample of this table said the loosest trail was clearly best, at
+> −0.017R against −0.117R for breakeven, and that ordering was written into a commit message before
+> the full enumeration existed. **On 1,111 charts the top four sit within 0.010R of each other.**
+> The "loosest trail wins" claim was sampling noise and is withdrawn.
 
-It is the same shape as §16.1's cost gradient and §14.9's sweep tightening: **acting more does not
-pay here, and the product keeps finding that from new directions.**
+Two findings survive the full corpus. **Every policy loses money**, which is by now the least
+surprising sentence in this repository. And **moving to breakeven at 1R is the worst of the seven**
+on both samples, by a margin larger than the entire spread among the other six — worse even than
+doing nothing at all. Breakeven stops are among the most widely taught habits in retail trading, and
+on this corpus they convert trades that would have recovered into scratches.
+
+The wider lesson is about the sample, not the stops: **a 250-chart read produced a confident ordering
+that 1,111 charts erased.** §14.7 needed 198 trades to fail to resolve a 0.1R edge; these differences
+are a tenth of that size, and the honest reading is that six of the seven policies are
+indistinguishable.
 
 ### 1.3 What is not yet known
 

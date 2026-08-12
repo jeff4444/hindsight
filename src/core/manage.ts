@@ -17,39 +17,49 @@
  * | **charts where management beats every static bracket** | **79.0%** | |
  *
  * That is *perfect-foresight* management — exit at the exact extreme — so it is a ceiling rather
- * than something a rule reaches. Enumerating the seven mechanical policies below over 250 charts,
- * their oracle tops the bracket oracle on **17.6%** of charts, not 79%. The research doc's first
- * draft drew the wrong inference from the right number and §1.2 there corrects it.
+ * than something a rule reaches. Enumerating the seven mechanical policies below over the whole
+ * corpus, their best cell tops the bracket grid's best cell on **20.7%** of charts, not 79%. The
+ * research doc's first draft drew the wrong inference from the right number and §1.2 there corrects
+ * it.
  *
- * **The surviving argument is the baseline, and it is decisive.** Net of costs over the same charts:
+ * **The surviving argument is the baseline, and it is decisive.** All 1,111 charts, net of costs:
  *
- * | grid | oracle | par (median cell) |
+ * | grid | best cell | par (median cell) |
  * | --- | --- | --- |
- * | bracket (§1's 98) | 4.38R | **−0.880R** |
- * | manage (this file's 98) | 4.67R | **−0.458R** |
+ * | bracket (§1's 98) | 4.55R | **−0.782R** |
+ * | manage (this file's 98) | 4.51R | **−0.415R** |
  *
- * Par is **0.42R apart**. A percentile is a rank against a distribution, so scoring a managed trade
- * in the bracket distribution would hand it that gap as a gift — and the bracket grid contains no
+ * The two ceilings are the same to within noise. **Par is 0.367R apart**, and that is what matters:
+ * a percentile is a rank against a distribution, so scoring a managed trade in the bracket
+ * distribution would hand it that gap before it did anything — and the bracket grid contains no
  * managed outcomes at all, so it compares unlike things whatever the numbers do. Everything
  * downstream inherits it: Glicko needs an outcome that varies with skill, chart ratings need the
  * same, and §16.3's regime work assumes a comparable percentile.
  *
- * ## What the grid found on the way in
+ * ## What the grid found, after one false start
  *
- * Mean R by policy, all stops, both directions, net of costs. Every one loses money, which is by now
- * the least surprising sentence in this repository — the ordering is the part worth reading:
+ * Mean R by policy, all stops, both directions, net of costs, over all 1,111 charts:
  *
  * | policy | mean R |
  * | --- | --- |
- * | trail 3 ATR | **−0.017** |
- * | trail 2 ATR | −0.071 |
- * | hold to the end | −0.100 |
- * | **breakeven at 1R** | **−0.117** |
+ * | trail 1 ATR | **−0.092** |
+ * | half off at 1R, breakeven, then trail 2 ATR | −0.092 |
+ * | trail 3 ATR | −0.099 |
+ * | hold to the end | −0.102 |
+ * | breakeven at 1R, then trail 2 ATR | −0.103 |
+ * | trail 2 ATR | −0.110 |
+ * | **breakeven at 1R** | **−0.134** |
  *
- * **The loosest trail is the best of them, and moving to breakeven is the worst — worse than doing
- * nothing.** Breakeven stops are among the most widely taught habits in retail trading, and on this
- * corpus they convert trades that would have recovered into scratches. Same shape as §16.1's cost
- * gradient and §14.9's sweep tightening: acting more does not pay here.
+ * > **A 250-chart sample said the loosest trail was clearly best. The full corpus does not.** On
+ * > 1,111 charts the top four sit within 0.010R of each other, which is nothing. That claim was
+ * > sampling noise, it was published in a commit message before the full run existed, and it is
+ * > withdrawn here.
+ *
+ * Two things do survive. **Every policy loses money**, which is by now the least surprising sentence
+ * in this repository. And **moving to breakeven at 1R is the worst of the seven**, on both samples,
+ * by a margin (0.042R) larger than the spread among all the others — worse even than doing nothing.
+ * Breakeven stops are among the most widely taught habits in retail trading, and on this corpus they
+ * convert trades that would have recovered into scratches.
  *
  * **The fix is the one Layer 1 already used: enumerate.** A management policy is as parameterisable
  * as a bracket, so the same trick applies — resolve a grid of policies against the same stored

@@ -25,7 +25,8 @@
     "conditional": "tsx --env-file-if-exists=.env.local scripts/conditional.ts",
     "engines": "tsx --env-file-if-exists=.env.local scripts/engines.ts",
     "leaderboard": "tsx --env-file-if-exists=.env.local scripts/leaderboard.ts",
-    "synthesise": "tsx --env-file-if-exists=.env.local scripts/synthesise.ts"
+    "synthesise": "tsx --env-file-if-exists=.env.local scripts/synthesise.ts",
+    "manage": "tsx --env-file-if-exists=.env.local scripts/backfill-manage.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",
