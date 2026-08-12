@@ -10,16 +10,17 @@
  *
  * ## Why Manage needs a grid of its own
  *
- * `docs/phase-5-research.md` §1.2, both grids net of costs over 250 charts:
+ * `docs/phase-5-research.md` §1.2, both grids net of costs, over all 1,111 charts:
  *
- * | grid | oracle | par (median cell) |
+ * | grid | best cell | par (median cell) |
  * | --- | --- | --- |
- * | bracket | 4.38R | −0.880R |
- * | manage | 4.67R | −0.458R |
+ * | bracket | 4.55R | −0.782R |
+ * | manage | 4.51R | −0.415R |
  *
- * **Par is 0.42R apart.** A percentile is a rank against a distribution, so ranking a managed trade
- * among static brackets would hand it that gap before it did anything — and the bracket grid holds
- * no managed outcomes at all, so the comparison is between unlike things whatever the numbers say.
+ * The two ceilings are equal to within noise, so **par is the whole argument**: 0.367R apart. A
+ * percentile is a rank against a distribution, so ranking a managed trade among static brackets
+ * would hand it that gap before it did anything — and the bracket grid holds no managed outcomes at
+ * all, so the comparison is between unlike things whatever the numbers say.
  *
  * ## Net of costs, like everything else
  *
@@ -32,7 +33,6 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
-import { PATH_BARS_PER_DISPLAY_BAR } from '../src/core/config';
 import { SPOT_COSTS } from '../src/core/costs';
 import { enumerateManaged, MANAGE_GRID_SIZE } from '../src/core/manage';
 import { median } from '../src/core/achievable';
@@ -115,7 +115,8 @@ async function run() {
         throw new Error(`chart ${row.id} enumerated ${grid.cellCount} cells, expected ${MANAGE_GRID_SIZE}`);
       }
 
-      const { cellCount: _cells, ...columns } = grid;
+      const columns = { ...grid } as Partial<typeof grid>;
+      delete columns.cellCount;
       const { error: writeError } = await supabase.from('charts').update(columns).eq('id', row.id);
       if (writeError) throw new Error(writeError.message);
 
