@@ -6,6 +6,7 @@ import {
   MANAGE_POLICIES,
   enumerateManaged,
   resolveManaged,
+  resolvePlayerManaged,
 } from '@/core/manage';
 import { InvalidOrderError, NO_COSTS } from '@/core/resolve';
 
@@ -179,5 +180,96 @@ describe('management is worth something, which is the premise of the ladder', ()
     const held = resolveManaged({ entry: 100, stop: 98 }, bars, HOLD, 1, NO_COSTS);
     const trailed = resolveManaged({ entry: 100, stop: 98 }, bars, TRAIL1, 1, NO_COSTS);
     expect(trailed.rMultiple).toBeLessThanOrEqual(held.rMultiple);
+  });
+});
+
+describe('a player’s managed trade is walked by the same rules as the grid', () => {
+  it('cannot out-click a stop the bar had already run through', () => {
+    // The player watches bar i print, then clicks. If that bar had already taken the stop out, the
+    // position was closed before the click arrived. Applying the action first would be exactly the
+    // generous within-bar reading §12.3.2 forbids, and it would be worth a lot: every loss becomes
+    // avoidable by clicking fast.
+    const bars: Bar[] = [{ o: 100, h: 101, l: 97, c: 100, v: 1 }];
+    const saved = resolvePlayerManaged({ entry: 100, stop: 98 }, bars, [
+      { atPathIndex: 0, action: { kind: 'exit' } },
+    ], 1, NO_COSTS);
+    expect(saved.outcome).toBe('stop');
+    expect(saved.rMultiple).toBeCloseTo(-1, 1);
+  });
+
+  it('refuses a stop that widens, rather than clamping it', () => {
+    // R is the *initial* risk (§4.1). A player who could walk the stop away from entry would never
+    // take a loss, and the denominator would stop meaning anything.
+    const bars = path([100, 99.5, 99, 97.5, 96]);
+    const widened = resolvePlayerManaged({ entry: 100, stop: 98 }, bars, [
+      { atPathIndex: 1, action: { kind: 'stop', price: 90 } },
+    ], 1, NO_COSTS);
+    const untouched = resolvePlayerManaged({ entry: 100, stop: 98 }, bars, [], 1, NO_COSTS);
+    expect(widened.rMultiple).toBeCloseTo(untouched.rMultiple, 9);
+    expect(widened.outcome).toBe('stop');
+  });
+
+  it('accepts a stop that tightens, and calls it trailing only past breakeven', () => {
+    const bars = path([100, 102, 104, 103, 101]);
+    const result = resolvePlayerManaged({ entry: 100, stop: 98 }, bars, [
+      { atPathIndex: 2, action: { kind: 'stop', price: 102 } },
+    ], 1, NO_COSTS);
+    expect(result.trailed).toBe(true);
+    expect(result.rMultiple).toBeGreaterThan(0.5);
+
+    const risk = resolvePlayerManaged({ entry: 100, stop: 96 }, bars, [
+      { atPathIndex: 1, action: { kind: 'stop', price: 97 } },
+    ], 1, NO_COSTS);
+    expect(risk.trailed).toBe(false);
+  });
+
+  it('scales out once and once only', () => {
+    // Repeated partials would be position sizing rather than management, and the grid has no cell
+    // that does it — so a player doing it would be ranked against a distribution containing nothing
+    // comparable.
+    const bars = path([100, 102, 104, 106]);
+    const once = resolvePlayerManaged({ entry: 100, stop: 98 }, bars, [
+      { atPathIndex: 1, action: { kind: 'partial' } },
+    ], 1, NO_COSTS);
+    const thrice = resolvePlayerManaged({ entry: 100, stop: 98 }, bars, [
+      { atPathIndex: 1, action: { kind: 'partial' } },
+      { atPathIndex: 2, action: { kind: 'partial' } },
+      { atPathIndex: 3, action: { kind: 'partial' } },
+    ], 1, NO_COSTS);
+    expect(thrice.rMultiple).toBeCloseTo(once.rMultiple, 9);
+    expect(thrice.scaledOut).toBe(true);
+  });
+
+  it('exits at the close of the bar the click arrived on', () => {
+    const bars = path([100, 103, 96]);
+    const exited = resolvePlayerManaged({ entry: 100, stop: 98 }, bars, [
+      { atPathIndex: 1, action: { kind: 'exit' } },
+    ], 1, NO_COSTS);
+    expect(exited.exitPathIndex).toBe(1);
+    expect(exited.rMultiple).toBeCloseTo(1.5, 1);
+  });
+
+  it('reproduces a grid policy exactly when the player plays that policy', () => {
+    // The strongest available check that the two walks share their conventions: drive the player
+    // resolver with the events a mechanical rule would have generated and the results must agree.
+    // If these two ever diverge, the ladder is ranking a player against a distribution built by
+    // different arithmetic.
+    const bars = path([100, 101, 102, 103, 102, 101, 100, 99]);
+    const atr = 1;
+    const grid = resolveManaged({ entry: 100, stop: 98 }, bars, MANAGE_POLICIES[0], atr, NO_COSTS);
+    const player = resolvePlayerManaged({ entry: 100, stop: 98 }, bars, [], atr, NO_COSTS);
+    expect(player.rMultiple).toBeCloseTo(grid.rMultiple, 9);
+    expect(player.exitPathIndex).toBe(grid.exitPathIndex);
+    expect(player.riskPerUnit).toBeCloseTo(grid.riskPerUnit, 9);
+  });
+
+  it('charges costs the same way the grid does', () => {
+    const bars = path([100, 101, 102]);
+    const gross = resolvePlayerManaged({ entry: 100, stop: 98 }, bars, [], 1, NO_COSTS);
+    const net = resolvePlayerManaged({ entry: 100, stop: 98 }, bars, [], 1, {
+      spreadBps: 10,
+      stopSlippageBps: 5,
+    });
+    expect(net.rMultiple).toBeLessThan(gross.rMultiple);
   });
 });

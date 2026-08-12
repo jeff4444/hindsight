@@ -296,3 +296,138 @@ export function enumerateManaged(
 
   return cells;
 }
+
+/* ------------------------------------------------------- the player's own walk */
+
+/**
+ * What a player may do to an open position.
+ *
+ * The same three verbs the policy grid expresses mechanically, so the ladder is ranking like against
+ * like. A player who trails and scales out is doing what policy 7 does; the difference is *when*,
+ * and when is the skill under test.
+ */
+export type ManageAction =
+  | { kind: 'stop'; price: number }
+  | { kind: 'partial' }
+  | { kind: 'exit' };
+
+/** An action, and the minute of the path at which the server clock says it arrived. */
+export interface ManageEvent {
+  atPathIndex: number;
+  action: ManageAction;
+}
+
+/**
+ * Resolve a *player's* managed trade — the same walk the grid uses, driven by events instead of a rule.
+ *
+ * **This lives beside `resolveManaged` on purpose.** The player's percentile is their rank among the
+ * 98 policy cells, and that rank is only meaningful if both sides were walked under identical
+ * conventions: stop-first inside the bar, a stop that may only tighten, costs charged the same way.
+ * Two functions in two files drift, and the day they drift the ladder silently starts comparing a
+ * player resolved one way against a grid resolved another.
+ *
+ * ## Actions land at the close of the bar they arrived on
+ *
+ * The stop for bar *i* is checked before any action recorded at bar *i* is applied. A player cannot
+ * out-click a stop that the bar had already run through — the position was closed before the click
+ * arrived, and pretending otherwise is exactly the generous within-bar reading §12.3.2 forbids.
+ *
+ * ## A stop may only ever tighten
+ *
+ * Widening is rejected rather than clamped, and silently ignoring it would be worse than refusing:
+ * R is the *initial* risk (§4.1), so a stop that moves away from entry changes the denominator after
+ * the fact. A player who could widen could avoid every loss by walking the stop ahead of price.
+ */
+export function resolvePlayerManaged(
+  order: { entry: number; stop: number },
+  path: readonly Bar[],
+  events: readonly ManageEvent[],
+  atr: number,
+  costs: Costs = NO_COSTS,
+): ManagedResolution {
+  if (path.length === 0) throw new InvalidOrderError('cannot resolve against an empty path');
+  if (!(atr > 0)) throw new InvalidOrderError('atr must be positive');
+  const isLong = order.stop < order.entry;
+  const direction: Direction = isLong ? 'long' : 'short';
+
+  const halfSpread = bps(costs.spreadBps) / 2;
+  const slip = bps(costs.stopSlippageBps);
+  const entryFill = isLong ? order.entry * (1 + halfSpread) : order.entry * (1 - halfSpread);
+  const riskPerUnit = Math.abs(entryFill - order.stop);
+  if (riskPerUnit === 0) throw new InvalidOrderError('initial risk cannot be zero');
+
+  const exitAt = (raw: number, slipped: boolean) => {
+    const afterSlip = slipped ? (isLong ? raw * (1 - slip) : raw * (1 + slip)) : raw;
+    return isLong ? afterSlip * (1 - halfSpread) : afterSlip * (1 + halfSpread);
+  };
+  const rOf = (fill: number) => (isLong ? fill - entryFill : entryFill - fill) / riskPerUnit;
+
+  const byIndex = new Map<number, ManageAction[]>();
+  for (const event of events) {
+    const list = byIndex.get(event.atPathIndex);
+    if (list) list.push(event.action);
+    else byIndex.set(event.atPathIndex, [event.action]);
+  }
+
+  let stop = order.stop;
+  let trailed = false;
+  let scaledOut = false;
+  let banked = 0;
+  let remaining = 1;
+
+  const close = (i: number, raw: number, slipped: boolean): ManagedResolution => {
+    const r = rOf(exitAt(raw, slipped));
+    return {
+      outcome: slipped ? (r > 0 ? 'target' : 'stop') : 'timeout',
+      direction,
+      rMultiple: banked + remaining * r,
+      entryFill,
+      riskPerUnit,
+      exitPathIndex: i,
+      trailed,
+      scaledOut,
+    };
+  };
+
+  for (let i = 0; i < path.length; i++) {
+    const bar = path[i];
+
+    // 1. The stop, before anything the player did on this bar.
+    if (isLong ? bar.l <= stop : bar.h >= stop) return close(i, stop, true);
+
+    // 2. Then their actions, at this bar's close.
+    for (const action of byIndex.get(i) ?? []) {
+      if (action.kind === 'exit') {
+        const r = rOf(exitAt(bar.c, false));
+        return {
+          outcome: 'timeout',
+          direction,
+          rMultiple: banked + remaining * r,
+          entryFill,
+          riskPerUnit,
+          exitPathIndex: i,
+          trailed,
+          scaledOut,
+        };
+      }
+
+      if (action.kind === 'partial') {
+        // Once only. A player who could scale out repeatedly would be sizing, not managing, and the
+        // grid has no cell that does it.
+        if (scaledOut) continue;
+        banked += 0.5 * rOf(exitAt(bar.c, false));
+        remaining = 0.5;
+        scaledOut = true;
+        continue;
+      }
+
+      // A stop move, accepted only if it tightens. See the header.
+      const tighter = isLong ? action.price > stop : action.price < stop;
+      if (!tighter) continue;
+      stop = action.price;
+      if (isLong ? stop > entryFill : stop < entryFill) trailed = true;
+    }
+  }
+
+  return close(path.length - 1, path[path.length - 1].c, false);
+}

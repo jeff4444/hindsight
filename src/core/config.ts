@@ -51,5 +51,18 @@ export const RESOLUTION_TF_MS = MINUTE_MS;
  */
 export const PATH_BARS_PER_DISPLAY_BAR = DISPLAY_TF_MS / RESOLUTION_TF_MS;
 
+/**
+ * How fast a Manage reveal advances, in milliseconds per display bar.
+ *
+ * §10.1 says "candles advance in real time", which cannot mean literal hours. One second a candle
+ * puts a 60-bar window at a minute, which is long enough to make trailing a decision with a cost and
+ * short enough that the mode stays a rep generator.
+ *
+ * It is a *server* constant. The reveal is metered against `rounds.manage_opened_at` and the client
+ * is never sent an unrevealed bar — in Manage the player is still deciding while the candles arrive,
+ * so shipping the window up front would put the whole future in the tab (§6).
+ */
+export const MANAGE_MS_PER_BAR = 1_000;
+
 /** Length of the stored resolution path, in lower-timeframe bars. */
 export const PATH_BARS = REVEAL_BARS * PATH_BARS_PER_DISPLAY_BAR;
