@@ -6,11 +6,12 @@ two of its pieces have design problems that are cheaper to find now than after t
 
 **Three findings change the plan.**
 
-1. **Manage cannot be scored the way everything else is scored.** Perfect management beats the best
-   of the 98 enumerated brackets on **79% of charts**, by a mean of **2.93R**. So a managed trade
-   routinely exceeds the entire achievable set, and percentile scoring — the product's central
-   mechanic — degenerates to "100th" almost every round. Manage needs **its own achievable set**: a
-   grid of management *policies*, enumerated exactly as the bracket grid is.
+1. **Manage cannot be scored on the grid everything else is scored on.** Perfect-foresight
+   management beats the best of the 98 enumerated brackets on **79% of charts**, so there is real
+   value a set-and-forget bracket cannot capture. A grid of *mechanical* policies recovers less of it
+   — its oracle tops the bracket oracle on **17.6%** of charts — but its **par sits 0.42R higher**,
+   and a percentile is a rank against a distribution. Manage needs **its own achievable set**, and
+   §1.2 corrects the overstatement the first draft of this document made.
 2. **The scope specifies Calibration two different ways, in two places, and they are different
    modes.** §4.7 has the player stake a probability; §10.1 has the player draw an interval. Only one
    of them is cheap, and **§10.1's phrasing as written cannot be scored by any proper rule** — it
@@ -40,13 +41,35 @@ Both numbers are oracles — neither is reachable — so the comparison is fair 
 ceiling. §3's claim that Manage is "the other half of the skill" is not decoration: **four fifths of
 charts contain value that a set-and-forget bracket structurally cannot capture.**
 
-### 1.2 …which is exactly why percentile scoring breaks
+### 1.2 Correction: the 79% is a foresight ceiling, and the real argument is different
 
-Layer 1 scores a player by their rank among 98 enumerated brackets. A managed trade exceeds all 98
-on 79% of charts, so the percentile would read 100th almost every round — and a score that is
-always maximal is not a score. Every downstream construct inherits the failure: Glicko needs an
-outcome that varies with skill, chart ratings need the same, and §16.3's regime work assumes a
-comparable percentile.
+> **This section originally read "a managed trade exceeds all 98 brackets on 79% of charts, so the
+> percentile would read 100th almost every round".** That overstates it, and building the grid
+> exposed the overstatement. The 79% figure above is **perfect-foresight** management — exit at the
+> exact extreme the window ever reached — which is a ceiling no rule achieves. Enumerating a grid of
+> seven *mechanical* policies over 250 charts, its oracle beats the bracket oracle on **17.6%** of
+> charts, not 79%.
+>
+> The measurement stands; the inference drawn from it did not. It is corrected here rather than
+> quietly dropped, because the corrected version is what the design actually rests on.
+
+Layer 1 scores a player by their rank among 98 enumerated brackets. Scoring a *managed* trade in
+that distribution is wrong for two reasons, and the surviving one is the second:
+
+- **Inflation, but modest.** A realistic policy grid tops the bracket oracle on 17.6% of charts —
+  enough to skew a ladder, not enough to pin every round at the 100th percentile.
+- **The baselines differ, and that is decisive.** Measured net of costs over the same 250 charts:
+
+| grid | oracle | par (median cell) |
+| --- | --- | --- |
+| bracket (§1's 98) | 4.38R | **−0.880R** |
+| manage (this file's 98) | 4.67R | **−0.458R** |
+
+**Par is 0.42R apart.** A percentile is a rank against a distribution, so ranking a managed trade in
+the bracket distribution would hand it that 0.42R as a gift — and the bracket grid contains no
+managed outcomes at all, so the comparison is between unlike things whatever the numbers do. Every
+downstream construct inherits it: Glicko needs an outcome that varies with skill, chart ratings need
+the same, and §16.3's regime work assumes a comparable percentile.
 
 **The fix is the one Layer 1 already used: enumerate.** A management policy is as parameterisable as
 a bracket, so the same trick applies — resolve a grid of policies against the same one-minute path
@@ -66,6 +89,29 @@ scores.
 
 **This is the crux of 5a and it should be settled before any Manage UI exists.** Building the
 real-time interaction first and discovering the scoring afterwards is the expensive order.
+
+### 1.2.1 What the grid found: the worst policy is the one most often taught
+
+Mean R by policy across all stops and both directions, 250 charts, net of costs:
+
+| policy | mean R |
+| --- | --- |
+| trail 3 ATR | **−0.017** |
+| breakeven at 1R, then trail 2 ATR | −0.057 |
+| trail 2 ATR | −0.071 |
+| half off at 1R, breakeven, then trail 2 ATR | −0.071 |
+| trail 1 ATR | −0.080 |
+| hold to the end | −0.100 |
+| **breakeven at 1R** | **−0.117** |
+
+Every policy loses money, which by now is the least surprising sentence in this repository. The
+ordering is the interesting part: **the loosest trail is the best of them and moving to breakeven is
+the worst**, worse even than doing nothing at all. Moving a stop to breakeven is one of the most
+widely taught habits in retail trading, and on this corpus it converts trades that would have
+recovered into scratches.
+
+It is the same shape as §16.1's cost gradient and §14.9's sweep tightening: **acting more does not
+pay here, and the product keeps finding that from new directions.**
 
 ### 1.3 What is not yet known
 
