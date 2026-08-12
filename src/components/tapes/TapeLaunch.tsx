@@ -148,6 +148,29 @@ export function TapeLaunch({ slug, locked }: { slug: string; locked: boolean }) 
           {multiplier.toFixed(2)}× XP{selected.rated ? '' : ' · unrated'}
         </span>
       </div>
+
+      {/*
+        §10.1's other ladder, reachable from the same tape.
+
+        Deliberately outside the ruleset picker above rather than inside it as an eighth tier. The
+        tiers vary what the *player can see* — candles, timeframes, tools — and Manage varies what
+        they can *do*, which is a different axis entirely. Folding it in would suggest Manage is a
+        harder Naked, and §17 measures that it is neither harder nor easier: its distribution has a
+        different median, so the two scores are not on the same scale at all.
+      */}
+      <div className="border-line-faint mt-1 border-t pt-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <Button as="a" href={`/manage?tape=${encodeURIComponent(slug)}`} variant="secondary" disabled={locked}>
+            Manage this tape
+          </Button>
+          <span className="text-ink-dim font-mono text-xs">separate rating</span>
+        </div>
+        <p className="text-ink-dim mt-2 max-w-prose text-xs leading-relaxed">
+          No target: the candles advance and you decide when to leave. Scored against 98 management
+          policies rather than 98 brackets, on a ladder that never touches your Naked rating —
+          because the point of having both is to find out whether they are the same skill.
+        </p>
+      </div>
     </div>
   );
 }

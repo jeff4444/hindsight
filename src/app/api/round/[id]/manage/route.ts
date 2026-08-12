@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { serviceClient } from '@/lib/supabase/server';
+import { MANAGE_LADDER, applyRating } from '@/lib/apply-rating';
 import { readSession } from '@/lib/session';
 import type { Bar } from '@/core/bars';
 import { PATH_BARS_PER_DISPLAY_BAR, REVEAL_BARS } from '@/core/config';
@@ -81,7 +82,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   const supabase = serviceClient();
   const { data: round, error: roundError } = await supabase
     .from('rounds')
-    .select('id, chart_id, session_id, committed_at, manage_stop, manage_opened_at, manage_events')
+    .select('id, chart_id, session_id, user_id, committed_at, manage_stop, manage_opened_at, manage_events')
     .eq('id', id)
     .maybeSingle();
 
@@ -266,6 +267,30 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   if (commitError) {
     console.error('manage commit failed', commitError);
     return NextResponse.json({ error: 'Could not commit the round.' }, { status: 500 });
+  }
+
+  /*
+   * §10.1's separate rating, on its own ladder.
+   *
+   * `MANAGE` rather than the round's tier, and `isolated` so it never touches the overall number.
+   * The phase's exit condition is a *correlation* between the Manage and Naked ratings, and two
+   * numbers that feed each other cannot be correlated in any way that means anything.
+   *
+   * Signed-in players only, exactly as Naked rates: an anonymous session has no rating to move.
+   */
+  if (round.user_id && percentile !== null) {
+    await applyRating({
+      supabase,
+      userId: round.user_id as string,
+      chartId: round.chart_id as string,
+      tier: MANAGE_LADDER,
+      percentile,
+      // Manage has no ambiguous-fill concept: the stop-first convention decides every bar, and a
+      // player's exit is at a close rather than at a level two prices could have reached first.
+      ambiguous: false,
+      roundId: id,
+      ladder: 'isolated',
+    });
   }
 
   return NextResponse.json({

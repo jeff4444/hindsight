@@ -1554,8 +1554,13 @@ then nobody can say what N was.
 Recorded so nothing here is mistaken for the finished product.
 
 **Not built:** the per-theme ratings; the News Blind tier; the Fog mod; ranked sessions, divisions and
-seasons; Manage, Storm, Duel, Racer and Calibration; creator maps and cohort dashboards; style
-fingerprinting; news.
+seasons; Storm, Duel, Racer and Calibration; creator maps and cohort dashboards; news.
+
+**Manage is built and unvalidated.** §17 has the ladder: its own 98-cell achievable set, its own par,
+its own rating, and a reveal metered by the server because the player is still deciding while it
+arrives. What is *not* known is the thing the phase exists to find out — whether the Manage rating
+and the Naked rating measure different skills. That is a correlation between two numbers, and it
+needs players. The ladders are built so it can be asked; the answer is not claimed here.
 
 **Built, and waiting on players to mean anything.** §16 has the cost model, the synthetic controls
 and the regime marginals. What none of them can answer yet is §7.2's actual question — whether
@@ -1803,3 +1808,114 @@ own history.
 Evidence is written to the round as it is played (migration 0019), because the council's verdicts are
 discarded after the reveal and rebuilding a player's history would mean replaying eight engines over
 every chart they have ever seen.
+
+## 17. Manage
+
+§10.1: *"Same charts, candles advance in real time, player may trail, scale out, move to breakeven,
+or exit early. **Separate rating.**"* §3 calls it the largest architectural gap in v0.1 and compares
+it to blitz against classical — a different game on the same board.
+
+Play it at `/manage`, or from any tape.
+
+### 17.1 There is no target
+
+You place a stop and open. Nothing closes the position but you, the stop, or the end of the window.
+That is the whole difference: Naked asks *where do the levels go*, Manage asks *when do you leave*.
+
+Four moves, and they are deliberately discrete rather than a drag:
+
+| | |
+| --- | --- |
+| **Tighten** | move the stop a quarter of an ATR closer |
+| **Breakeven** | move it to the entry |
+| **Take half** | close half the position at the current price, once |
+| **Close** | leave |
+
+Dragging is right when nothing is moving. Here the candles arrive every second, and the one action
+that must never be ambiguous is the stop — a stop a tick lower is a different R. Each control is a
+thing you *meant*, which is also what makes the action log a readable record of the round.
+
+**The stop can only ever tighten.** R is the *initial* risk (§4.1), so a stop walked away from entry
+would change the denominator after the fact — and a player who could widen would never take a loss.
+
+### 17.2 It is scored against management, not against brackets
+
+Manage has its own achievable set: **direction × initial stop × exit policy = 2 × 7 × 7 = 98 cells**,
+the same size as §1's bracket grid so that a percentile means the same thing on both ladders.
+
+The seven policies, pre-registered and frozen under `MANAGE_VERSION` on the §14 pattern:
+
+| policy | mean R over all 1,111 charts |
+| --- | --- |
+| trail 1 ATR | **−0.092** |
+| half off at 1R, breakeven, then trail 2 ATR | −0.092 |
+| trail 3 ATR | −0.099 |
+| hold to the end | −0.102 |
+| breakeven at 1R, then trail 2 ATR | −0.103 |
+| trail 2 ATR | −0.110 |
+| **breakeven at 1R** | **−0.134** |
+
+**Every one of them loses money**, which is by now the least surprising sentence in this document.
+The ordering is the part worth reading: the top four sit within 0.010R of each other and are not
+distinguishable, but **moving to breakeven at 1R is the worst of the seven** by a margin larger than
+the spread among all the others — worse even than doing nothing. Breakeven stops are among the most
+widely taught habits in retail trading, and on this corpus they convert trades that would have
+recovered into scratches.
+
+> **A 250-chart sample of that table said the loosest trail was clearly best, at −0.017R against
+> −0.117R.** On 1,111 charts it is not. That claim was sampling noise, it reached a commit message
+> before the full enumeration existed, and it is withdrawn. §14.7 needed 198 trades to *fail* to
+> resolve a 0.1R edge; these differences are a tenth of that size.
+
+### 17.3 Why it could not share Naked's grid
+
+Both grids, net of costs, over all 1,111 charts:
+
+| grid | best cell | par (median cell) |
+| --- | --- | --- |
+| bracket (§1's 98) | 4.55R | **−0.782R** |
+| manage (§17.2's 98) | 4.51R | **−0.415R** |
+
+The two ceilings are equal to within noise. **Par is 0.367R apart**, and that is the whole argument:
+a percentile is a rank against a distribution, so scoring a managed trade among static brackets would
+hand it that gap before it did anything — and the bracket grid contains no managed outcomes at all,
+so it would be comparing unlike things whatever the numbers did.
+
+For the same reason a chart's **Manage rating is separate from its Naked rating**. How hard a chart
+is to manage is not how hard it is to bracket.
+
+> Perfect-foresight management — exiting at the exact extreme the window reached — beats the best
+> static bracket on **79%** of charts. That is a real measurement and it is why the ladder exists,
+> but it is a ceiling no rule reaches: the seven mechanical policies top the bracket grid's best cell
+> on **20.7%**. An earlier draft of the research used the 79% to argue that percentile scoring would
+> pin at 100th, which it would not.
+
+### 17.4 The rating is separate, and never blended
+
+Manage writes to its own ladder and **never touches the overall rating**. §15 of the scope leaves
+open whether it should be blended; it is not, because the phase's exit condition is *"a Manage rating
+that correlates only partly with the Naked rating"* — and two numbers that feed each other cannot be
+correlated in any way that means anything. `tests/manage-rating.test.ts` asserts that a Manage
+attempt writes one player row and never reads the reserved overall key.
+
+Whether the two actually decorrelate is not known and needs players. It is the phase's open question,
+not an answer this document is entitled to give.
+
+### 17.5 The candles come from the server, one at a time
+
+§6 says future data never reaches the client before the order is committed. Naked satisfies that by
+construction: the reveal ships **at commit**, after the only decision. **Manage does not** — you keep
+deciding while the candles arrive, so shipping the window when the position opens would hand over the
+entire future with every remaining decision still ahead of you. No amount of care in the interface
+fixes that; whatever it chose to draw, the bytes would be in the tab.
+
+So the reveal is metered by the server. A tick returns the bars that have elapsed against the round's
+own clock and not one more, and an action is stamped with **the index the server believes is
+current** — the request has no field for a client index at all, so there is nothing to forge. The
+score is derived from the stored action log by the same walk the 98 policies use, so replaying the
+log reproduces it exactly and the client never sends an outcome.
+
+**A position that has already stopped out is over.** Every tick asks whether the exit has already
+happened in revealed time and ends the round when it has — found by playing it, after a partial and a
+close were recorded at bars 46 and 54 on a position that closed at bar 9. The walk discarded them
+correctly, but forty bars had been spent managing something that was not there.
