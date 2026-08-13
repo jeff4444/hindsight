@@ -5,6 +5,8 @@ import { SESSION_COOKIE, SESSION_COOKIE_OPTIONS, ensureSession } from '@/lib/ses
 import { currentViewer } from '@/lib/viewer';
 import { DEFAULT_TIER, affordances, isTierCode, tierByCode } from '@/core/tiers';
 import { roundPayload } from '@/lib/round-payload';
+import { DUEL_SPEC } from '@/core/duel';
+import type { MatchPayload } from '@/lib/api-types';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -54,13 +56,13 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     return NextResponse.json({ error: 'This match is over.', complete: true }, { status: 409 });
   }
 
-  const { data: seat } = await supabase
+  const { data: seats } = await supabase
     .from('match_players')
-    .select('owner, seat, started_at')
-    .eq('match_id', id)
-    .eq('owner', owner)
-    .maybeSingle();
+    .select('owner, seat, started_at, health, score, charts, clean')
+    .eq('match_id', id);
+  const seat = (seats ?? []).find((s) => s.owner === owner) ?? null;
   if (!seat) return NextResponse.json({ error: 'You are not in this match.' }, { status: 403 });
+  const opponent = (seats ?? []).find((s) => s.owner !== owner) ?? null;
 
   // The player's own position in the sequence: how many of it they have already been issued. Counted
   // rather than trusted, and `issue_match_round` refuses a repeat regardless.
@@ -116,11 +118,45 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       .eq('owner', owner);
   }
 
+  /*
+   * The match state ships with the *first* chart, not only with the first commit.
+   *
+   * Without it a player opening a duel sees the ordinary tape header and no health bars until they
+   * have committed something — so the one screen where the mode's whole tension lives is the one
+   * screen that does not show it. Found by playing one.
+   */
+  const total = (match.chart_ids as string[]).length;
+  const state: MatchPayload =
+    match.mode === 'race'
+      ? {
+          mode: 'race',
+          index,
+          length: total,
+          charts: (seat.charts as number) ?? 0,
+          score: (seat.score as number) ?? 0,
+          complete: false,
+          clean: seat.clean !== false,
+          elapsedMs: seat.started_at ? Date.now() - Date.parse(seat.started_at as string) : 0,
+        }
+      : {
+          mode: 'duel',
+          index,
+          length: total,
+          charts: (seat.charts as number) ?? 0,
+          health: (seat.health as number) ?? DUEL_SPEC.health,
+          opponentHealth: (opponent?.health as number | undefined) ?? null,
+          // Nothing has been exchanged on *this* chart yet, which is exactly what pending means.
+          pending: true,
+          complete: false,
+          winner: null,
+        };
+
   const payload = roundPayload(row, tier, []);
   const response = NextResponse.json({
     ...payload,
     matchIndex: index,
-    matchLength: (match.chart_ids as string[]).length,
+    matchLength: total,
+    match: state,
   });
   response.cookies.set(SESSION_COOKIE, sessionId, SESSION_COOKIE_OPTIONS);
   return response;

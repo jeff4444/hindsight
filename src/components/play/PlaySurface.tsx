@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import type { Bar } from '@/core/bars';
 import { fromBase64, unpackDetail } from '@/core/pack';
 import { TICK_SIZE, toTick } from '@/core/normalize';
@@ -16,6 +17,7 @@ import type {
   RankedPayload,
   RevealPayload,
   RoundPayload,
+  MatchPayload,
   RoundResult,
   RunState,
   ScorePayload,
@@ -34,6 +36,7 @@ import { TimeframeControl } from './TimeframeControl';
 import { DailyPips } from './DailyPips';
 import { DecisionClock } from './DecisionClock';
 import { RunHud, RunSummary } from './RunHud';
+import { MatchHud, MatchSummary } from './MatchHud';
 import {
   FrameControls,
   HotkeyLegend,
@@ -62,11 +65,16 @@ export type Phase =
   | 'done'
   | 'summary'
   | 'error';
-export type Mode = 'daily' | 'tape' | 'ranked' | 'storm' | 'streak';
+export type Mode = 'daily' | 'tape' | 'ranked' | 'storm' | 'streak' | 'duel' | 'race';
 
 /** §10.1's run modes, which wrap ordinary rounds rather than replacing them. */
 function isRun(mode: Mode): mode is 'storm' | 'streak' {
   return mode === 'storm' || mode === 'streak';
+}
+
+/** §10.1's match modes, which issue from a fixed sequence rather than choosing a chart. */
+function isMatch(mode: Mode): mode is 'duel' | 'race' {
+  return mode === 'duel' || mode === 'race';
 }
 
 /** Vertical headroom kept reachable for the rails, in ATR. */
@@ -156,6 +164,7 @@ export function PlaySurface({
   fresh = false,
   tier,
   mods,
+  match,
 }: {
   mode: Mode;
   tape?: string;
@@ -172,7 +181,10 @@ export function PlaySurface({
   tier?: string;
   /** Tape only: §3.3's mods, comma-separated, layered on the tier. Validated server-side too. */
   mods?: string;
+  /** Duel and race only: which match's sequence to play. */
+  match?: string;
 }) {
+  const router = useRouter();
   const chart = useRef<ChartHandle>(null);
   const issued = useRef(false);
 
@@ -193,6 +205,8 @@ export function PlaySurface({
   const [daily, setDaily] = useState<DailyPayload | null>(null);
   /** §10.1's Storm or Streak state. Null outside a run, and the server's word on it throughout. */
   const [run, setRun] = useState<RunState | null>(null);
+  /** §10.1's duel or race state. Null outside a match. */
+  const [matchState, setMatchState] = useState<MatchPayload | null>(null);
   const [ranked, setRanked] = useState<RankedPayload | null>(null);
   const [revealed, setRevealed] = useState(0);
   const [revealTotal, setRevealTotal] = useState(0);
@@ -244,6 +258,8 @@ export function PlaySurface({
   const freshRef = useRef(false);
   // Mirrored because `load` reads it inside a callback that must not be rebuilt per render.
   const runRef = useRef<RunState | null>(null);
+  const matchIdRef = useRef<string | undefined>(match);
+  const matchRef = useRef<MatchPayload | null>(null);
   const frame = useRef<number | null>(null);
   const tauRef = useRef(CAMERA_TAU_MS);
   const entryRef = useRef(0);
@@ -289,6 +305,11 @@ export function PlaySurface({
   useEffect(() => {
     runRef.current = run;
   }, [run]);
+
+  useEffect(() => {
+    matchIdRef.current = match;
+    matchRef.current = matchState;
+  }, [match, matchState]);
 
   const loop = useRevealLoop(
     {
@@ -383,14 +404,34 @@ export function PlaySurface({
       }
     }
 
+    /*
+     * A match's charts are not chosen, they are *next*. The sequence was drawn once, for everybody in
+     * the match, and the position is the server's — so this endpoint takes no tape, no tier and no
+     * mods: all three were fixed when the match was opened, and a match where the two players saw
+     * different rulesets is two exercises with one scoreboard.
+     */
+    if (isMatch(modeRef.current)) {
+      if (matchRef.current?.complete) {
+        setPhase('summary');
+        return;
+      }
+      if (!matchIdRef.current) {
+        setError('That match link is missing its id.');
+        setPhase('error');
+        return;
+      }
+    }
+
     const endpoint =
       modeRef.current === 'daily'
         ? '/api/daily'
         : modeRef.current === 'ranked'
           ? '/api/ranked'
-          : isRun(modeRef.current)
-            ? `/api/round?${tapeQuery(tapeRef.current, rulesetRef.current)}&run=${runRef.current!.id}`
-            : `/api/round?${tapeQuery(tapeRef.current, rulesetRef.current)}`;
+          : isMatch(modeRef.current)
+            ? `/api/match/${matchIdRef.current}/round`
+            : isRun(modeRef.current)
+              ? `/api/round?${tapeQuery(tapeRef.current, rulesetRef.current)}&run=${runRef.current!.id}`
+              : `/api/round?${tapeQuery(tapeRef.current, rulesetRef.current)}`;
     const response = await fetch(endpoint, { method: 'POST' });
     if (!response.ok) {
       const body = await response.json().catch(() => ({ error: 'Could not reach the server.' }));
@@ -423,6 +464,15 @@ export function PlaySurface({
       payload = await response.json();
     }
     freshRef.current = false;
+    // A match's issuance carries its own state, so the health bars are on screen for the first chart
+    // rather than appearing after the first commit.
+    if (isMatch(modeRef.current)) {
+      const seeded = (payload as RoundPayload & { match?: MatchPayload }).match ?? null;
+      if (seeded) {
+        matchRef.current = seeded;
+        setMatchState(seeded);
+      }
+    }
     setRound(payload);
     entryRef.current = payload.entry;
     windowRef.current = { leadIn: payload.bars.length, reveal: payload.revealBarCount };
@@ -560,6 +610,12 @@ export function PlaySurface({
       if (payload.run) {
         runRef.current = payload.run;
         setRun(payload.run);
+      }
+      // The match's new state, including whether this chart ended it. Like the run, the summary
+      // waits: a player is owed the outcome of the chart that emptied their bar.
+      if (payload.match) {
+        matchRef.current = payload.match;
+        setMatchState(payload.match);
       }
       reveal.current = payload.revealBars;
       setRevealTotal(payload.revealBars.length);
@@ -816,7 +872,9 @@ export function PlaySurface({
               ? // The run, not the tape it draws from — a screen reader announcing "The Open Tape"
                 // on a Storm names the corpus filter rather than the mode being played.
                 `${mode === 'storm' ? 'Storm' : 'Streak'}, chart ${(run?.charts ?? 0) + 1}`
-              : tapeName}
+              : isMatch(mode)
+                ? `${mode === 'duel' ? 'Duel' : 'Race'}, chart ${(matchState?.charts ?? 0) + 1}`
+                : tapeName}
         </h1>
         <div className="flex items-center gap-3">
           {/* The way out. During a round the chart owns the screen, so this is the only
@@ -828,7 +886,9 @@ export function PlaySurface({
             <Icon name="arrow-left" size={14} />
             {mode === 'tape' ? 'Tapes' : 'Home'}
           </Link>
-          {isRun(mode) && run ? (
+          {isMatch(mode) && matchState ? (
+            <MatchHud match={matchState} />
+          ) : isRun(mode) && run ? (
             // Where the daily's pips sit: whatever the current mode is counting, in one place.
             // Storm's clock only advances while the player is placing — the reveal is free.
             <RunHud run={run} deciding={phase === 'placing'} />
@@ -1011,11 +1071,13 @@ export function PlaySurface({
             entry={round?.entry ?? 0}
             atr={round?.atr ?? null}
             nextLabel={
-              run && !run.alive
-                ? 'See your run'
-                : daily && daily.played + 1 >= daily.total
-                  ? 'See your card'
-                  : 'Next chart'
+              matchState?.complete
+                ? 'See the result'
+                : run && !run.alive
+                  ? 'See your run'
+                  : daily && daily.played + 1 >= daily.total
+                    ? 'See your card'
+                    : 'Next chart'
             }
             onNext={() => void load()}
             onReplay={replay}
@@ -1059,6 +1121,16 @@ export function PlaySurface({
           />
         )}
 
+        {phase === 'summary' && matchState && (
+          <MatchSummary
+            match={matchState}
+            onAgain={() => {
+              // A new match rather than a replay of this one: the sequence is spent, and playing it
+              // again would be answering charts whose reveals are already known.
+              router.push('/versus');
+            }}
+          />
+        )}
         {phase === 'summary' && run && (
           <RunSummary
             run={run}

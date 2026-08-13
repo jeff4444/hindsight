@@ -11,6 +11,7 @@ export default async function PlayPage({
     new?: string;
     tier?: string;
     mods?: string;
+    match?: string;
   }>;
 }) {
   const params = await searchParams;
@@ -25,7 +26,11 @@ export default async function PlayPage({
           ? 'storm'
           : params.mode === 'streak'
             ? 'streak'
-            : 'daily';
+            : params.mode === 'duel'
+              ? 'duel'
+              : params.mode === 'race'
+                ? 'race'
+                : 'daily';
   // `tier` and `mods` are passed through rather than parsed here: `/api/round` already validates
   // both against §3.2 and §3.3 and falls back to the default for anything it does not recognise,
   // and that is the only check that can matter — the round is issued there, not here.
@@ -36,6 +41,7 @@ export default async function PlayPage({
       fresh={params.new === '1'}
       tier={params.tier}
       mods={params.mods}
+      match={params.match}
     />
   );
 }

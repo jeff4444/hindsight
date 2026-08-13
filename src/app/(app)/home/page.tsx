@@ -49,7 +49,7 @@ export default function HomePage() {
       </section>
 
       <section className="mt-10">
-        <SectionHeader eyebrow="Runs" title="Reps, against the clock and against the odds" />
+        <SectionHeader eyebrow="Runs" title="Reps, against the clock and against other people" />
         <RunsSection />
       </section>
 
@@ -164,7 +164,7 @@ async function RankedSection() {
  */
 function RunsSection() {
   return (
-    <div className="mt-4 grid gap-3 sm:grid-cols-2" data-stagger>
+    <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4" data-stagger>
       <RunCard
         href="/play?mode=storm"
         eyebrow="Storm"
@@ -178,6 +178,20 @@ function RunsSection() {
         title="Until you are wrong"
         body="Untimed, and it ends on the first result below the median. You get one skip, and it does not come back — which is what makes standing aside a decision rather than a strategy."
         cta="Start a Streak"
+      />
+      <RunCard
+        href="/versus"
+        eyebrow="Versus"
+        title="The same charts as someone else"
+        body="A duel is a link: two health bars, and damage equal to the gap between your two readings of a chart. Nobody has to be online at the same time — each chart resolves as the second of you finishes it."
+        cta="Open a duel"
+      />
+      <RunCard
+        href="/versus"
+        eyebrow="Race"
+        title="One sequence, everyone who ran it"
+        body="Up to ten runners on the same charts, each against their own clock, with everyone who ran it before you on the board. Scored on how well you read them, not how many you got through."
+        cta="Open a race"
       />
     </div>
   );
