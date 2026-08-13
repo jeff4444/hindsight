@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 import Link from 'next/link';
-import { currentViewer, getPercentileSeries, getPlayerStats } from '@/lib/viewer';
+import { currentViewer, getPercentileSeries, getPlayerStats, getStyleRounds } from '@/lib/viewer';
 import { CardGridSkeleton, PageHeadSkeleton } from '@/components/shell/skeletons';
 import {
   Button,
@@ -12,6 +12,7 @@ import {
   cx,
 } from '@/components/ui';
 import { Icon } from '@/components/ui/icons';
+import { StyleProfile } from '@/components/profile/StyleProfile';
 
 export const dynamic = 'force-dynamic';
 
@@ -58,9 +59,10 @@ function StatsSkeleton() {
 
 async function Record() {
   const viewer = await currentViewer();
-  const [stats, series] = await Promise.all([
+  const [stats, series, styleRounds] = await Promise.all([
     getPlayerStats(viewer),
     getPercentileSeries(viewer, 20),
+    getStyleRounds(viewer),
   ]);
 
   if (stats.rounds === 0) {
@@ -161,6 +163,10 @@ async function Record() {
           whether the charts you traded beat the ones you stood aside on.
         </p>
       </Panel>
+
+      {/* §5.12. Placed after the traded/passed split because it only speaks about charts you traded,
+          and because the split is the thing that decides how many of those there are. */}
+      <StyleProfile rounds={styleRounds} />
 
       <Panel tone="inset" pad="md" className="mt-3">
         <Eyebrow>Not here yet</Eyebrow>

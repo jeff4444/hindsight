@@ -1,5 +1,7 @@
 import 'server-only';
 import { cache } from 'react';
+import type { EngineCode } from '@/core/engines';
+import type { StyleRound } from '@/core/style';
 import { serviceClient } from './supabase/server';
 import { authClient } from './supabase/auth-server';
 import { SESSION_COOKIE, ensureSession, readSession } from './session';
@@ -243,6 +245,40 @@ export async function getPlayerStats(viewer: Viewer): Promise<PlayerStats> {
     meanPercentile: scored.length ? scored.reduce((a, b) => a + b, 0) / scored.length : null,
     bestPercentile: scored.length ? Math.max(...scored) : null,
   };
+}
+
+/* -------------------------------------------------------------- style (§5.12) */
+
+/**
+ * The evidence for §5.12's fingerprint, as it was written at the time each round was played.
+ *
+ * Read rather than recomputed. The council's verdicts are discarded after the reveal, so rebuilding
+ * a history would mean replaying eight engines over every chart this player has ever seen — on a
+ * page load. Migration 0019 stores the comparison at the one moment it is already computed.
+ *
+ * `superseded` rounds are excluded like everywhere else: a replayed chart is one opinion about that
+ * chart, not two.
+ */
+export async function getStyleRounds(viewer: Viewer): Promise<StyleRound[]> {
+  const supabase = serviceClient();
+  const owner = viewer.userId ?? viewer.sessionId;
+
+  const { data } = await supabase
+    .from('rounds')
+    .select('style, r_multiple')
+    .eq('owner', owner)
+    .eq('superseded', false)
+    .not('style', 'is', null)
+    .not('committed_at', 'is', null);
+
+  return (data ?? []).map((row) => {
+    const style = row.style as { available: Record<string, number>; matched: string[] };
+    return {
+      available: style.available as Partial<Record<EngineCode, number>>,
+      matched: (style.matched ?? []) as EngineCode[],
+      playerR: (row.r_multiple as number | null) ?? 0,
+    };
+  });
 }
 
 /* ------------------------------------------------------------------ ratings */
