@@ -26,6 +26,20 @@ import {
  */
 export const OVERALL = 'ALL';
 
+/**
+ * The Manage ladder's reserved key — a tier in the schema, a separate game in fact.
+ *
+ * §10.1 gives Manage its own rating and §3 compares it to blitz against classical. The phase's exit
+ * condition is *"a Manage rating that correlates only partly with the Naked rating"*, and a
+ * correlation needs two numbers that were never allowed to touch: blending them in would destroy
+ * the comparison the ladder exists to make.
+ *
+ * Its chart ratings are separate too, and that is not incidental. A chart's difficulty to *manage*
+ * is a different quantity from its difficulty to bracket — the two grids have different medians
+ * (§17) — so `(chart_id, 'MANAGE')` is a different opponent from `(chart_id, 'NTZ')`.
+ */
+export const MANAGE_LADDER = 'MANAGE';
+
 export interface ApplyRatingInput {
   supabase: SupabaseClient;
   userId: string;
@@ -34,6 +48,14 @@ export interface ApplyRatingInput {
   percentile: number;
   ambiguous: boolean;
   roundId: string;
+  /**
+   * Whether this attempt also moves the overall rating.
+   *
+   * `'feeds-overall'` is the Naked ladder: §3.4 wants per-tier ratings "feeding one overall rating
+   * that drives matchmaking and division placement". `'isolated'` is Manage, which must not — see
+   * `MANAGE_LADDER`.
+   */
+  ladder?: 'feeds-overall' | 'isolated';
 }
 
 export async function applyRating({
@@ -44,7 +66,9 @@ export async function applyRating({
   percentile,
   ambiguous,
   roundId,
+  ladder = 'feeds-overall',
 }: ApplyRatingInput): Promise<void> {
+  const isolated = ladder === 'isolated';
   const [chartRow, tierRow, overallRow] = await Promise.all([
     supabase
       .from('chart_ratings')
@@ -58,12 +82,16 @@ export async function applyRating({
       .eq('user_id', userId)
       .eq('tier', tier)
       .maybeSingle(),
-    supabase
-      .from('player_ratings')
-      .select('rating, rd, sigma, attempts, last_rated_at')
-      .eq('user_id', userId)
-      .eq('tier', OVERALL)
-      .maybeSingle(),
+    // An isolated ladder has no overall row to read: its own rating plays both parts below, so
+    // reading `ALL` would pull the Naked ladder's number into a game it must not influence.
+    isolated
+      ? Promise.resolve({ data: null })
+      : supabase
+          .from('player_ratings')
+          .select('rating, rd, sigma, attempts, last_rated_at')
+          .eq('user_id', userId)
+          .eq('tier', OVERALL)
+          .maybeSingle(),
   ]);
 
   const chart: ChartRating = chartRow.data
@@ -87,12 +115,16 @@ export async function applyRating({
         }
       : newPlayerRating();
 
-  const lastRated = (overallRow.data?.last_rated_at ?? null) as string | null;
+  // On an isolated ladder the tier row *is* the rating, so it plays both parts: it is the opponent
+  // the chart is calibrated against and the number that moves. `rateAttempt` derives both from the
+  // same game, so the two results are identical and only one is written back.
+  const overallSource = isolated ? tierRow : overallRow;
+  const lastRated = (overallSource.data?.last_rated_at ?? null) as string | null;
   const sinceLastMs = lastRated ? Math.max(0, Date.now() - Date.parse(lastRated)) : 0;
 
   const result = rateAttempt({
     tierRating: readPlayer(tierRow.data),
-    overall: readPlayer(overallRow.data),
+    overall: readPlayer(overallSource.data),
     chart,
     percentile,
     sinceLastMs,
@@ -108,7 +140,7 @@ export async function applyRating({
   const meanOpponentRd = runningMean(
     (chartRow.data?.mean_opponent_rd as number) ?? CHART_CONFIG.initialRd,
     chart.plays,
-    readPlayer(overallRow.data).rd,
+    readPlayer(overallSource.data).rd,
   );
   const graduated = result.chart.pending
     ? !exitsPending({ ...result.chart, plays: result.chart.plays }, meanOpponentRd)
@@ -135,31 +167,34 @@ export async function applyRating({
   );
 
   if (result.rated) {
-    await supabase.from('player_ratings').upsert(
-      [
-        {
-          user_id: userId,
-          tier,
-          rating: result.tierRating.rating,
-          rd: result.tierRating.rd,
-          sigma: result.tierRating.sigma,
-          attempts: result.tierRating.attempts,
-          last_rated_at: now,
-          updated_at: now,
-        },
-        {
-          user_id: userId,
-          tier: OVERALL,
-          rating: result.overall.rating,
-          rd: result.overall.rd,
-          sigma: result.overall.sigma,
-          attempts: result.overall.attempts,
-          last_rated_at: now,
-          updated_at: now,
-        },
-      ],
-      { onConflict: 'user_id,tier' },
-    );
+    const rows = [
+      {
+        user_id: userId,
+        tier,
+        rating: result.tierRating.rating,
+        rd: result.tierRating.rd,
+        sigma: result.tierRating.sigma,
+        attempts: result.tierRating.attempts,
+        last_rated_at: now,
+        updated_at: now,
+      },
+    ];
+    // The overall row, only for a ladder that feeds it. Writing `result.overall` on an isolated
+    // ladder would put a Manage result into the Naked rating under the reserved `ALL` key, which is
+    // the one thing the separation exists to prevent.
+    if (!isolated) {
+      rows.push({
+        user_id: userId,
+        tier: OVERALL,
+        rating: result.overall.rating,
+        rd: result.overall.rd,
+        sigma: result.overall.sigma,
+        attempts: result.overall.attempts,
+        last_rated_at: now,
+        updated_at: now,
+      });
+    }
+    await supabase.from('player_ratings').upsert(rows, { onConflict: 'user_id,tier' });
   }
 
   // §8.3 regresses on the rating the player carried *at the attempt*, so it is recorded here and

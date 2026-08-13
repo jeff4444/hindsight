@@ -72,6 +72,14 @@ export interface OrderRequest {
   stop?: number;
   target?: number;
   pass?: boolean;
+  /**
+   * §4.7's stake: the probability this trade finishes above zero, net of costs.
+   *
+   * Optional. A round played without one is absent from every calibration statistic rather than
+   * counted as a half — putting an unexpressed opinion into a player's curve is precisely what a
+   * calibration measure must not do.
+   */
+  confidence?: number;
 }
 
 export interface RoundResult {
@@ -94,6 +102,14 @@ export interface RoundResult {
    * only gross is what makes tight stops look free.
    */
   grossR: number | null;
+  /**
+   * The Brier score of the stake, if one was made: the squared error of the stated probability.
+   *
+   * Proper, so honesty is optimal — there is no shading that improves it. Read it against
+   * **0.2384**, which is what saying the corpus base rate of 39.2% every time scores; a single
+   * round's Brier is noise, and the curve on the stats page is the number that means something.
+   */
+  brier: number | null;
   entryFill: number | null;
   exitFill: number | null;
   /** Index into `revealBars` at which the trade closed, for drawing the fill marker. */

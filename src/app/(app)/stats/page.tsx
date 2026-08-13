@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 import Link from 'next/link';
-import { currentViewer, getPercentileSeries, getPlayerStats, getStyleRounds } from '@/lib/viewer';
+import { currentViewer, getForecasts, getPercentileSeries, getPlayerStats, getStyleRounds } from '@/lib/viewer';
 import { CardGridSkeleton, PageHeadSkeleton } from '@/components/shell/skeletons';
 import {
   Button,
@@ -13,6 +13,7 @@ import {
 } from '@/components/ui';
 import { Icon } from '@/components/ui/icons';
 import { StyleProfile } from '@/components/profile/StyleProfile';
+import { CalibrationCurve } from '@/components/profile/CalibrationCurve';
 
 export const dynamic = 'force-dynamic';
 
@@ -59,10 +60,11 @@ function StatsSkeleton() {
 
 async function Record() {
   const viewer = await currentViewer();
-  const [stats, series, styleRounds] = await Promise.all([
+  const [stats, series, styleRounds, forecasts] = await Promise.all([
     getPlayerStats(viewer),
     getPercentileSeries(viewer, 20),
     getStyleRounds(viewer),
+    getForecasts(viewer),
   ]);
 
   if (stats.rounds === 0) {
@@ -163,6 +165,11 @@ async function Record() {
           whether the charts you traded beat the ones you stood aside on.
         </p>
       </Panel>
+
+      {/* §4.7, first of the two diagnostics: it is the one with evidence behind it, and unlike the
+          style fingerprint it starts saying something after thirty rounds rather than a hundred
+          and fifty. */}
+      <CalibrationCurve forecasts={forecasts} />
 
       {/* §5.12. Placed after the traded/passed split because it only speaks about charts you traded,
           and because the split is the thing that decides how many of those there are. */}

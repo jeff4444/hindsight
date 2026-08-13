@@ -2,6 +2,7 @@ import 'server-only';
 import { cache } from 'react';
 import type { EngineCode } from '@/core/engines';
 import type { StyleRound } from '@/core/style';
+import type { Forecast } from '@/core/calibration';
 import { serviceClient } from './supabase/server';
 import { authClient } from './supabase/auth-server';
 import { SESSION_COOKIE, ensureSession, readSession } from './session';
@@ -245,6 +246,33 @@ export async function getPlayerStats(viewer: Viewer): Promise<PlayerStats> {
     meanPercentile: scored.length ? scored.reduce((a, b) => a + b, 0) / scored.length : null,
     bestPercentile: scored.length ? Math.max(...scored) : null,
   };
+}
+
+/* --------------------------------------------------------- calibration (§4.7) */
+
+/**
+ * Every forecast this player has staked, with what happened.
+ *
+ * Rounds without a stake are excluded by the query rather than defaulted — a forecast nobody made
+ * must not enter a calibration curve, and `confidence is not null` is the only place that rule
+ * needs to live.
+ */
+export async function getForecasts(viewer: Viewer): Promise<Forecast[]> {
+  const supabase = serviceClient();
+  const owner = viewer.userId ?? viewer.sessionId;
+
+  const { data } = await supabase
+    .from('rounds')
+    .select('confidence, r_multiple')
+    .eq('owner', owner)
+    .eq('superseded', false)
+    .not('confidence', 'is', null)
+    .not('committed_at', 'is', null);
+
+  return (data ?? []).map((row) => ({
+    stated: row.confidence as number,
+    hit: ((row.r_multiple as number | null) ?? 0) > 0,
+  }));
 }
 
 /* -------------------------------------------------------------- style (§5.12) */

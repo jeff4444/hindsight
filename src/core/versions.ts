@@ -84,6 +84,21 @@ export const GEOMETRY_VERSION = 'geometry-1';
 export const ENGINE_VERSION = 'engine-4';
 
 /**
+ * The Manage achievable set: the seven policies, the stop ladder, and the walk that resolves them.
+ *
+ * Separate from `ACHIEVABLE_VERSION` because it invalidates a different ladder. The bracket grid
+ * decides what a set-and-forget trade could have made; this one decides what a *managed* trade could
+ * have made, and the two are scored independently by design — §10.1 gives Manage its own rating, and
+ * §14's exit condition is a correlation between the two, which is only meaningful while neither
+ * grid can silently change under the other.
+ *
+ * Bumping this invalidates every Manage percentile and every Manage rating, exactly as
+ * `ACHIEVABLE_VERSION` does for Naked. The seven policies are a pre-registered choice on the §14
+ * pattern, and §14.9 is the record of what changing such a choice costs.
+ */
+export const MANAGE_VERSION = 'manage-1';
+
+/**
  * The rating system: Glicko-2's constants, the information weight, and the pending policy.
  *
  * Bumping this does not invalidate percentiles — it invalidates *ratings*, which is why it is not

@@ -17,6 +17,7 @@ import {
 } from '@/core/pack';
 import { InvalidOrderError, NO_COSTS, resolve } from '@/core/resolve';
 import { SPOT_COSTS } from '@/core/costs';
+import { brier } from '@/core/calibration';
 import { resembles, shapeOf } from '@/core/style';
 import {
   ACHIEVABLE_VERSION,
@@ -38,6 +39,14 @@ const orderSchema = z
     stop: z.number().finite().positive().optional(),
     target: z.number().finite().positive().optional(),
     pass: z.boolean().optional(),
+    /**
+     * §4.7's stake: how likely the player thinks this trade is to finish above zero.
+     *
+     * Optional on purpose. A round played without one stores null and is absent from every
+     * calibration statistic — counting a missing forecast as 0.5 would put an opinion in a player's
+     * curve that they never expressed, which is the one thing a calibration measure must not do.
+     */
+    confidence: z.number().finite().min(0).max(1).optional(),
   })
   .refine((body) => body.pass === true || (body.stop !== undefined && body.target !== undefined), {
     message: 'send either { pass: true } or both a stop and a target',
@@ -125,6 +134,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       // is not a technicality: it is the one move on the board whose cost is genuinely nil, and
       // §4.4 already scores it.
       grossR: 0,
+      brier: null,
       entryFill: null,
       exitFill: null,
       exitBarIndex: null,
@@ -170,6 +180,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       direction: resolution.direction,
       rMultiple: resolution.rMultiple,
       grossR: gross.rMultiple,
+      brier: null,
       entryFill: resolution.entryFill,
       exitFill: resolution.exitFill,
       exitBarIndex: resolution.exitBarIndex,
@@ -302,12 +313,33 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     if (Object.keys(available).length > 0) style = { available, matched };
   }
 
+  /*
+   * §4.7's score for this round.
+   *
+   * The event is "finished above zero, **net of costs**" — the same number §16.1 grades everything
+   * else on, so the player is forecasting the thing they are scored on rather than a proxy. Not
+   * "hit target before stop", because a timeout is neither and a proper rule needs an event that
+   * always resolves.
+   *
+   * A pass carries no forecast: there is no trade to be confident about, and scoring the stake on a
+   * round the player declined would grade a prediction they withdrew.
+   */
+  const confidence = body.pass === true ? null : (body.confidence ?? null);
+  const brierScore =
+    confidence === null || result.rMultiple === null
+      ? null
+      : brier(confidence, result.rMultiple > 0);
+
+  result.brier = brierScore;
+
   // §1.2: the versions that produced this result are pinned to it, in the first commit.
   const { error: updateError } = await supabase
     .from('rounds')
     .update({
       ...update,
       style,
+      confidence,
+      brier: brierScore,
       committed_at: committedAt,
       normalization_version: NORMALIZATION_VERSION,
       pipeline_version: PIPELINE_VERSION,
