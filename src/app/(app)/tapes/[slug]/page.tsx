@@ -50,7 +50,11 @@ export default async function TapePage({ params }: { params: Promise<{ slug: str
           </p>
 
           <Panel pad="md" className="mt-8">
-            <TapeLaunch slug={tape.slug} locked={locked} />
+            <TapeLaunch
+              slug={tape.slug}
+              locked={locked}
+              requiredTier={tape.tierLocked ? tape.tier : null}
+            />
           </Panel>
         </div>
 

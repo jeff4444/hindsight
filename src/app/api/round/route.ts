@@ -25,19 +25,46 @@ export async function POST(request: Request) {
   const params = new URL(request.url).searchParams;
   const tape = params.get('tape') ?? 'open';
 
+  const supabase = serviceClient();
+
+  /*
+   * §11.2's tier lock, read before the ruleset is resolved because it decides the ruleset.
+   *
+   * "A tier lock, so an operator can require that their cohort plays at Naked and the results are
+   * comparable." Tapes have always carried a `tier` column and nothing read it — the launcher's
+   * choice won, so the column was a suggestion. A locked tape's ruleset wins instead.
+   *
+   * Mods are cleared too, which is ours rather than §11.2's. A mod changes affordances exactly as a
+   * tier does, and an operator asking for comparable results does not mean "comparable except for
+   * whichever mods each student happened to pick".
+   *
+   * A failed lookup is not treated as unlocked. Defaulting to open on error would make the lock
+   * fail in the direction that silently invalidates the cohort's data, which is the one direction a
+   * lock must never fail in.
+   */
+  const { data: tapeRuleset, error: tapeError } = await supabase
+    .from('tapes')
+    .select('tier, tier_locked')
+    .eq('slug', tape)
+    .maybeSingle();
+  if (tapeError) {
+    console.error('tape ruleset lookup failed', tapeError);
+    return NextResponse.json({ error: 'Could not issue a round.' }, { status: 500 });
+  }
+  const lockedTo = tapeRuleset?.tier_locked ? (tapeRuleset.tier as string) : null;
+
   // §3.2's ruleset. Unrated Sandbox is the default for free play; anything else is a deliberate ask.
-  const requested = params.get('tier');
+  const requested = lockedTo ?? params.get('tier');
   const tier = tierByCode(isTierCode(requested) ? requested : DEFAULT_TIER);
   if (!tier) {
     return NextResponse.json({ error: 'No such ruleset.' }, { status: 404 });
   }
-  const mods = parseMods(params.get('mods'), MODS);
+  const mods = lockedTo ? [] : parseMods(params.get('mods'), MODS);
   const granted = affordances(tier, mods);
   // Per-round nonce, §12.6. Server-side issuance means a round is a thing the server handed
   // out, not a thing a client can assert into existence.
   const nonce = randomBytes(16).toString('hex');
 
-  const supabase = serviceClient();
   const { data, error } = await supabase.rpc('issue_round', {
     p_session: sessionId,
     p_user: userId,

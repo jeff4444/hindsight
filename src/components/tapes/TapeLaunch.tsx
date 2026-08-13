@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { MODS, TIERS, xpMultiplier, type ModCode, type TierCode } from '@/core/tiers';
+import { MODS, TIERS, isTierCode, xpMultiplier, type ModCode, type TierCode } from '@/core/tiers';
 import { Button, Eyebrow, cx } from '../ui';
 import { Icon } from '../ui/icons';
 
@@ -17,32 +17,61 @@ import { Icon } from '../ui/icons';
  * §3.3 makes mods "layerable and not nested", and the multiplier is XP only — §3.4 forbids ranked
  * multipliers on principle, so the number here is never a rating adjustment.
  */
-export function TapeLaunch({ slug, locked }: { slug: string; locked: boolean }) {
-  const [tier, setTier] = useState<TierCode>('NTZ');
+export function TapeLaunch({
+  slug,
+  locked,
+  requiredTier = null,
+}: {
+  slug: string;
+  locked: boolean;
+  /**
+   * §11.2's tier lock. When a map requires a ruleset, the choice is not the player's — and the
+   * surface says so rather than accepting a pick and quietly issuing something else.
+   */
+  requiredTier?: string | null;
+}) {
+  const [tier, setTier] = useState<TierCode>(
+    isTierCode(requiredTier) ? requiredTier : 'NTZ',
+  );
   const [mods, setMods] = useState<ModCode[]>([]);
 
-  const selected = TIERS.find((t) => t.code === tier)!;
-  const multiplier = xpMultiplier(selected, mods);
-  const href = `/play?mode=tape&tape=${encodeURIComponent(slug)}&tier=${tier}${
-    mods.length ? `&mods=${mods.join(',')}` : ''
+  // The server enforces this too, and its answer is the one that counts. Locking the control here
+  // only means a player is never shown a choice that will be taken away from them.
+  const pinned = isTierCode(requiredTier) ? requiredTier : null;
+  const effectiveTier = pinned ?? tier;
+  const effectiveMods = pinned ? [] : mods;
+
+  const selected = TIERS.find((t) => t.code === effectiveTier)!;
+  const multiplier = xpMultiplier(selected, effectiveMods);
+  const href = `/play?mode=tape&tape=${encodeURIComponent(slug)}&tier=${effectiveTier}${
+    effectiveMods.length ? `&mods=${effectiveMods.join(',')}` : ''
   }`;
 
   return (
     <div className="space-y-6">
       <div>
         <Eyebrow>Ruleset</Eyebrow>
+        {pinned && (
+          <p className="text-attention-ink bg-attention/10 ring-attention/30 mt-2 rounded-md px-3 py-2 text-sm ring-1">
+            This map requires <span className="font-mono font-semibold">{pinned}</span>, so every
+            result on it is comparable. Mods are off here for the same reason.
+          </p>
+        )}
         {/* A mutually exclusive choice is a radio group, not a row of toggles: `aria-pressed`
             announces each tier as an independent on/off, which is not what picking a ruleset is.
             Roving tabindex keeps the whole ladder to one tab stop with arrows inside it. */}
         <div role="radiogroup" aria-label="Ruleset" className="mt-2 grid gap-2 sm:grid-cols-2">
           {TIERS.map((option) => {
-            const active = option.code === tier;
+            const active = option.code === effectiveTier;
             return (
               <button
                 key={option.code}
                 type="button"
                 role="radio"
                 aria-checked={active}
+                // Disabled rather than hidden: an operator's cohort should be able to see the rest
+                // of the ladder and see that it is not on offer here.
+                disabled={pinned !== null && !active}
                 tabIndex={active ? 0 : -1}
                 onClick={() => setTier(option.code)}
                 className={cx(
@@ -50,6 +79,7 @@ export function TapeLaunch({ slug, locked }: { slug: string; locked: boolean }) 
                   active
                     ? 'border-info-line bg-info-bg'
                     : 'border-line bg-surface-1 hover:border-line-strong',
+                  pinned !== null && !active && 'cursor-not-allowed opacity-40',
                 )}
               >
                 <div className="flex items-baseline justify-between gap-2">
@@ -90,13 +120,14 @@ export function TapeLaunch({ slug, locked }: { slug: string; locked: boolean }) 
         <Eyebrow>Mods</Eyebrow>
         <div className="mt-2 flex flex-wrap gap-2">
           {MODS.map((mod) => {
-            const active = mods.includes(mod.code);
+            const active = effectiveMods.includes(mod.code);
             return (
               <button
                 key={mod.code}
                 type="button"
                 aria-pressed={active}
                 title={mod.effect}
+                disabled={pinned !== null}
                 onClick={() =>
                   setMods((current) =>
                     current.includes(mod.code)
@@ -111,6 +142,7 @@ export function TapeLaunch({ slug, locked }: { slug: string; locked: boolean }) 
                       ? 'border-restraint-line bg-restraint-bg'
                       : 'border-attention-line bg-attention-bg'
                     : 'border-line bg-surface-1 hover:border-line-strong',
+                  pinned !== null && 'cursor-not-allowed opacity-40',
                 )}
               >
                 <div

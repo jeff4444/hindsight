@@ -347,6 +347,8 @@ export interface Tape {
   name: string;
   blurb: string;
   tier: string;
+  /** §11.2: the tape's ruleset is required rather than suggested, and the launcher says so. */
+  tierLocked: boolean;
   charts: number;
   lockedReason: string | null;
 }
@@ -355,7 +357,9 @@ export async function listTapes(): Promise<Tape[]> {
   const supabase = serviceClient();
   const { data, error } = await supabase
     .from('tapes')
-    .select('slug, name, blurb, tier, er_buckets, vol_buckets, themes, locked_reason, sort')
+    .select(
+      'slug, name, blurb, tier, tier_locked, er_buckets, vol_buckets, themes, drift_below, drift_above, council_split, locked_reason, sort',
+    )
     .eq('published', true)
     .order('sort');
 
@@ -380,12 +384,22 @@ export async function listTapes(): Promise<Tape[]> {
       // `overlaps`, matching the `&&` the issuance function runs: a chart qualifies if it carries
       // *any* of the tape's themes.
       if (themes) query = query.overlaps('themes', themes);
+      // The map filters, matching `issue_round`'s predicates exactly. A count computed from a
+      // different rule than the issuer uses is worse than no count: it advertises a size the tape
+      // cannot serve, which is the failure this whole block already existed to prevent.
+      const below = t.drift_below as number | null;
+      const above = t.drift_above as number | null;
+      if (below !== null) query = query.lte('lead_in_drift_atr', below);
+      if (above !== null) query = query.gte('lead_in_drift_atr', above);
+      if (t.council_split) query = query.gt('council_minority', 0);
       const { count } = await query;
       return {
         slug: t.slug as string,
         name: t.name as string,
         blurb: t.blurb as string,
         tier: t.tier as string,
+        /** §11.2's tier lock: the ruleset is required, not suggested. */
+        tierLocked: Boolean(t.tier_locked),
         charts: count ?? 0,
         lockedReason: t.locked_reason as string | null,
       };
