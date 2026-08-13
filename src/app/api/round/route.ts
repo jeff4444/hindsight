@@ -70,6 +70,30 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'The corpus is empty.' }, { status: 503 });
   }
 
+  /*
+   * Attach the round to a Storm or Streak run, if one was named.
+   *
+   * Checked against the *session* rather than taken on trust: a run id is a claim until the server
+   * confirms it belongs to the caller and is still alive, and a round attached to someone else's run
+   * would score into their total. Verified after issuance rather than inside `issue_round`, because
+   * the RPC's contract is §12.1's — what it may return — and widening it for a run is exactly the
+   * kind of change `tests/api-leak.test.ts` exists to make expensive.
+   */
+  const runId = params.get('run');
+  if (runId) {
+    const { data: run } = await supabase
+      .from('runs')
+      .select('id, alive, ends_at')
+      .eq('id', runId)
+      .eq('session_id', sessionId)
+      .maybeSingle();
+
+    const expired = run?.ends_at ? Date.parse(run.ends_at as string) <= Date.now() : false;
+    if (run && run.alive && !expired) {
+      await supabase.from('rounds').update({ run_id: runId }).eq('id', row.round_id);
+    }
+  }
+
   const payload = roundPayload(row, tier, mods);
 
   const response = NextResponse.json(payload);

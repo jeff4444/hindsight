@@ -20,6 +20,12 @@ import { SPOT_COSTS } from '@/core/costs';
 import { brier } from '@/core/calibration';
 import { resembles, shapeOf } from '@/core/style';
 import {
+  beatsMedian,
+  stormAfter,
+  streakAfter,
+  type RunOutcome,
+} from '@/core/run';
+import {
   ACHIEVABLE_VERSION,
   NORMALIZATION_VERSION,
   PIPELINE_VERSION,
@@ -82,7 +88,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
   const { data: round, error: roundError } = await supabase
     .from('rounds')
-    .select('id, chart_id, session_id, user_id, owner, committed_at, tier, expires_at')
+    .select('id, chart_id, session_id, user_id, owner, committed_at, tier, expires_at, run_id')
     .eq('id', id)
     .maybeSingle();
 
@@ -107,7 +113,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     .from('charts')
     // One literal, not a concatenation: supabase-js parses this string to type the row, and a
     // concatenated one degrades every field to an error type.
-    .select('reveal_bars, resolution_path, detail_path, entry_price, symbol, window_start, decision_at, mirrored, index_factor, synthetic, source_note, achievable_r, achievable_outcome, oracle_r, atr14, lead_in_bars, lead_in_extra')
+    .select('reveal_bars, resolution_path, detail_path, entry_price, symbol, window_start, decision_at, mirrored, index_factor, synthetic, source_note, achievable_r, achievable_outcome, oracle_r, par_r, atr14, lead_in_bars, lead_in_extra')
     .eq('id', round.chart_id)
     .single();
 
@@ -408,6 +414,89 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     sourceNote: (chart.source_note as string | null) ?? null,
   };
 
+  /*
+   * §10.1's run modes, advanced by the same commit that scored the round.
+   *
+   * One scoring path, not two. Storm and Streak exist to generate volume for measurements taken
+   * everywhere else — calibration's 30 forecasts, the fingerprint's 152 rounds — so a round played
+   * inside a run has to be scored exactly as one played outside it, or the volume is worthless.
+   *
+   * The clock is read from `ends_at` and never from the client. A pass scores nothing in Storm and
+   * spends the single skip in Streak: `par_r` is negative on 95% of charts and a pass is 0R, so
+   * without that rationing both modes are farmed by standing aside. See `src/core/run.ts`.
+   */
+  let run: Record<string, unknown> | null = null;
+  if (round.run_id) {
+    const { data: row } = await supabase
+      .from('runs')
+      .select('id, mode, ends_at, score, combo, best_combo, length, best_length, skips_left, charts, alive')
+      .eq('id', round.run_id as string)
+      .maybeSingle();
+
+    if (row && row.alive) {
+      const outcome: RunOutcome = {
+        beatMedian: beatsMedian(result.rMultiple, (chart.par_r as number | null) ?? null),
+        stoppedOut: result.outcome === 'stop',
+        passed: result.outcome === 'pass',
+      };
+
+      if (row.mode === 'storm') {
+        const remainingMs = Math.max(0, Date.parse(row.ends_at as string) - Date.now());
+        const next = stormAfter(
+          {
+            score: row.score as number,
+            combo: row.combo as number,
+            bestCombo: row.best_combo as number,
+            charts: row.charts as number,
+            remainingMs,
+            over: remainingMs <= 0,
+          },
+          outcome,
+          remainingMs,
+        );
+        // The penalty is applied by moving the deadline, so the clock stays a single timestamp the
+        // server owns rather than a duration two sides have to agree about.
+        const endsAt = new Date(Date.now() + next.remainingMs).toISOString();
+        await supabase
+          .from('runs')
+          .update({
+            score: next.score,
+            combo: next.combo,
+            best_combo: next.bestCombo,
+            charts: next.charts,
+            ends_at: endsAt,
+            alive: !next.over,
+            ended_at: next.over ? new Date().toISOString() : null,
+          })
+          .eq('id', row.id);
+        run = { ...row, mode: 'storm', score: next.score, combo: next.combo, bestCombo: next.bestCombo, charts: next.charts, remainingMs: next.remainingMs, alive: !next.over, beatMedian: outcome.beatMedian };
+      } else {
+        const next = streakAfter(
+          {
+            length: row.length as number,
+            best: row.best_length as number,
+            skipsLeft: row.skips_left as number,
+            charts: row.charts as number,
+            alive: true,
+          },
+          outcome,
+        );
+        await supabase
+          .from('runs')
+          .update({
+            length: next.length,
+            best_length: next.best,
+            skips_left: next.skipsLeft,
+            charts: next.charts,
+            alive: next.alive,
+            ended_at: next.alive ? null : new Date().toISOString(),
+          })
+          .eq('id', row.id);
+        run = { ...row, mode: 'streak', length: next.length, bestLength: next.best, skipsLeft: next.skipsLeft, charts: next.charts, alive: next.alive, beatMedian: outcome.beatMedian };
+      }
+    }
+  }
+
   const payload: RevealPayload = {
     result,
     revealBars: chart.reveal_bars,
@@ -416,6 +505,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     score,
     council: verdicts,
     style,
+    run,
   };
   return NextResponse.json(payload);
 }

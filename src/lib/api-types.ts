@@ -213,6 +213,14 @@ export interface RevealPayload {
    * until an engine has 30 charts behind it.
    */
   style: { available: Record<string, number>; matched: string[] } | null;
+
+  /**
+   * §10.1's Storm or Streak state, after this round moved it. Null outside a run.
+   *
+   * The clock and the score are the server's — `remainingMs` is what was left when the commit was
+   * processed, not a duration the client may extend.
+   */
+  run: Record<string, unknown> | null;
 }
 
 /**
