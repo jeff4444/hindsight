@@ -3,6 +3,7 @@ import {
   STORM_SPEC,
   STREAK_SPEC,
   beatsMedian,
+  chargeClock,
   isComboRung,
   newStorm,
   newStreak,
@@ -92,9 +93,42 @@ describe('Storm’s clock is the resource, and the penalty is on the stop', () =
     expect(state.over).toBe(true);
   });
 
+  it('counts the chart that ran the clock out, and scores it nothing', () => {
+    // Found by sitting on one chart for 185 seconds of a 180-second budget: the run ended correctly
+    // but reported `charts: 0`, so a player who saw a chart was told they had seen none.
+    const state = stormAfter(newStorm(), beat, 0);
+    expect(state.charts).toBe(1);
+    expect(state.score).toBe(0);
+    expect(state.over).toBe(true);
+  });
+
   it('accepts nothing once it is over', () => {
     const over = stormAfter(newStorm(), stopped, 1_000);
     expect(stormAfter(over, beat, 60_000)).toBe(over);
+  });
+});
+
+describe('the clock charges deciding, not watching', () => {
+  it('spends the time between issue and commit', () => {
+    expect(chargeClock(180_000, 12_000)).toBe(168_000);
+  });
+
+  it('never hands time back', () => {
+    // A clock that stepped backwards, or a round with no issue time, must not credit the run.
+    expect(chargeClock(180_000, -5_000)).toBe(180_000);
+    expect(chargeClock(180_000, Number.NaN)).toBe(180_000);
+  });
+
+  it('stops at zero rather than going negative', () => {
+    expect(chargeClock(3_000, 60_000)).toBe(0);
+  });
+
+  it('leaves a long reveal costing nothing, which is the point', () => {
+    // Under the old wall clock a round cost ~11s, ~10 of them the reveal — and the reveal can be
+    // skipped, so the mode paid players to commit and look away. Two seconds of thought now costs
+    // two seconds however long they spend on the debrief afterwards.
+    const thought = chargeClock(STORM_SPEC.durationMs, 2_000);
+    expect(STORM_SPEC.durationMs - thought).toBe(2_000);
   });
 });
 

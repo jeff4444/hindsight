@@ -220,8 +220,42 @@ export interface RevealPayload {
    * The clock and the score are the server's — `remainingMs` is what was left when the commit was
    * processed, not a duration the client may extend.
    */
-  run: Record<string, unknown> | null;
+  run: RunPayload | null;
 }
+
+/**
+ * A run's state (§10.1), as a union rather than one shape with nulls in it.
+ *
+ * The two modes share a scoring rule and nothing else: Storm has a clock, a score and a combo,
+ * Streak has a length and a skip. A single flat shape would carry four fields that are meaningless
+ * in each mode and let the UI read `combo` off a Streak without complaint. Discriminating on `mode`
+ * makes that a type error instead.
+ */
+export type RunState =
+  | {
+      id: string;
+      mode: 'storm';
+      alive: boolean;
+      /** Charts seen, including passes — a pass costs the clock, so it counts as a chart. */
+      charts: number;
+      score: number;
+      combo: number;
+      bestCombo: number;
+      /** What the server's clock said when it last advanced. Never a duration the client sets. */
+      remainingMs: number;
+    }
+  | {
+      id: string;
+      mode: 'streak';
+      alive: boolean;
+      charts: number;
+      length: number;
+      bestLength: number;
+      skipsLeft: number;
+    };
+
+/** The run state on a reveal, plus the one fact about the round that moved it. */
+export type RunPayload = RunState & { beatMedian: boolean };
 
 /**
  * The player's state in a daily (§10.1).

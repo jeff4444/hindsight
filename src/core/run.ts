@@ -33,9 +33,27 @@
  * should — time — and a player who passes everything finishes a three-minute run on zero.
  */
 
+/**
+ * ## Storm's three minutes are decision time, not wall-clock time
+ *
+ * The clock was a wall-clock deadline until the mode was played. A round takes about eleven seconds
+ * end to end, of which roughly ten are the reveal animation and one is the decision — so a
+ * three-minute wall clock is mostly a queue for the animation, and the score is set by how fast the
+ * reveal plays rather than by how fast a player reads a chart.
+ *
+ * And the reveal can be skipped. Under a wall clock the optimal Storm strategy is therefore to
+ * commit and immediately skip the reveal — **to never look at the outcome** — which is the one thing
+ * this product exists to make people do. A scoring rule that pays players to stop learning is not a
+ * scoring rule worth having.
+ *
+ * So each round charges the time between issue and commit, and the reveal, the debrief and the pause
+ * between charts are free. §10.1's three minutes and its ten-second stop penalty are unchanged; what
+ * changed is which seconds count.
+ */
+
 /** Frozen on the §14 pattern: these decide every score either mode will ever produce. */
 export const STORM_SPEC = {
-  /** §10.1's three minutes. */
+  /** §10.1's three minutes — of deciding. See the note above. */
   durationMs: 3 * 60 * 1000,
   /** §10.1: ten seconds off the clock for a stop-out. Theirs. */
   stopPenaltyMs: 10_000,
@@ -101,6 +119,22 @@ export function isComboRung(n: number): boolean {
 }
 
 /**
+ * What is left after a round that took `decisionMs` to decide.
+ *
+ * Separate from `stormAfter` because the two charges are different in kind: this one is the time a
+ * player spent looking at the chart, and the ten seconds in `stormAfter` are a penalty for what they
+ * did with it. A negative or absurd `decisionMs` — a clock that stepped backwards, a row with no
+ * `issued_at` — charges nothing rather than crediting time, since the only failure mode worth
+ * guarding against is a clock that hands seconds back.
+ */
+export function chargeClock(remainingMs: number, decisionMs: number): number {
+  // `Math.max(0, NaN)` is NaN, so the non-finite case needs its own line rather than riding on the
+  // clamp — an unparseable `issued_at` would otherwise write NaN into an integer column.
+  const spent = Number.isFinite(decisionMs) ? Math.max(0, decisionMs) : 0;
+  return Math.max(0, remainingMs - spent);
+}
+
+/**
  * One chart's effect on a Storm run.
  *
  * `remainingMs` is passed in rather than derived, because only the server knows what time it is —
@@ -109,6 +143,14 @@ export function isComboRung(n: number): boolean {
  */
 export function stormAfter(state: StormState, outcome: RunOutcome, remainingMs: number): StormState {
   if (state.over) return state;
+
+  // The chart that ran the clock out counts as seen and scores nothing — a quiz does not credit the
+  // question you were still answering when the bell went. Distinguished from `state.over` above,
+  // which is a run that was already finished: without the distinction the final chart disappeared
+  // from `charts` entirely, and a run that ended on its first chart reported having seen none.
+  if (remainingMs <= 0) {
+    return { ...state, charts: state.charts + 1, remainingMs: 0, over: true };
+  }
 
   // A pass costs the clock and nothing else. See the header: without this, passing every chart
   // scores +1 on 95% of them.

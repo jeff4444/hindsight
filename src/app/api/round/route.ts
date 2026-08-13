@@ -81,15 +81,25 @@ export async function POST(request: Request) {
    */
   const runId = params.get('run');
   if (runId) {
-    const { data: run } = await supabase
+    const { data: run, error: runError } = await supabase
       .from('runs')
-      .select('id, alive, ends_at')
+      .select('id, alive, remaining_ms')
       .eq('id', runId)
       .eq('session_id', sessionId)
       .maybeSingle();
 
-    const expired = run?.ends_at ? Date.parse(run.ends_at as string) <= Date.now() : false;
-    if (run && run.alive && !expired) {
+    // Logged rather than discarded. This block failed silently once already — a column dropped in a
+    // migration read as "no such run", the round issued without a `run_id`, and Storm scored nothing
+    // while every screen looked correct. A run that cannot be found is a normal outcome; a query
+    // that cannot run is not, and the two must not be the same event.
+    if (runError) console.error('run lookup failed', runError);
+
+    // Storm's budget is decision time, so a run is out of clock only once a commit has spent the
+    // last of it — there is no deadline to compare against `now`, and a run sitting at zero is
+    // already `alive = false`. Streak has no clock at all, hence the null check rather than a
+    // comparison.
+    const spent = run?.remaining_ms !== null && run?.remaining_ms !== undefined && run.remaining_ms <= 0;
+    if (run && run.alive && !spent) {
       await supabase.from('rounds').update({ run_id: runId }).eq('id', row.round_id);
     }
   }

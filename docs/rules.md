@@ -2026,3 +2026,115 @@ grade, or keep the path question and accept that no proper rule scores it.
 Measured, for whenever that decision is taken: an 80% box price never leaves is **9.73 ATR** wide,
 against **5.83 ATR** for an interval containing the final close — the path version asks for a box
 1.67× wider at the same nominal coverage.
+
+---
+
+## 19. Storm and Streak
+
+§10.1: **Storm** — *"Three-minute clock. +1 per chart where you beat the distribution median. −10
+seconds when stopped out. Combo bonuses at 5, 12, 20 and 30 and every 10 thereafter."* **Streak** —
+*"Untimed. The run ends on the first sub-median result. One skip per run."*
+
+Play either from the home screen, or at `/play?mode=storm` and `/play?mode=streak`.
+
+They exist because one chart a day cannot produce a thousand reps. §3 reclassifies the daily as a
+distribution mechanism rather than a retention one and promotes these two from "later" to core, and
+every unanswered question in this project is waiting on the volume they make: calibration will not
+speak until 30 forecasts (§18), the style fingerprint until 152 rounds (§17.4), and §7.2's
+synthetic-control comparison needs more than either.
+
+A run is a **wrapper over ordinary rounds**, not a second kind of round. The player issues from
+`/api/round` and commits to `/api/round/[id]/order` exactly as in free play; the only difference is
+that the round carries a `run_id` and the commit reports what the run did in response. One scoring
+path, deliberately — a second one would drift from the first, and these are precisely the modes whose
+volume feeds measurements taken everywhere else.
+
+### 19.1 The rule §10.1 does not contain, and both modes need
+
+Both are scored on beating the **distribution median** — `par_r`, the median of the 98 enumerated
+brackets. Measured over the corpus, net of costs (§16.1):
+
+| | |
+| --- | --- |
+| charts where `par_r` is negative | **950 of 1,000 — 95.0%** |
+| mean `par_r` | **−0.792R** |
+| what a pass scores | **exactly 0R** |
+
+So **a pass beats the median on 95 charts in 100**, and both modes as §10.1 writes them are trivially
+farmed: pass every chart in Storm for +1 each, or pass forever in Streak and never post a sub-median
+result.
+
+Neither number is a mistake. §4.4 means it when it says restraint is a real move, and §16.1 measured
+that the median bracket loses money. What is missing is a statement of what a *pass* does when
+"beat the median" is used as a game objective.
+
+**Streak already carries its own fix, and §10.1 supplies it: one skip per run.** That is the pass,
+rationed. A pass with no skip left ends the run rather than being rejected — a rejected move would
+let a player sit on a chart they disliked until the mode offered a different one, which is
+cherry-picking with extra steps and a risk §15 names in its own right.
+
+**Storm has no such limit in the specification, so one is added here and marked as ours: a pass
+scores nothing.** Not a point, not a penalty, just the clock. Passing then costs exactly what it
+should — time — and a player who passes everything finishes a three-minute run on zero.
+
+### 19.2 Storm's three minutes are decision time
+
+This changed after the mode was played, and the reason is worth recording.
+
+A round takes about **eleven seconds** end to end, of which roughly ten are the reveal animation and
+one is the decision. Under a wall-clock deadline a three-minute Storm is therefore mostly a queue for
+the animation: the score is set by how fast the reveal plays, not by how fast a player reads a chart.
+
+And the reveal can be skipped. So the optimal strategy under a wall clock was to commit and
+immediately skip — **to never look at the outcome**, which is the one thing this product exists to
+make people do. A scoring rule that pays players to stop learning is not a scoring rule worth having.
+
+So the clock is a budget of decision time. Each round charges `committed_at − issued_at`; the reveal,
+the debrief and the pause between charts are free. §10.1's three minutes and its ten-second stop
+penalty are unchanged — what changed is which seconds count. Nothing is lost by the switch: a player
+who opens a chart and walks away is still charged for every second of it.
+
+The budget is **server-authoritative**, on the same argument §17.5 makes for metering the Manage
+reveal: the mode's entire scarcity is the clock, so a client that owned it would own the score. The
+figure on screen is a display of the server's last word, reset by every commit.
+
+### 19.3 The combo bonus is the rung
+
+§10.1 asks for *"a flat penalty against a superlinear bonus"* and does not say what the bonus is.
+Ours: **the bonus at each rung is the rung itself.** Five in a row pays 5, twelve pays 12.
+
+That makes the cumulative reward grow faster than the run length — twelve charts scores 12 + 5 + 12 =
+29, against six charts scoring 6 + 5 = 11, so a run twice as long is worth more than twice as much —
+while staying a number a player can compute mid-run.
+
+A pass does not break a combo. It did not fail, it declined, and ending a run of twelve because a
+player correctly stood aside would punish the exact move §4.4 rewards.
+
+### 19.4 What ends a run
+
+| | Storm | Streak |
+| --- | --- | --- |
+| clock | 3 minutes of decision time | none |
+| a sub-median result | costs the combo | **ends the run** |
+| a stop-out | −10 seconds | ends the run, like any other miss |
+| a pass | scores nothing | spends the one skip; the next one ends the run |
+
+Storm ends only on the commit that spends the last of the budget. The client never ends a run — it
+cannot even end its own, because a client that could would be a client that could end one early.
+
+The chart a player is on when the budget runs out **counts as seen and scores nothing**: a quiz does
+not credit the question you were still answering when the bell went. Both halves matter — an earlier
+build dropped that chart from the count entirely, so a run that ended on its first chart reported
+having seen none.
+
+### 19.5 Known limits
+
+**A refresh abandons the run.** Run state lives in the surface, so reloading mid-run starts a new one
+and leaves the old row alive in the database. A run is a sprint rather than a session, and resuming
+one is not built.
+
+**Storm inherits the per-round decision clock from its ruleset**, so a single chart can cost up to
+90 seconds of a 180-second budget. The two clocks measure the same thing at different scales and do
+not conflict, but only one of them is §10.1's.
+
+**Neither mode is rated.** These are volume generators; §12's ladder is not fed by them.

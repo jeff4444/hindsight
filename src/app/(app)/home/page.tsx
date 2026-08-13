@@ -49,6 +49,11 @@ export default function HomePage() {
       </section>
 
       <section className="mt-10">
+        <SectionHeader eyebrow="Runs" title="Reps, against the clock and against the odds" />
+        <RunsSection />
+      </section>
+
+      <section className="mt-10">
         <SectionHeader
           eyebrow="Tapes"
           title="Practice, unlimited"
@@ -117,14 +122,14 @@ async function StreakSection() {
     return (
       <Panel className="flex flex-col justify-between" pad="sm">
         <div>
-          <Eyebrow>Streak</Eyebrow>
+          <Eyebrow>Daily streak</Eyebrow>
           <p className="text-ink-lo mt-2 text-sm leading-relaxed">
             Streaks need an account to live in. You get two freezes up front, and a broken run can
             be earned back — so missing a day costs you something, but not everything.
           </p>
         </div>
         <Button as="a" href="/sign-in" variant="secondary" className="mt-4 self-start">
-          Start a streak
+          Start a daily streak
         </Button>
       </Panel>
     );
@@ -144,6 +149,64 @@ async function RankedSection() {
       showable={rating.showable}
       signedIn={Boolean(viewer.profile)}
     />
+  );
+}
+
+/**
+ * §10.1's two rep generators.
+ *
+ * They sit above the tapes because they are what the tapes are *for*: every unanswered question in
+ * this product is waiting on volume — calibration will not speak until 30 forecasts (§18), the style
+ * fingerprint until 152 rounds (§17.4) — and one chart a day cannot produce that.
+ *
+ * Not a server component: neither card reads anything. A run's state lives on the run, and the run
+ * does not exist until the player starts one.
+ */
+function RunsSection() {
+  return (
+    <div className="mt-4 grid gap-3 sm:grid-cols-2" data-stagger>
+      <RunCard
+        href="/play?mode=storm"
+        eyebrow="Storm"
+        title="Three minutes"
+        body="A point for every chart where you beat the median bracket, and combo bonuses at 5, 12, 20 and 30. Stopping out costs ten seconds. The clock only runs while you are deciding — watching the reveal is free."
+        cta="Start a Storm"
+      />
+      <RunCard
+        href="/play?mode=streak"
+        eyebrow="Streak"
+        title="Until you are wrong"
+        body="Untimed, and it ends on the first result below the median. You get one skip, and it does not come back — which is what makes standing aside a decision rather than a strategy."
+        cta="Start a Streak"
+      />
+    </div>
+  );
+}
+
+function RunCard({
+  href,
+  eyebrow,
+  title,
+  body,
+  cta,
+}: {
+  href: string;
+  eyebrow: string;
+  title: string;
+  body: string;
+  cta: string;
+}) {
+  return (
+    <Panel pad="md" className="flex flex-col justify-between">
+      <div>
+        <Eyebrow>{eyebrow}</Eyebrow>
+        <h3 className="text-ink-max mt-1 text-lg font-semibold">{title}</h3>
+        <p className="text-ink-lo mt-2 text-sm leading-relaxed">{body}</p>
+      </div>
+      <Button as="a" href={href} variant="secondary" className="mt-4 self-start">
+        {cta}
+      </Button>
+    </Panel>
   );
 }
 

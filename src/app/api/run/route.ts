@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { serviceClient } from '@/lib/supabase/server';
 import { SESSION_COOKIE, SESSION_COOKIE_OPTIONS, ensureSession } from '@/lib/session';
 import { STORM_SPEC, STREAK_SPEC } from '@/core/run';
+import type { RunState } from '@/lib/api-types';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -17,10 +18,11 @@ export const dynamic = 'force-dynamic';
  * that need the scoring to be identical, since they are volume generators for measurements taken
  * everywhere else.
  *
- * **Storm's clock lives here and nowhere else.** `ends_at` is stamped by the server and moved
- * earlier by ten seconds on each stop-out; the client is told what remains but never sets it. The
- * mode's whole scarcity is the clock, so a client that owned it would own the score — the same
- * argument §17.5 makes for metering the Manage reveal.
+ * **Storm's clock lives on the server and nowhere else.** It is a budget of *decision* time — each
+ * round charges the gap between issue and commit, so the reveal is free — and it is spent by
+ * `/api/round/[id]/order`, never by the client. The mode's whole scarcity is that budget, so a
+ * client that owned it would own the score: the same argument §17.5 makes for metering the Manage
+ * reveal.
  */
 
 const startSchema = z.object({
@@ -50,19 +52,18 @@ export async function POST(request: Request) {
    */
   await supabase.from('play_sessions').upsert({ id: sessionId }, { onConflict: 'id' });
 
-  const now = Date.now();
   const { data, error } = await supabase
     .from('runs')
     .insert({
       session_id: sessionId,
       mode,
       tape,
-      // Storm is timed and Streak is not. Null rather than a far-future timestamp, so "untimed" is
-      // a fact about the row rather than a number nobody checks.
-      ends_at: mode === 'storm' ? new Date(now + STORM_SPEC.durationMs).toISOString() : null,
+      // Storm is timed and Streak is not. Null rather than a very large number, so "untimed" is a
+      // fact about the row rather than a value nobody checks.
+      remaining_ms: mode === 'storm' ? STORM_SPEC.durationMs : null,
       skips_left: mode === 'streak' ? STREAK_SPEC.skips : 0,
     })
-    .select('id, mode, ends_at, score, combo, best_combo, length, best_length, skips_left, charts, alive')
+    .select('id, mode, remaining_ms, score, combo, best_combo, length, best_length, skips_left, charts, alive')
     .single();
 
   if (error || !data) {
@@ -81,19 +82,29 @@ export async function POST(request: Request) {
    * It survived the first test run because Streak was tested second, by which point the rounds
    * issued during the Storm test had set the cookie as a side effect.
    */
-  const response = NextResponse.json({
-    runId: data.id,
-    mode: data.mode,
-    remainingMs: data.ends_at ? Math.max(0, Date.parse(data.ends_at as string) - now) : null,
-    score: data.score,
-    combo: data.combo,
-    bestCombo: data.best_combo,
-    length: data.length,
-    bestLength: data.best_length,
-    skipsLeft: data.skips_left,
-    charts: data.charts,
-    alive: data.alive,
-  });
+  const state: RunState =
+    mode === 'storm'
+      ? {
+          id: data.id,
+          mode: 'storm',
+          alive: data.alive,
+          charts: data.charts,
+          score: data.score,
+          combo: data.combo,
+          bestCombo: data.best_combo,
+          remainingMs: data.remaining_ms,
+        }
+      : {
+          id: data.id,
+          mode: 'streak',
+          alive: data.alive,
+          charts: data.charts,
+          length: data.length,
+          bestLength: data.best_length,
+          skipsLeft: data.skips_left,
+        };
+
+  const response = NextResponse.json(state);
   response.cookies.set(SESSION_COOKIE, sessionId, SESSION_COOKIE_OPTIONS);
   return response;
 }

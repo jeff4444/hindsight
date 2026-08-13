@@ -21,6 +21,7 @@ import { brier } from '@/core/calibration';
 import { resembles, shapeOf } from '@/core/style';
 import {
   beatsMedian,
+  chargeClock,
   stormAfter,
   streakAfter,
   type RunOutcome,
@@ -33,6 +34,7 @@ import {
 import type {
   ChartProvenance,
   RevealPayload,
+  RunPayload,
   RoundResult,
   ScorePayload,
 } from '@/lib/api-types';
@@ -88,7 +90,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
   const { data: round, error: roundError } = await supabase
     .from('rounds')
-    .select('id, chart_id, session_id, user_id, owner, committed_at, tier, expires_at, run_id')
+    .select('id, chart_id, session_id, user_id, owner, committed_at, tier, expires_at, run_id, issued_at')
     .eq('id', id)
     .maybeSingle();
 
@@ -421,15 +423,15 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
    * everywhere else — calibration's 30 forecasts, the fingerprint's 152 rounds — so a round played
    * inside a run has to be scored exactly as one played outside it, or the volume is worthless.
    *
-   * The clock is read from `ends_at` and never from the client. A pass scores nothing in Storm and
+   * The clock is read from the run row and never from the client. A pass scores nothing in Storm and
    * spends the single skip in Streak: `par_r` is negative on 95% of charts and a pass is 0R, so
    * without that rationing both modes are farmed by standing aside. See `src/core/run.ts`.
    */
-  let run: Record<string, unknown> | null = null;
+  let run: RunPayload | null = null;
   if (round.run_id) {
     const { data: row } = await supabase
       .from('runs')
-      .select('id, mode, ends_at, score, combo, best_combo, length, best_length, skips_left, charts, alive')
+      .select('id, mode, remaining_ms, score, combo, best_combo, length, best_length, skips_left, charts, alive')
       .eq('id', round.run_id as string)
       .maybeSingle();
 
@@ -441,7 +443,17 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       };
 
       if (row.mode === 'storm') {
-        const remainingMs = Math.max(0, Date.parse(row.ends_at as string) - Date.now());
+        /*
+         * The charge is what the player spent deciding, not what the wall clock did.
+         *
+         * Storm's clock used to be a deadline, and playing it showed what that charges for: about
+         * ten of every eleven seconds went to the reveal animation, which the player can skip. The
+         * mode therefore paid them to commit and look away — and looking at the outcome is the
+         * product. So the reveal, the debrief and the pause between charts are free, and only the
+         * gap between `issued_at` and now is spent. See `chargeClock`.
+         */
+        const decisionMs = Date.now() - Date.parse(round.issued_at as string);
+        const remainingMs = chargeClock(row.remaining_ms as number, decisionMs);
         const next = stormAfter(
           {
             score: row.score as number,
@@ -449,14 +461,14 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
             bestCombo: row.best_combo as number,
             charts: row.charts as number,
             remainingMs,
-            over: remainingMs <= 0,
+            // Never true here: the block is guarded by `row.alive`, so the run was live when this
+            // round was committed. Deciding whether *this* chart ran the clock out is
+            // `stormAfter`'s job, and conflating the two lost the final chart from the count.
+            over: false,
           },
           outcome,
           remainingMs,
         );
-        // The penalty is applied by moving the deadline, so the clock stays a single timestamp the
-        // server owns rather than a duration two sides have to agree about.
-        const endsAt = new Date(Date.now() + next.remainingMs).toISOString();
         await supabase
           .from('runs')
           .update({
@@ -464,12 +476,22 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
             combo: next.combo,
             best_combo: next.bestCombo,
             charts: next.charts,
-            ends_at: endsAt,
+            remaining_ms: next.remainingMs,
             alive: !next.over,
             ended_at: next.over ? new Date().toISOString() : null,
           })
           .eq('id', row.id);
-        run = { ...row, mode: 'storm', score: next.score, combo: next.combo, bestCombo: next.bestCombo, charts: next.charts, remainingMs: next.remainingMs, alive: !next.over, beatMedian: outcome.beatMedian };
+        run = {
+          id: row.id as string,
+          mode: 'storm',
+          alive: !next.over,
+          charts: next.charts,
+          score: next.score,
+          combo: next.combo,
+          bestCombo: next.bestCombo,
+          remainingMs: next.remainingMs,
+          beatMedian: outcome.beatMedian,
+        };
       } else {
         const next = streakAfter(
           {
@@ -492,7 +514,16 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
             ended_at: next.alive ? null : new Date().toISOString(),
           })
           .eq('id', row.id);
-        run = { ...row, mode: 'streak', length: next.length, bestLength: next.best, skipsLeft: next.skipsLeft, charts: next.charts, alive: next.alive, beatMedian: outcome.beatMedian };
+        run = {
+          id: row.id as string,
+          mode: 'streak',
+          alive: next.alive,
+          charts: next.charts,
+          length: next.length,
+          bestLength: next.best,
+          skipsLeft: next.skipsLeft,
+          beatMedian: outcome.beatMedian,
+        };
       }
     }
   }

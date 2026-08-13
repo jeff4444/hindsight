@@ -34,7 +34,7 @@ export function StreakMeter({ streak, today }: { streak: StreakView; today: numb
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="eyebrow text-ink-dim">
-            {streak.perfect ? 'Perfect streak' : 'Streak'}
+            {streak.perfect ? 'Perfect streak' : 'Daily streak'}
           </div>
           <div className="mt-1 flex items-baseline gap-2">
             <span

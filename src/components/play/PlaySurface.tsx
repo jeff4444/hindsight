@@ -17,6 +17,7 @@ import type {
   RevealPayload,
   RoundPayload,
   RoundResult,
+  RunState,
   ScorePayload,
 } from '@/lib/api-types';
 import { CAMERA_TAU_MS, DEFAULT_WINDOW, placementView, type Window } from '@/lib/camera';
@@ -32,6 +33,7 @@ import { TransportConsole } from './TransportConsole';
 import { TimeframeControl } from './TimeframeControl';
 import { DailyPips } from './DailyPips';
 import { DecisionClock } from './DecisionClock';
+import { RunHud, RunSummary } from './RunHud';
 import {
   FrameControls,
   HotkeyLegend,
@@ -60,7 +62,12 @@ export type Phase =
   | 'done'
   | 'summary'
   | 'error';
-export type Mode = 'daily' | 'tape' | 'ranked';
+export type Mode = 'daily' | 'tape' | 'ranked' | 'storm' | 'streak';
+
+/** §10.1's run modes, which wrap ordinary rounds rather than replacing them. */
+function isRun(mode: Mode): mode is 'storm' | 'streak' {
+  return mode === 'storm' || mode === 'streak';
+}
 
 /** Vertical headroom kept reachable for the rails, in ATR. */
 const RAIL_HEADROOM_ATR = 3.5;
@@ -184,6 +191,8 @@ export function PlaySurface({
   /** §5.12's per-round evidence. Absent on a pass and wherever no school traded, which is most charts. */
   const [style, setStyle] = useState<RevealPayload['style']>(null);
   const [daily, setDaily] = useState<DailyPayload | null>(null);
+  /** §10.1's Storm or Streak state. Null outside a run, and the server's word on it throughout. */
+  const [run, setRun] = useState<RunState | null>(null);
   const [ranked, setRanked] = useState<RankedPayload | null>(null);
   const [revealed, setRevealed] = useState(0);
   const [revealTotal, setRevealTotal] = useState(0);
@@ -233,6 +242,8 @@ export function PlaySurface({
   const rulesetRef = useRef({ tier, mods });
   /** Set once from the URL: a fresh ranked session is asked for, not assumed. */
   const freshRef = useRef(false);
+  // Mirrored because `load` reads it inside a callback that must not be rebuilt per render.
+  const runRef = useRef<RunState | null>(null);
   const frame = useRef<number | null>(null);
   const tauRef = useRef(CAMERA_TAU_MS);
   const entryRef = useRef(0);
@@ -274,6 +285,10 @@ export function PlaySurface({
   useEffect(() => {
     phaseRef.current = phase;
   }, [phase]);
+
+  useEffect(() => {
+    runRef.current = run;
+  }, [run]);
 
   const loop = useRevealLoop(
     {
@@ -339,12 +354,43 @@ export function PlaySurface({
     // The tape branch carries the ruleset the player chose on the tape page. Without it every tape
     // round came back at the default tier however the launcher was set, so the whole ladder was
     // unreachable outside ranked — the query string was built and then dropped on the floor.
+    /*
+     * A run is started here rather than on the page, because a run is a *sequence* of rounds and
+     * this is the function that issues them. §10.1's modes are ordinary rounds with a run attached:
+     * the same endpoint, the same commit, the same scoring — see `src/core/run.ts` for why there is
+     * deliberately only one scoring path.
+     */
+    if (isRun(modeRef.current)) {
+      if (runRef.current && !runRef.current.alive) {
+        setPhase('summary');
+        return;
+      }
+      if (!runRef.current) {
+        const started = await fetch('/api/run', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ mode: modeRef.current, tape: tapeRef.current }),
+        });
+        if (!started.ok) {
+          const body = await started.json().catch(() => ({ error: 'Could not reach the server.' }));
+          setError(body.error ?? 'Could not start the run.');
+          setPhase('error');
+          return;
+        }
+        const state: RunState = await started.json();
+        runRef.current = state;
+        setRun(state);
+      }
+    }
+
     const endpoint =
       modeRef.current === 'daily'
         ? '/api/daily'
         : modeRef.current === 'ranked'
           ? '/api/ranked'
-          : `/api/round?${tapeQuery(tapeRef.current, rulesetRef.current)}`;
+          : isRun(modeRef.current)
+            ? `/api/round?${tapeQuery(tapeRef.current, rulesetRef.current)}&run=${runRef.current!.id}`
+            : `/api/round?${tapeQuery(tapeRef.current, rulesetRef.current)}`;
     const response = await fetch(endpoint, { method: 'POST' });
     if (!response.ok) {
       const body = await response.json().catch(() => ({ error: 'Could not reach the server.' }));
@@ -509,6 +555,12 @@ export function PlaySurface({
       setScore(payload.score ?? null);
       setVerdicts(payload.council ?? []);
       setStyle(payload.style ?? null);
+      // The run's new state, including whether this chart ended it. The summary is not shown yet —
+      // the reveal is still to play, and a player is owed the outcome of the chart that killed them.
+      if (payload.run) {
+        runRef.current = payload.run;
+        setRun(payload.run);
+      }
       reveal.current = payload.revealBars;
       setRevealTotal(payload.revealBars.length);
       railsRef.current =
@@ -760,7 +812,11 @@ export function PlaySurface({
             ? daily
               ? `Daily #${daily.day}, chart ${Math.min(daily.played + 1, daily.total)} of ${daily.total}`
               : 'Today\u2019s daily'
-            : tapeName}
+            : isRun(mode)
+              ? // The run, not the tape it draws from — a screen reader announcing "The Open Tape"
+                // on a Storm names the corpus filter rather than the mode being played.
+                `${mode === 'storm' ? 'Storm' : 'Streak'}, chart ${(run?.charts ?? 0) + 1}`
+              : tapeName}
         </h1>
         <div className="flex items-center gap-3">
           {/* The way out. During a round the chart owns the screen, so this is the only
@@ -772,7 +828,11 @@ export function PlaySurface({
             <Icon name="arrow-left" size={14} />
             {mode === 'tape' ? 'Tapes' : 'Home'}
           </Link>
-          {mode === 'ranked' && ranked ? (
+          {isRun(mode) && run ? (
+            // Where the daily's pips sit: whatever the current mode is counting, in one place.
+            // Storm's clock only advances while the player is placing — the reveal is free.
+            <RunHud run={run} deciding={phase === 'placing'} />
+          ) : mode === 'ranked' && ranked ? (
             <DailyPips played={ranked.played} total={ranked.total} label="RANKED" />
           ) : mode === 'daily' && daily ? (
             <DailyPips played={daily.played} total={daily.total} day={daily.day} />
@@ -950,7 +1010,13 @@ export function PlaySurface({
             style={style}
             entry={round?.entry ?? 0}
             atr={round?.atr ?? null}
-            nextLabel={daily && daily.played + 1 >= daily.total ? 'See your card' : 'Next chart'}
+            nextLabel={
+              run && !run.alive
+                ? 'See your run'
+                : daily && daily.played + 1 >= daily.total
+                  ? 'See your card'
+                  : 'Next chart'
+            }
             onNext={() => void load()}
             onReplay={replay}
             className="min-h-0 w-full lg:h-(--stage-h) lg:w-[26rem] lg:shrink-0"
@@ -993,6 +1059,16 @@ export function PlaySurface({
           />
         )}
 
+        {phase === 'summary' && run && (
+          <RunSummary
+            run={run}
+            onAgain={() => {
+              runRef.current = null;
+              setRun(null);
+              void load();
+            }}
+          />
+        )}
         {phase === 'summary' && daily && <DailyCeremony daily={daily} />}
         {phase === 'summary' && ranked && <RankedSummary ranked={ranked} />}
 
