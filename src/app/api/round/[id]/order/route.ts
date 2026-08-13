@@ -19,6 +19,8 @@ import { InvalidOrderError, NO_COSTS, resolve } from '@/core/resolve';
 import { SPOT_COSTS } from '@/core/costs';
 import { brier } from '@/core/calibration';
 import { resembles, shapeOf } from '@/core/style';
+import { DUEL_SPEC, damageFor } from '@/core/duel';
+import { imp } from '@/core/ranked';
 import {
   beatsMedian,
   chargeClock,
@@ -33,6 +35,7 @@ import {
 } from '@/core/versions';
 import type {
   ChartProvenance,
+  MatchPayload,
   RevealPayload,
   RunPayload,
   RoundResult,
@@ -90,7 +93,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
   const { data: round, error: roundError } = await supabase
     .from('rounds')
-    .select('id, chart_id, session_id, user_id, owner, committed_at, tier, expires_at, run_id, issued_at')
+    .select('id, chart_id, session_id, user_id, owner, committed_at, tier, expires_at, run_id, issued_at, match_id, match_index')
     .eq('id', id)
     .maybeSingle();
 
@@ -528,6 +531,18 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     }
   }
 
+  /*
+   * §10.1's Duel and Racer, advanced by the same commit that scored the round.
+   *
+   * One scoring path, as with the run modes. A chart played inside a match has to be scored exactly
+   * as one played outside it, or a duel is measuring something the rest of the product is not.
+   *
+   * **A duel round resolves when the second player finishes it, not when the first does.** Damage is
+   * the difference between two readings of the same chart, so there is nothing to apply until both
+   * exist — which is also what makes the mode work asynchronously: the opponent may arrive tomorrow.
+   */
+  const match = round.match_id ? await advanceMatch(supabase, round, score?.percentile ?? null) : null;
+
   const payload: RevealPayload = {
     result,
     revealBars: chart.reveal_bars,
@@ -537,6 +552,138 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     council: verdicts,
     style,
     run,
+    match,
   };
   return NextResponse.json(payload);
+}
+
+/**
+ * Apply one committed chart to its match.
+ *
+ * Returns what the player should be shown: their own standing, and the opponent's where the pairing
+ * has actually happened. A duel round that the opponent has not reached yet reports `pending`, which
+ * is the honest state and the common one — most duels are played hours apart.
+ */
+async function advanceMatch(
+  supabase: ReturnType<typeof serviceClient>,
+  round: Record<string, unknown>,
+  percentile: number | null,
+): Promise<MatchPayload | null> {
+  const matchId = round.match_id as string;
+  const index = round.match_index as number;
+  const owner = round.owner as string;
+
+  const { data: match } = await supabase
+    .from('matches')
+    .select('id, mode, length, status, chart_ids')
+    .eq('id', matchId)
+    .maybeSingle();
+  if (!match) return null;
+
+  const total = ((match.chart_ids as string[] | null) ?? []).length;
+
+  // The player's own progress, whatever the mode. A race scores IMPs and a duel does not, but both
+  // want a chart count and both want the run's own clock.
+  const { data: me } = await supabase
+    .from('match_players')
+    .select('owner, seat, health, score, charts, started_at, clean')
+    .eq('match_id', matchId)
+    .eq('owner', owner)
+    .maybeSingle();
+  if (!me) return null;
+
+  const charts = (me.charts as number) + 1;
+  const score = (me.score as number) + (percentile === null ? 0 : imp(percentile));
+  const finished = charts >= total;
+
+  await supabase
+    .from('match_players')
+    .update({
+      charts,
+      score,
+      finished_at: finished ? new Date().toISOString() : null,
+    })
+    .eq('match_id', matchId)
+    .eq('owner', owner);
+
+  if (match.mode === 'race') {
+    return {
+      mode: 'race',
+      index,
+      length: total,
+      charts,
+      score,
+      complete: finished,
+      clean: Boolean(me.clean),
+      elapsedMs: me.started_at ? Date.now() - Date.parse(me.started_at as string) : 0,
+    };
+  }
+
+  /*
+   * A duel. Find the opponent's round at this same position — `match_index` is what pairs them,
+   * rather than the chart id, so the pairing survives a sequence containing a repeat.
+   */
+  const { data: theirRound } = await supabase
+    .from('rounds')
+    .select('owner, percentile')
+    .eq('match_id', matchId)
+    .eq('match_index', index)
+    .neq('owner', owner)
+    .not('committed_at', 'is', null)
+    .maybeSingle();
+
+  const { data: seats } = await supabase
+    .from('match_players')
+    .select('owner, seat, health, charts')
+    .eq('match_id', matchId)
+    .order('seat');
+
+  const opponentSeat = (seats ?? []).find((s) => s.owner !== owner) ?? null;
+
+  if (!theirRound || theirRound.percentile === null || percentile === null || !opponentSeat) {
+    return {
+      mode: 'duel',
+      index,
+      length: total,
+      charts,
+      health: (me.health as number) ?? DUEL_SPEC.health,
+      opponentHealth: (opponentSeat?.health as number) ?? null,
+      pending: true,
+      complete: false,
+      winner: null,
+    };
+  }
+
+  // Both readings exist, so the exchange happens now. `damageFor` is the one place the rule lives.
+  const { toA: toMe, toB: toThem } = damageFor(imp(percentile), imp(theirRound.percentile as number));
+  const myHealth = Math.max(0, ((me.health as number) ?? DUEL_SPEC.health) - toMe);
+  const theirHealth = Math.max(0, ((opponentSeat.health as number) ?? DUEL_SPEC.health) - toThem);
+
+  await supabase.from('match_players').update({ health: myHealth }).eq('match_id', matchId).eq('owner', owner);
+  await supabase
+    .from('match_players')
+    .update({ health: theirHealth })
+    .eq('match_id', matchId)
+    .eq('owner', opponentSeat.owner as string);
+
+  const over = myHealth <= 0 || theirHealth <= 0 || charts >= total;
+  if (over) {
+    await supabase
+      .from('matches')
+      .update({ status: 'done', ended_at: new Date().toISOString() })
+      .eq('id', matchId);
+  }
+
+  return {
+    mode: 'duel',
+    index,
+    length: total,
+    charts,
+    health: myHealth,
+    opponentHealth: theirHealth,
+    pending: false,
+    complete: over,
+    // From this player's point of view, which is the only one this response is for.
+    winner: !over ? null : myHealth <= 0 && theirHealth <= 0 ? 'draw' : myHealth <= 0 ? 'them' : 'me',
+  };
 }
