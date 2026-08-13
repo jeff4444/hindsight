@@ -1,7 +1,8 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { getTape } from '@/lib/viewer';
-import { Eyebrow, Panel } from '@/components/ui';
+import { currentViewer, getTape } from '@/lib/viewer';
+import { describeFilter } from '@/core/maps';
+import { Button, Chip, Eyebrow, Panel } from '@/components/ui';
 import { Icon } from '@/components/ui/icons';
 import { TapeLaunch } from '@/components/tapes/TapeLaunch';
 
@@ -9,7 +10,8 @@ export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const tape = await getTape(slug);
+  const viewer = await currentViewer();
+  const tape = await getTape(slug, viewer.userId);
   return { title: tape?.name ?? 'Tape' };
 }
 
@@ -26,10 +28,14 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
  */
 export default async function TapePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const tape = await getTape(slug);
+  const viewer = await currentViewer();
+  // A private map is not found rather than forbidden: 404 and 403 differ only in whether they
+  // confirm the thing exists, and confirming it exists is exactly what private means it should not.
+  const tape = await getTape(slug, viewer.userId);
   if (!tape) notFound();
 
   const locked = Boolean(tape.lockedReason);
+  const conditions = describeFilter(tape.filter);
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -43,11 +49,29 @@ export default async function TapePage({ params }: { params: Promise<{ slug: str
 
       <div className="mt-5 grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
         <div>
-          <Eyebrow>Tape</Eyebrow>
-          <h1 className="text-ink-max mt-1.5 text-3xl font-semibold text-balance">{tape.name}</h1>
+          <Eyebrow>{tape.ownerId ? 'A map someone made' : 'Tape'}</Eyebrow>
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+            <h1 className="text-ink-max text-3xl font-semibold text-balance">{tape.name}</h1>
+            {tape.ownerId && <Chip tone="neutral">{tape.visibility}</Chip>}
+            {tape.tierLocked && <Chip tone="attention">{tape.tier} only</Chip>}
+          </div>
           <p className="text-ink-lo mt-4 max-w-prose text-base leading-relaxed">
             {locked ? tape.lockedReason : tape.blurb}
           </p>
+
+          {/* The rule, printed rather than merely applied. §11.1's requirement is that a map's
+              definition is published — and for a creator map that matters more, not less, because
+              the owner's own description is marketing and this is not. */}
+          {conditions.length > 0 && (
+            <div className="border-line-faint mt-6 border-t pt-4">
+              <Eyebrow>What is in it</Eyebrow>
+              <ul className="text-ink-lo mt-2 space-y-1 text-sm">
+                {conditions.map((line) => (
+                  <li key={line}>· {line}</li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           <Panel pad="md" className="mt-8">
             <TapeLaunch
@@ -71,6 +95,14 @@ export default async function TapePage({ params }: { params: Promise<{ slug: str
             Unlimited and never metered. Practice rounds are scored the same way the daily is, and
             they count towards your record.
           </p>
+
+          {tape.isOwner && (
+            <div className="border-line-faint mt-4 border-t pt-4">
+              <Button as="a" href={`/tapes/${tape.slug}/cohort`} variant="secondary" className="w-full">
+                Cohort results
+              </Button>
+            </div>
+          )}
         </Panel>
       </div>
     </div>

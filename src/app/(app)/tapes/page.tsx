@@ -40,6 +40,21 @@ export default async function TapesPage() {
         undisclosed one and a published one.
       </p>
 
+      <div className="mt-6 flex flex-wrap gap-2">
+        <a
+          href="/tapes/new"
+          className="press border-line bg-surface-1 text-ink-hi hover:border-line-strong rounded-md border px-3 py-1.5 text-sm transition-colors"
+        >
+          Make your own
+        </a>
+        <a
+          href="/tapes/mine"
+          className="press border-line bg-surface-1 text-ink-hi hover:border-line-strong rounded-md border px-3 py-1.5 text-sm transition-colors"
+        >
+          Your maps
+        </a>
+      </div>
+
       <section className="mt-10">
         <h2 className="text-ink-max text-xl font-semibold">Open now</h2>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" data-stagger>
