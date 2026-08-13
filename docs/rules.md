@@ -2138,3 +2138,143 @@ one is not built.
 not conflict, but only one of them is §10.1's.
 
 **Neither mode is rated.** These are volume generators; §12's ladder is not fed by them.
+
+---
+
+## 20. Maps
+
+§11 is the part of the scope with a commercial argument attached: *"Maps convert Hindsight into
+infrastructure that other people build businesses on top of."* This section is what shipped, and the
+two claims in §11.1 that did not survive being measured.
+
+**A map is a tape.** The product's word is "tape" and §11's is "map"; they are the same thing, and
+`/tapes` is where both live. §11.1's official maps and §11.2's creator maps differ in exactly one
+column — whether `owner_id` is null — and run through the same issuance, the same chart count and the
+same ruleset lock.
+
+### 20.1 The rule is published, not merely applied
+
+§11.1: *"Every official map is defined by a published filter over the regime tags and theme tags, not
+by hand-picking, so the map's difficulty distribution is reproducible and its statistics are valid."*
+
+Every predicate a map may use reads a **stored tag computed from the lead-in**:
+
+| | |
+| --- | --- |
+| regime | `regime_er_bucket` — trend, directional, chop, noise |
+| volatility | `regime_vol_bucket` — violent, active, subdued, quiet |
+| themes | §13.8's six formations; a chart qualifies on *any* of them |
+| drift | `lead_in_drift_atr`, the move across the visible window |
+| council | `council_minority > 0` — the schools take opposite sides |
+
+The vocabulary is closed on purpose. A filter over anything derived from the reveal would announce
+part of the answer in the map's own definition, which is precisely why **The Null Set is locked**: its
+filter reads `par_r`, so the map's name would tell a player most brackets lose there before they
+traded. The council filter is legal under the same rule, because the council reads the lead-in alone.
+
+**Hand-picking is not built**, and §11.2 offers it. A set someone chose chart by chart has no
+reproducible difficulty distribution, so every percentile computed on it is conditioned on that
+choice in a way nobody can state. It is unbuilt rather than refused: it returns when there is an
+honest answer for what its leaderboard means.
+
+### 20.2 Two of §11.1's descriptions were wrong
+
+**The Drop and The Ramp are the same map, reflected.** §11.1 describes Crash as *"violent downside,
+volatility expansion, failed bounces"* and Euphoria as *"parabolic advances, shallow pullbacks,
+blow-off tops"* — a claim about asymmetry, and one of the better-supported regularities in the
+literature. This corpus cannot contain it: §12.2 mirrors half the charts at random, so half of every
+displayed crash is a mirrored rally.
+
+Measured at the ±8 ATR threshold the two maps use: **135 charts fall in one, 138 in the other.** Of
+the 453 charts past ±6, 237 are in the down tail against an expected 226.5 under a fair split — 0.99
+standard errors. Both cards say so. What they train is reading a chart that has been going against
+you for sixty candles, which is a real skill and not a claim about crash dynamics.
+
+**Split Decision is not "the hardest map in the game".** §5's own exit condition asks whether engine
+disagreement predicts difficulty, and it does not:
+
+| group | n | median `par_r` | median pass %ile |
+| --- | --- | --- | --- |
+| council split | 71 | −1.022 | 0.612 |
+| council agreed | 38 | −1.021 | 0.602 |
+| one school spoke | 222 | −1.020 | 0.612 |
+| council silent | 669 | −1.018 | 0.622 |
+| **all charts** | **1,000** | **−1.019** | **0.612** |
+
+Welch's *t*, split against everything else: **0.10** on `par_r`, **0.79** on pass percentile. Flat.
+The minority side also never exceeds one anywhere in the corpus, so *"where the engines disagree
+most"* is not a spectrum to sort by — it is a single 71-chart set. It ships for what it is: the 7.1%
+where two published methodologies read the same candles and reach opposite conclusions.
+
+### 20.3 Drift, and the error that looked like a finding
+
+`lead_in_drift_atr` is `ln(last / first) / (atr14 / entry_price)` — a log return over a relative ATR,
+computed on the mirrored bars, so it is the direction the player sees.
+
+The obvious definition, `(last − first) / atr14`, gave **88 charts past −10 ATR and 39 past +10**:
+4.4 standard errors from a fair split, a large asymmetry, pointing exactly where the literature says
+it should. It was the measurement. §12.2's mirror is `BASE² / p`, exact in *log* space, so a linear
+difference is not the negation of its original; and `atr14` is an absolute price distance, so a chart
+that fell sits at lower prices with a smaller ATR. Corrected, the same corpus reads **65 and 65**.
+
+The obvious *fix* is wrong too: a geometric mean over the window looks more principled than a single
+price and misses by 29%, because `atr14` is Wilder's ATR(14) and is anchored at the **end** of the
+lead-in. The denominator has to be measured where the numerator's ATR is.
+
+What remains is second order in the total move — 1.3% over a window that travelled 3%, 2.6% at the
+±13 ATR tail where the maps live, 19.1% over 61%. `tests/map-filters.test.ts` pins it as a property:
+mirroring a chart must negate its drift.
+
+Nothing but the mirror made any of this checkable. Random mirroring **cannot** produce a directional
+skew, so the number was falsifiable on its face; a corpus without that property would have shipped
+it.
+
+### 20.4 The tier lock
+
+§11.2: *"a tier lock, so an operator can require that their cohort plays at Naked and the results are
+comparable."* Tapes always carried a `tier` column and nothing read it — the launcher's choice won,
+so it was a suggestion.
+
+It is enforced in `/api/round`, because that is what turns a ruleset into a candle count, a tool
+grant and a clock. Three properties, all of which failed at least once when first built:
+
+- **Shown, not silently applied.** A player who picked Full Desk and got Naked without being told
+  would reasonably conclude the ladder was broken.
+- **Mods are cleared too.** Ours, not §11.2's — a mod changes affordances exactly as a tier does, and
+  "comparable" cannot mean "comparable except for whichever mods each student picked".
+- **It fails closed.** A lookup error refuses the round, and a lock naming a ruleset that no longer
+  resolves refuses it too, rather than issuing the default and recording it as the required one. Open
+  is the direction that silently invalidates a cohort's data.
+
+### 20.5 Visibility
+
+| | |
+| --- | --- |
+| **public** | listed |
+| **unlisted** | the slug is the secret, which is what a share link is — named honestly rather than called private |
+| **private** | enforced in `issue_round` against the caller, so the play URL fails for everyone else too |
+
+A private map answers exactly as a missing one does: **404, never 403**. The two differ only in
+whether they confirm the thing exists, and confirming that is the one thing private has to withhold.
+
+### 20.6 The cohort dashboard, and what it cannot claim
+
+§11.2: *"Cohort dashboards for the owner: aggregate scores, weakest axes across the group, per-student
+progress, per-theme ratings."* All of it ships at `/tapes/<slug>/cohort`, owner-only.
+
+**It is the one surface in this product with no null behind it.** Every other number here is
+published beside a measured baseline — a shuffle, a coin flip, a random engine. There is no second
+cohort to compare a cohort against, and no baseline for what a group of a given size should score on
+a map of a given difficulty. The page says that on itself.
+
+With one player it says more: *"a cohort's weakest axis needs a cohort; this is one person's weakest
+axis with a wider heading."* Sample sizes are on every figure, an axis under five rounds is not shown
+at all, and the §4.9 gate that governs a player's own percentile governs these too.
+
+Two honest limits stated on the page rather than buried: there is **no invitation mechanism**, so a
+cohort is whoever played the map — the public, for a public map. And a chart carries several themes
+and counts towards each, so the axis counts sum to more than the round total.
+
+`rounds.tape` is what makes any of it possible, and nothing recorded it until 5d. Rounds played
+before then carry null; inferring the map from a chart's tags would be a guess dressed as data, since
+most charts qualify for several.

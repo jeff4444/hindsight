@@ -751,20 +751,40 @@ Organised by market regime rather than by instrument, because the same pattern m
 
 - **Crash** — violent downside, volatility expansion, failed bounces.
 - **Euphoria** — parabolic advances, shallow pullbacks, blow-off tops.
+
+  > **Correction to v0.2 as first drafted:** these two are the *same map reflected*, and neither may
+  > claim crash or euphoria dynamics on this corpus. §12.2 mirrors vertically at random, so half of
+  > every displayed crash is a mirrored rally — measured at the ±8 ATR threshold they ship on, 135
+  > charts fall in one and 138 in the other, and of the 453 past ±6 the down tail holds 237 against
+  > an expected 226.5 (0.99 standard errors). The asymmetry the descriptions assert is real in
+  > markets and was destroyed by the identity-hiding this product cannot do without. They ship as
+  > **The Drop** and **The Ramp**, described as what they are: charts that have been going one way
+  > for sixty candles. Whether players score worse on one than the other is an open question the
+  > pair exists to answer. See `docs/rules.md` §20.2.
 - **Chop** — efficiency ratio below 0.2. The account killer.
 - **Compression** — coiling volatility ahead of expansion.
 - **Liquidity Sweeps** — setups built around failed breaks of prior extremes.
 - **Council Split** — the charts where the engines disagree most. The hardest map in the game.
+
+  > **Correction to v0.2 as first drafted:** it is not harder, and "disagree most" is not a spectrum.
+  > §5's own exit condition asks whether engine disagreement predicts chart difficulty; measured over
+  > the corpus it predicts nothing. Median `par_r` on the 71 conflicted charts is **−1.022** against
+  > **−1.019** for the whole library, median pass percentile **0.612** against **0.612**, and Welch's
+  > *t* is **0.10** and **0.79**. Every difficulty measure is flat across all four council states,
+  > including the state where no school will touch the chart. The minority side also never exceeds
+  > one anywhere in the corpus, so there is no "most" to sort by — it is a single 71-chart set. It
+  > ships as **Split Decision**, named for the thing that is true: the 7.1% where two published
+  > methodologies read the same candles and reach opposite conclusions.
 - **The Null Set** *(new)* — charts where the achievable distribution’s median is negative and passing is the correct play. A map that trains restraint and nothing else.
 
 ### 11.2 Creator maps
 
 Any user can assemble a map from filter-generated or hand-picked charts, name it, describe it and share it by link. This is the feature that makes the product sellable and licensable: an educator, a community operator or a proprietary trading firm can hand their students a curated set that trains one specific skill in a controlled sequence rather than leaving them on random charts, and the cohort’s results roll up into a private leaderboard the operator can see.
 
-- Filter-based generation by regime, volatility percentile, council agreement, theme, chart rating band, timeframe or instrument class.
+- Filter-based generation by regime, volatility percentile, council agreement, theme, chart rating band, timeframe or instrument class. **Correction to v0.2 as first drafted:** the "or hand-picked" option in the paragraph above is not built, and the reason is §11.1's own. A map has to be a published filter "so the map's difficulty distribution is reproducible and its statistics are valid"; a set chosen chart by chart has no such distribution, and every percentile computed on it is conditioned on a choice nobody can state. It is unbuilt rather than refused.
 - Ordered sequences, so a map can function as a structured lesson rather than a shuffle.
 - Private, unlisted and public visibility.
-- Cohort dashboards for the owner: aggregate scores, weakest axes across the group, per-student progress, per-theme ratings.
+- Cohort dashboards for the owner: aggregate scores, weakest axes across the group, per-student progress, per-theme ratings. **Built, and it is the one surface in the product with no null behind it** — there is no second cohort to compare a cohort against, and no baseline for what a group of a given size should score on a map of a given difficulty. It says so on itself, gates every figure on its sample size, and tells an owner with one player that "the group's weakest axis" is one person's weakest axis with a wider heading. Note also that nothing in this product *invites* anyone to a map, so a cohort is whoever played it.
 - **A tier lock**, so an operator can require that their cohort plays at Naked and the results are comparable.
 
 ### 11.3 Why this matters commercially
