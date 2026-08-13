@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { listTapes } from '@/lib/viewer';
 import { TapeCard } from '@/components/home/TapeCard';
 import { Eyebrow } from '@/components/ui';
@@ -41,18 +42,18 @@ export default async function TapesPage() {
       </p>
 
       <div className="mt-6 flex flex-wrap gap-2">
-        <a
+        <Link
           href="/tapes/new"
           className="press border-line bg-surface-1 text-ink-hi hover:border-line-strong rounded-md border px-3 py-1.5 text-sm transition-colors"
         >
           Make your own
-        </a>
-        <a
+        </Link>
+        <Link
           href="/tapes/mine"
           className="press border-line bg-surface-1 text-ink-hi hover:border-line-strong rounded-md border px-3 py-1.5 text-sm transition-colors"
         >
           Your maps
-        </a>
+        </Link>
       </div>
 
       <section className="mt-10">
