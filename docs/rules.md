@@ -2278,3 +2278,135 @@ and counts towards each, so the axis counts sum to more than the round total.
 `rounds.tape` is what makes any of it possible, and nothing recorded it until 5d. Rounds played
 before then carry null; inferring the map from a chart's tags would be a guess dressed as data, since
 most charts qualify for several.
+
+---
+
+## 21. Duels and races
+
+§10.1's last two modes, and the only two whose value depends on other people existing. What follows
+is what shipped, plus the two justifications §4.3 gives for the duel format — **both of which are
+wrong**, one unnecessary and one crediting the wrong mechanism.
+
+| | §10.1 |
+| --- | --- |
+| **Duel** | *"Two players, identical charts, health-bar damage equal to the compressed score difference. Escalating multiplier, capped per round in ranked, uncapped in casual."* |
+| **Racer** | *"Five to ten players, same charts, ninety seconds, live positions."* |
+
+Play either at `/versus`. Neither is rated — §12's ladder is not fed by them, on the same argument
+§17 made for Manage: a format has to be shown to measure the same skill before it may move a rating
+that means something else.
+
+### 21.1 One primitive, two scorers
+
+Both modes need something nothing else in this product has: **a fixed, ordered chart sequence that
+several players play independently and are scored against.** A duel is two players on that sequence
+with a health bar; a race is *n* players on it against a clock. That is why they ship together.
+
+**A duel's charts are drawn when the second player joins.** Every other mode picks charts the player
+has not seen — `issue_round` carries a `not exists` clause for exactly that — and a duel cannot,
+because both players must get the *same* charts. A chart either has already played is one they have
+already been shown the answer to.
+
+So the sequence is drawn from charts **neither** has played, which requires knowing both, which is
+why **a duel is a link rather than a lobby**. If the map cannot supply enough charts unseen by both,
+the join fails and says so: it does not shorten the duel and it does not reuse a chart one player
+knows.
+
+That also makes the mode asynchronous for free, which matters a great deal for a product whose
+player base is currently one person. Each chart resolves as the *second* player finishes it; until
+then the round reports `pending`, and that is the common state rather than an edge case.
+
+A race cannot do this — its later runners are unknown when the sequence is fixed — so a runner who
+has already seen a chart in it is **flagged**, not quietly ranked beside people who had not. The run
+is real and the player is entitled to it; what they are not entitled to is silent comparison.
+
+### 21.2 The escalating multiplier is withdrawn
+
+§4.3 justifies it twice: it *"manufactures comebacks and guarantees termination"*, and uncapped it
+*"makes round order decisive rather than round quality"*.
+
+The null for all of this is **two players picking at random**, which is what a bracket chosen at
+random does against the achievable distribution by construction. 20,000 duels per cell:
+
+| schedule | health | cap | median rounds | p99 | unfinished | agrees with total IMP |
+| --- | --- | --- | --- | --- | --- | --- |
+| **flat (none)** | 40 | **yes** | **8** | **15** | **0.0%** | **99.4%** |
+| flat (none) | 40 | no | 8 | 15 | 0.0% | 100.0% |
+| ×1 per 3 rounds | 40 | yes | 7 | 11 | 0.0% | 93.7% |
+| ×1 per 3 rounds | 40 | no | 5 | 9 | 0.0% | 92.7% |
+| doubling per 5 | 40 | yes | 8 | 12 | 0.0% | 95.4% |
+| flat (none) | 100 | yes | 23 | 33 | 0.0% | 98.7% |
+| ×1 per 3 rounds | 100 | yes | 15 | 20 | 0.0% | 90.0% |
+
+**Termination never needed it.** Nothing failed to finish in any cell, including with no multiplier
+at all. Damage averaging 8 a round against a 40-point bar is what guarantees termination; escalation
+only makes the duel shorter.
+
+**Escalation is itself what makes round order decisive.** Weighting later rounds more heavily is
+exactly a statement that the same results in a different order should give a different winner, and it
+costs **6 to 10 points** of agreement with total score — the direct test of §4.3's own concern.
+
+**And the cap is not the remedy §4.3 credits it as.** It moves agreement by 0.6 to 2.7 points, and at
+health 100 with escalation it moves it the *wrong way* (90.6% uncapped against 90.0% capped).
+
+What remains of the multiplier's case is "manufactures comebacks" — entertainment bought with
+correctness, and §4.3 opens by rejecting that exact trade for the ranked ladder. So damage is flat.
+
+**The cap stays**, for the thing it actually does: 16.2% of rounds against the null are at or above
+15 IMPs, and without it a single catastrophic chart can end a duel outright.
+
+### 21.3 What ships
+
+| | |
+| --- | --- |
+| health | **40** — ours; §10.1 asks for a bar and never sizes it |
+| damage | the IMP difference, flat |
+| cap | **15**, §10.1's, and the same number as the ranked IMP bound because it is the same scale |
+| a chart both read equally well | **does nothing** |
+
+Health 40 puts an even duel at a median of 8 charts and a p99 of 15 — a sitting. The honest failure
+mode is left visible rather than tuned away: **two strong players take a median of 17**, because they
+differ less.
+
+The format is fair and it detects skill:
+
+| matchup | stronger player wins |
+| --- | --- |
+| even | **49.9%** |
+| slight edge | **93.1%** |
+| clear edge | **99.9%** |
+
+### 21.4 The engines cannot duel, which is a finding about the mode
+
+The eight engines are the only opponents with a measured record over the corpus. Across all 28 pairs
+and all 1,000 charts:
+
+| | engines | random players |
+| --- | --- | --- |
+| mean damage | **1.05** | 8.06 |
+| rounds doing zero damage | **79.5%** | 4.3% |
+| rounds at or above the cap | **0.0%** | 16.2% |
+
+**Four rounds in five are a draw**, and the cap never binds once. The cause is §14.4's silence
+figure: no school takes a position on 66.9% of charts, a pass is 0R scored against the same
+distribution for both players, and IMPs are a compressed integer scale — so two engines that both
+stand aside record identically.
+
+That is a warning about the mode, not about the engines: **a duel between two players who mostly
+agree does not move a health bar.** Whether real players agree more like the engines or more like the
+null decides whether duels are tense or tedious, and it needs players to answer.
+
+### 21.5 Racer cannot be what §10.1 describes
+
+*"Five to ten players, same charts, ninety seconds, live positions."* Five simultaneous humans is not
+something this product can produce, and filling a lobby with bots is the one move it exists to avoid
+— a leaderboard whose opponents are fabricated is worse than no leaderboard.
+
+What ships is a **ghost race**: the same fixed sequence, and opponents who are *recordings* of people
+who ran it earlier, labelled as recordings. No simultaneity is needed, it works with a player base of
+one and improves as that grows, and "live positions" survives intact — a recording's position at each
+second is known exactly.
+
+A race is scored on **IMPs, not charts finished**. Rushing eight badly loses to reading three well,
+and ties break towards the player who needed *fewer* charts. Making raw speed the objective would
+reward exactly the guessing the rest of this scoring model exists to discourage.
