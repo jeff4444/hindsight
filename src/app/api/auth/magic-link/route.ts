@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { codeForAuthMessage } from '@/lib/auth-errors';
+import { callbackUrl, safeNext } from '@/lib/auth-redirect';
 import { authClient } from '@/lib/supabase/auth-server';
 
 export const runtime = 'nodejs';
@@ -8,6 +9,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: Request) {
   const form = await request.formData();
   const email = String(form.get('email') ?? '').trim();
+  const next = safeNext(String(form.get('next') ?? ''));
   const origin = new URL(request.url).origin;
 
   if (!email) {
@@ -17,7 +19,7 @@ export async function POST(request: Request) {
   const auth = await authClient();
   const { error } = await auth.signInWithOtp({
     email,
-    options: { emailRedirectTo: `${origin}/auth/callback` },
+    options: { emailRedirectTo: callbackUrl(origin, next) },
   });
 
   if (error) {

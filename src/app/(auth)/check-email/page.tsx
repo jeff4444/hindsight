@@ -10,19 +10,27 @@ import { SubmitButton } from '@/components/auth/SubmitButton';
  * "Nothing arrived?" followed by a link back to an empty sign-in form is not a resend — it is the
  * same form again, and the address has to be retyped. The address is right there in the query
  * string, so the resend is a one-field form that posts it back.
+ *
+ * `mode` decides which link was sent, and so which handler a resend belongs to. Without it the
+ * resend button on a password recovery would have quietly sent a *sign-in* link instead — which
+ * works, in the sense that it signs them in, and then strands them on a page that still wants a
+ * password they still do not have.
  */
 export default async function CheckEmail({
   searchParams,
 }: {
-  searchParams: Promise<{ email?: string }>;
+  searchParams: Promise<{ email?: string; mode?: string }>;
 }) {
-  const { email } = await searchParams;
+  const { email, mode } = await searchParams;
+  const reset = mode === 'reset';
 
   return (
     <div className="animate-rise">
       <IconBadge icon="check" tone="info" />
       <Eyebrow className="mt-5">Check your inbox</Eyebrow>
-      <h1 className="text-ink-max mt-2 text-2xl font-semibold">A link is on its way</h1>
+      <h1 className="text-ink-max mt-2 text-2xl font-semibold">
+        {reset ? 'A password link is on its way' : 'A link is on its way'}
+      </h1>
       <p className="text-ink-lo mt-3 text-base leading-relaxed">
         {email ? (
           <>
@@ -31,7 +39,9 @@ export default async function CheckEmail({
         ) : (
           'It is on its way.'
         )}{' '}
-        Open it on this device, so the round history on this browser is the one that gets claimed.
+        {reset
+          ? 'Open it on this device. If there is no account on that address, no email was sent — and we will not say which.'
+          : 'Open it on this device, so the round history on this browser is the one that gets claimed.'}
       </p>
       <p className="text-ink-dim mt-6 text-sm leading-relaxed">
         Nothing arrived? It can take a minute, and it sometimes lands in spam. Links last an hour
@@ -40,14 +50,14 @@ export default async function CheckEmail({
 
       <div className="mt-7 flex flex-wrap items-center gap-2">
         {email && (
-          <form action="/api/auth/magic-link" method="post">
+          <form action={reset ? '/api/auth/reset' : '/api/auth/magic-link'} method="post">
             <input type="hidden" name="email" value={email} />
             <SubmitButton variant="secondary" size="lg" pendingLabel="Sending…">
               Send another
             </SubmitButton>
           </form>
         )}
-        <Button as="a" href="/sign-in" variant="ghost" size="lg">
+        <Button as="a" href={reset ? '/forgot-password' : '/sign-in'} variant="ghost" size="lg">
           Use a different address
         </Button>
         <Button as="a" href="/play" variant="ghost" size="lg">

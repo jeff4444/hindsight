@@ -83,6 +83,7 @@ export default async function SignInPage({
         className="space-y-3"
         style={{ "--i": 3 } as React.CSSProperties}
       >
+        <input type="hidden" name="next" value={next} />
         {/* Was a hand-rolled label/span/input — `Field` reimplemented eleven lines above two
             correct uses of it, and without the id and aria-describedby wiring. */}
         <Field
@@ -113,6 +114,7 @@ export default async function SignInPage({
             method="post"
             className="mt-4 space-y-3"
           >
+            <input type="hidden" name="next" value={next} />
             <Field
               id="pw-email"
               label="Email"
@@ -154,6 +156,10 @@ export default async function SignInPage({
               </SubmitButton>
             </div>
           </form>
+          <p className="text-ink-dim mt-4 text-sm">
+            <TextLink href="/forgot-password">Forgotten it?</TextLink> We will email a link that
+            opens straight into a new one.
+          </p>
         </Disclosure>
       </div>
 
