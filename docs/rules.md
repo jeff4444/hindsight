@@ -2026,3 +2026,387 @@ grade, or keep the path question and accept that no proper rule scores it.
 Measured, for whenever that decision is taken: an 80% box price never leaves is **9.73 ATR** wide,
 against **5.83 ATR** for an interval containing the final close — the path version asks for a box
 1.67× wider at the same nominal coverage.
+
+---
+
+## 19. Storm and Streak
+
+§10.1: **Storm** — *"Three-minute clock. +1 per chart where you beat the distribution median. −10
+seconds when stopped out. Combo bonuses at 5, 12, 20 and 30 and every 10 thereafter."* **Streak** —
+*"Untimed. The run ends on the first sub-median result. One skip per run."*
+
+Play either from the home screen, or at `/play?mode=storm` and `/play?mode=streak`.
+
+They exist because one chart a day cannot produce a thousand reps. §3 reclassifies the daily as a
+distribution mechanism rather than a retention one and promotes these two from "later" to core, and
+every unanswered question in this project is waiting on the volume they make: calibration will not
+speak until 30 forecasts (§18), the style fingerprint until 152 rounds (§17.4), and §7.2's
+synthetic-control comparison needs more than either.
+
+A run is a **wrapper over ordinary rounds**, not a second kind of round. The player issues from
+`/api/round` and commits to `/api/round/[id]/order` exactly as in free play; the only difference is
+that the round carries a `run_id` and the commit reports what the run did in response. One scoring
+path, deliberately — a second one would drift from the first, and these are precisely the modes whose
+volume feeds measurements taken everywhere else.
+
+### 19.1 The rule §10.1 does not contain, and both modes need
+
+Both are scored on beating the **distribution median** — `par_r`, the median of the 98 enumerated
+brackets. Measured over the corpus, net of costs (§16.1):
+
+| | |
+| --- | --- |
+| charts where `par_r` is negative | **950 of 1,000 — 95.0%** |
+| mean `par_r` | **−0.792R** |
+| what a pass scores | **exactly 0R** |
+
+So **a pass beats the median on 95 charts in 100**, and both modes as §10.1 writes them are trivially
+farmed: pass every chart in Storm for +1 each, or pass forever in Streak and never post a sub-median
+result.
+
+Neither number is a mistake. §4.4 means it when it says restraint is a real move, and §16.1 measured
+that the median bracket loses money. What is missing is a statement of what a *pass* does when
+"beat the median" is used as a game objective.
+
+**Streak already carries its own fix, and §10.1 supplies it: one skip per run.** That is the pass,
+rationed. A pass with no skip left ends the run rather than being rejected — a rejected move would
+let a player sit on a chart they disliked until the mode offered a different one, which is
+cherry-picking with extra steps and a risk §15 names in its own right.
+
+**Storm has no such limit in the specification, so one is added here and marked as ours: a pass
+scores nothing.** Not a point, not a penalty, just the clock. Passing then costs exactly what it
+should — time — and a player who passes everything finishes a three-minute run on zero.
+
+### 19.2 Storm's three minutes are decision time
+
+This changed after the mode was played, and the reason is worth recording.
+
+A round takes about **eleven seconds** end to end, of which roughly ten are the reveal animation and
+one is the decision. Under a wall-clock deadline a three-minute Storm is therefore mostly a queue for
+the animation: the score is set by how fast the reveal plays, not by how fast a player reads a chart.
+
+And the reveal can be skipped. So the optimal strategy under a wall clock was to commit and
+immediately skip — **to never look at the outcome**, which is the one thing this product exists to
+make people do. A scoring rule that pays players to stop learning is not a scoring rule worth having.
+
+So the clock is a budget of decision time. Each round charges `committed_at − issued_at`; the reveal,
+the debrief and the pause between charts are free. §10.1's three minutes and its ten-second stop
+penalty are unchanged — what changed is which seconds count. Nothing is lost by the switch: a player
+who opens a chart and walks away is still charged for every second of it.
+
+The budget is **server-authoritative**, on the same argument §17.5 makes for metering the Manage
+reveal: the mode's entire scarcity is the clock, so a client that owned it would own the score. The
+figure on screen is a display of the server's last word, reset by every commit.
+
+### 19.3 The combo bonus is the rung
+
+§10.1 asks for *"a flat penalty against a superlinear bonus"* and does not say what the bonus is.
+Ours: **the bonus at each rung is the rung itself.** Five in a row pays 5, twelve pays 12.
+
+That makes the cumulative reward grow faster than the run length — twelve charts scores 12 + 5 + 12 =
+29, against six charts scoring 6 + 5 = 11, so a run twice as long is worth more than twice as much —
+while staying a number a player can compute mid-run.
+
+A pass does not break a combo. It did not fail, it declined, and ending a run of twelve because a
+player correctly stood aside would punish the exact move §4.4 rewards.
+
+### 19.4 What ends a run
+
+| | Storm | Streak |
+| --- | --- | --- |
+| clock | 3 minutes of decision time | none |
+| a sub-median result | costs the combo | **ends the run** |
+| a stop-out | −10 seconds | ends the run, like any other miss |
+| a pass | scores nothing | spends the one skip; the next one ends the run |
+
+Storm ends only on the commit that spends the last of the budget. The client never ends a run — it
+cannot even end its own, because a client that could would be a client that could end one early.
+
+The chart a player is on when the budget runs out **counts as seen and scores nothing**: a quiz does
+not credit the question you were still answering when the bell went. Both halves matter — an earlier
+build dropped that chart from the count entirely, so a run that ended on its first chart reported
+having seen none.
+
+### 19.5 Known limits
+
+**A refresh abandons the run.** Run state lives in the surface, so reloading mid-run starts a new one
+and leaves the old row alive in the database. A run is a sprint rather than a session, and resuming
+one is not built.
+
+**Storm inherits the per-round decision clock from its ruleset**, so a single chart can cost up to
+90 seconds of a 180-second budget. The two clocks measure the same thing at different scales and do
+not conflict, but only one of them is §10.1's.
+
+**Neither mode is rated.** These are volume generators; §12's ladder is not fed by them.
+
+---
+
+## 20. Maps
+
+§11 is the part of the scope with a commercial argument attached: *"Maps convert Hindsight into
+infrastructure that other people build businesses on top of."* This section is what shipped, and the
+two claims in §11.1 that did not survive being measured.
+
+**A map is a tape.** The product's word is "tape" and §11's is "map"; they are the same thing, and
+`/tapes` is where both live. §11.1's official maps and §11.2's creator maps differ in exactly one
+column — whether `owner_id` is null — and run through the same issuance, the same chart count and the
+same ruleset lock.
+
+### 20.1 The rule is published, not merely applied
+
+§11.1: *"Every official map is defined by a published filter over the regime tags and theme tags, not
+by hand-picking, so the map's difficulty distribution is reproducible and its statistics are valid."*
+
+Every predicate a map may use reads a **stored tag computed from the lead-in**:
+
+| | |
+| --- | --- |
+| regime | `regime_er_bucket` — trend, directional, chop, noise |
+| volatility | `regime_vol_bucket` — violent, active, subdued, quiet |
+| themes | §13.8's six formations; a chart qualifies on *any* of them |
+| drift | `lead_in_drift_atr`, the move across the visible window |
+| council | `council_minority > 0` — the schools take opposite sides |
+
+The vocabulary is closed on purpose. A filter over anything derived from the reveal would announce
+part of the answer in the map's own definition, which is precisely why **The Null Set is locked**: its
+filter reads `par_r`, so the map's name would tell a player most brackets lose there before they
+traded. The council filter is legal under the same rule, because the council reads the lead-in alone.
+
+**Hand-picking is not built**, and §11.2 offers it. A set someone chose chart by chart has no
+reproducible difficulty distribution, so every percentile computed on it is conditioned on that
+choice in a way nobody can state. It is unbuilt rather than refused: it returns when there is an
+honest answer for what its leaderboard means.
+
+### 20.2 Two of §11.1's descriptions were wrong
+
+**The Drop and The Ramp are the same map, reflected.** §11.1 describes Crash as *"violent downside,
+volatility expansion, failed bounces"* and Euphoria as *"parabolic advances, shallow pullbacks,
+blow-off tops"* — a claim about asymmetry, and one of the better-supported regularities in the
+literature. This corpus cannot contain it: §12.2 mirrors half the charts at random, so half of every
+displayed crash is a mirrored rally.
+
+Measured at the ±8 ATR threshold the two maps use: **135 charts fall in one, 138 in the other.** Of
+the 453 charts past ±6, 237 are in the down tail against an expected 226.5 under a fair split — 0.99
+standard errors. Both cards say so. What they train is reading a chart that has been going against
+you for sixty candles, which is a real skill and not a claim about crash dynamics.
+
+**Split Decision is not "the hardest map in the game".** §5's own exit condition asks whether engine
+disagreement predicts difficulty, and it does not:
+
+| group | n | median `par_r` | median pass %ile |
+| --- | --- | --- | --- |
+| council split | 71 | −1.022 | 0.612 |
+| council agreed | 38 | −1.021 | 0.602 |
+| one school spoke | 222 | −1.020 | 0.612 |
+| council silent | 669 | −1.018 | 0.622 |
+| **all charts** | **1,000** | **−1.019** | **0.612** |
+
+Welch's *t*, split against everything else: **0.10** on `par_r`, **0.79** on pass percentile. Flat.
+The minority side also never exceeds one anywhere in the corpus, so *"where the engines disagree
+most"* is not a spectrum to sort by — it is a single 71-chart set. It ships for what it is: the 7.1%
+where two published methodologies read the same candles and reach opposite conclusions.
+
+### 20.3 Drift, and the error that looked like a finding
+
+`lead_in_drift_atr` is `ln(last / first) / (atr14 / entry_price)` — a log return over a relative ATR,
+computed on the mirrored bars, so it is the direction the player sees.
+
+The obvious definition, `(last − first) / atr14`, gave **88 charts past −10 ATR and 39 past +10**:
+4.4 standard errors from a fair split, a large asymmetry, pointing exactly where the literature says
+it should. It was the measurement. §12.2's mirror is `BASE² / p`, exact in *log* space, so a linear
+difference is not the negation of its original; and `atr14` is an absolute price distance, so a chart
+that fell sits at lower prices with a smaller ATR. Corrected, the same corpus reads **65 and 65**.
+
+The obvious *fix* is wrong too: a geometric mean over the window looks more principled than a single
+price and misses by 29%, because `atr14` is Wilder's ATR(14) and is anchored at the **end** of the
+lead-in. The denominator has to be measured where the numerator's ATR is.
+
+What remains is second order in the total move — 1.3% over a window that travelled 3%, 2.6% at the
+±13 ATR tail where the maps live, 19.1% over 61%. `tests/map-filters.test.ts` pins it as a property:
+mirroring a chart must negate its drift.
+
+Nothing but the mirror made any of this checkable. Random mirroring **cannot** produce a directional
+skew, so the number was falsifiable on its face; a corpus without that property would have shipped
+it.
+
+### 20.4 The tier lock
+
+§11.2: *"a tier lock, so an operator can require that their cohort plays at Naked and the results are
+comparable."* Tapes always carried a `tier` column and nothing read it — the launcher's choice won,
+so it was a suggestion.
+
+It is enforced in `/api/round`, because that is what turns a ruleset into a candle count, a tool
+grant and a clock. Three properties, all of which failed at least once when first built:
+
+- **Shown, not silently applied.** A player who picked Full Desk and got Naked without being told
+  would reasonably conclude the ladder was broken.
+- **Mods are cleared too.** Ours, not §11.2's — a mod changes affordances exactly as a tier does, and
+  "comparable" cannot mean "comparable except for whichever mods each student picked".
+- **It fails closed.** A lookup error refuses the round, and a lock naming a ruleset that no longer
+  resolves refuses it too, rather than issuing the default and recording it as the required one. Open
+  is the direction that silently invalidates a cohort's data.
+
+### 20.5 Visibility
+
+| | |
+| --- | --- |
+| **public** | listed |
+| **unlisted** | the slug is the secret, which is what a share link is — named honestly rather than called private |
+| **private** | enforced in `issue_round` against the caller, so the play URL fails for everyone else too |
+
+A private map answers exactly as a missing one does: **404, never 403**. The two differ only in
+whether they confirm the thing exists, and confirming that is the one thing private has to withhold.
+
+### 20.6 The cohort dashboard, and what it cannot claim
+
+§11.2: *"Cohort dashboards for the owner: aggregate scores, weakest axes across the group, per-student
+progress, per-theme ratings."* All of it ships at `/tapes/<slug>/cohort`, owner-only.
+
+**It is the one surface in this product with no null behind it.** Every other number here is
+published beside a measured baseline — a shuffle, a coin flip, a random engine. There is no second
+cohort to compare a cohort against, and no baseline for what a group of a given size should score on
+a map of a given difficulty. The page says that on itself.
+
+With one player it says more: *"a cohort's weakest axis needs a cohort; this is one person's weakest
+axis with a wider heading."* Sample sizes are on every figure, an axis under five rounds is not shown
+at all, and the §4.9 gate that governs a player's own percentile governs these too.
+
+Two honest limits stated on the page rather than buried: there is **no invitation mechanism**, so a
+cohort is whoever played the map — the public, for a public map. And a chart carries several themes
+and counts towards each, so the axis counts sum to more than the round total.
+
+`rounds.tape` is what makes any of it possible, and nothing recorded it until 5d. Rounds played
+before then carry null; inferring the map from a chart's tags would be a guess dressed as data, since
+most charts qualify for several.
+
+---
+
+## 21. Duels and races
+
+§10.1's last two modes, and the only two whose value depends on other people existing. What follows
+is what shipped, plus the two justifications §4.3 gives for the duel format — **both of which are
+wrong**, one unnecessary and one crediting the wrong mechanism.
+
+| | §10.1 |
+| --- | --- |
+| **Duel** | *"Two players, identical charts, health-bar damage equal to the compressed score difference. Escalating multiplier, capped per round in ranked, uncapped in casual."* |
+| **Racer** | *"Five to ten players, same charts, ninety seconds, live positions."* |
+
+Play either at `/versus`. Neither is rated — §12's ladder is not fed by them, on the same argument
+§17 made for Manage: a format has to be shown to measure the same skill before it may move a rating
+that means something else.
+
+### 21.1 One primitive, two scorers
+
+Both modes need something nothing else in this product has: **a fixed, ordered chart sequence that
+several players play independently and are scored against.** A duel is two players on that sequence
+with a health bar; a race is *n* players on it against a clock. That is why they ship together.
+
+**A duel's charts are drawn when the second player joins.** Every other mode picks charts the player
+has not seen — `issue_round` carries a `not exists` clause for exactly that — and a duel cannot,
+because both players must get the *same* charts. A chart either has already played is one they have
+already been shown the answer to.
+
+So the sequence is drawn from charts **neither** has played, which requires knowing both, which is
+why **a duel is a link rather than a lobby**. If the map cannot supply enough charts unseen by both,
+the join fails and says so: it does not shorten the duel and it does not reuse a chart one player
+knows.
+
+That also makes the mode asynchronous for free, which matters a great deal for a product whose
+player base is currently one person. Each chart resolves as the *second* player finishes it; until
+then the round reports `pending`, and that is the common state rather than an edge case.
+
+A race cannot do this — its later runners are unknown when the sequence is fixed — so a runner who
+has already seen a chart in it is **flagged**, not quietly ranked beside people who had not. The run
+is real and the player is entitled to it; what they are not entitled to is silent comparison.
+
+### 21.2 The escalating multiplier is withdrawn
+
+§4.3 justifies it twice: it *"manufactures comebacks and guarantees termination"*, and uncapped it
+*"makes round order decisive rather than round quality"*.
+
+The null for all of this is **two players picking at random**, which is what a bracket chosen at
+random does against the achievable distribution by construction. 20,000 duels per cell:
+
+| schedule | health | cap | median rounds | p99 | unfinished | agrees with total IMP |
+| --- | --- | --- | --- | --- | --- | --- |
+| **flat (none)** | 40 | **yes** | **8** | **15** | **0.0%** | **99.4%** |
+| flat (none) | 40 | no | 8 | 15 | 0.0% | 100.0% |
+| ×1 per 3 rounds | 40 | yes | 7 | 11 | 0.0% | 93.7% |
+| ×1 per 3 rounds | 40 | no | 5 | 9 | 0.0% | 92.7% |
+| doubling per 5 | 40 | yes | 8 | 12 | 0.0% | 95.4% |
+| flat (none) | 100 | yes | 23 | 33 | 0.0% | 98.7% |
+| ×1 per 3 rounds | 100 | yes | 15 | 20 | 0.0% | 90.0% |
+
+**Termination never needed it.** Nothing failed to finish in any cell, including with no multiplier
+at all. Damage averaging 8 a round against a 40-point bar is what guarantees termination; escalation
+only makes the duel shorter.
+
+**Escalation is itself what makes round order decisive.** Weighting later rounds more heavily is
+exactly a statement that the same results in a different order should give a different winner, and it
+costs **6 to 10 points** of agreement with total score — the direct test of §4.3's own concern.
+
+**And the cap is not the remedy §4.3 credits it as.** It moves agreement by 0.6 to 2.7 points, and at
+health 100 with escalation it moves it the *wrong way* (90.6% uncapped against 90.0% capped).
+
+What remains of the multiplier's case is "manufactures comebacks" — entertainment bought with
+correctness, and §4.3 opens by rejecting that exact trade for the ranked ladder. So damage is flat.
+
+**The cap stays**, for the thing it actually does: 16.2% of rounds against the null are at or above
+15 IMPs, and without it a single catastrophic chart can end a duel outright.
+
+### 21.3 What ships
+
+| | |
+| --- | --- |
+| health | **40** — ours; §10.1 asks for a bar and never sizes it |
+| damage | the IMP difference, flat |
+| cap | **15**, §10.1's, and the same number as the ranked IMP bound because it is the same scale |
+| a chart both read equally well | **does nothing** |
+
+Health 40 puts an even duel at a median of 8 charts and a p99 of 15 — a sitting. The honest failure
+mode is left visible rather than tuned away: **two strong players take a median of 17**, because they
+differ less.
+
+The format is fair and it detects skill:
+
+| matchup | stronger player wins |
+| --- | --- |
+| even | **49.9%** |
+| slight edge | **93.1%** |
+| clear edge | **99.9%** |
+
+### 21.4 The engines cannot duel, which is a finding about the mode
+
+The eight engines are the only opponents with a measured record over the corpus. Across all 28 pairs
+and all 1,000 charts:
+
+| | engines | random players |
+| --- | --- | --- |
+| mean damage | **1.05** | 8.06 |
+| rounds doing zero damage | **79.5%** | 4.3% |
+| rounds at or above the cap | **0.0%** | 16.2% |
+
+**Four rounds in five are a draw**, and the cap never binds once. The cause is §14.4's silence
+figure: no school takes a position on 66.9% of charts, a pass is 0R scored against the same
+distribution for both players, and IMPs are a compressed integer scale — so two engines that both
+stand aside record identically.
+
+That is a warning about the mode, not about the engines: **a duel between two players who mostly
+agree does not move a health bar.** Whether real players agree more like the engines or more like the
+null decides whether duels are tense or tedious, and it needs players to answer.
+
+### 21.5 Racer cannot be what §10.1 describes
+
+*"Five to ten players, same charts, ninety seconds, live positions."* Five simultaneous humans is not
+something this product can produce, and filling a lobby with bots is the one move it exists to avoid
+— a leaderboard whose opponents are fabricated is worse than no leaderboard.
+
+What ships is a **ghost race**: the same fixed sequence, and opponents who are *recordings* of people
+who ran it earlier, labelled as recordings. No simultaneity is needed, it works with a player base of
+one and improves as that grows, and "live positions" survives intact — a recording's position at each
+second is known exactly.
+
+A race is scored on **IMPs, not charts finished**. Rushing eight badly loses to reading three well,
+and ties break towards the player who needed *fewer* charts. Making raw speed the objective would
+reward exactly the guessing the rest of this scoring model exists to discourage.

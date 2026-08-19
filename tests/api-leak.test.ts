@@ -49,9 +49,22 @@ vi.mock('next/headers', () => ({
   cookies: async () => ({ get: () => undefined, set: () => undefined }),
 }));
 
+/*
+ * The route reads the tape's ruleset before issuing, for §11.2's tier lock, so the mock needs a
+ * `from` as well as an `rpc`. It answers "no such tape", which is the unlocked path — the point of
+ * this file is what the payload may contain, and a lock changes which ruleset is granted rather than
+ * which fields come back.
+ */
 vi.mock('@/lib/supabase/server', () => ({
   serviceClient: () => ({
     rpc: async () => ({ data: [OVERSHARING_ROW], error: null }),
+    from: () => ({
+      select: () => ({
+        eq: () => ({
+          maybeSingle: async () => ({ data: null, error: null }),
+        }),
+      }),
+    }),
   }),
 }));
 

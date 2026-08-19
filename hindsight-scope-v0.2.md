@@ -247,7 +247,7 @@ v0.1’s percentile scoring is matchpoint scoring. It is the right default for t
 | Daily challenge | Percentile against the achievable distribution | Spiky, legible, shareable. One round, so variance-seeking is self-limiting. |
 | Practice, Storm, Streak | Percentile | Volume smooths it out. |
 | **Ranked ladder** | **Compressed, IMP-style** | Rewards not blowing up. Removes the lottery-ticket exploit. |
-| **Duels** | **Compressed, with a per-round damage cap** | The escalating multiplier manufactures comebacks and guarantees termination, but uncapped it makes round order decisive rather than round quality. |
+| **Duels** | **Compressed, with a per-round damage cap** | The escalating multiplier manufactures comebacks and guarantees termination, but uncapped it makes round order decisive rather than round quality. **Correction to v0.2 as first drafted: both halves of that are wrong, and the escalating multiplier is withdrawn.** Simulated over 20,000 duels a cell against a null of two players picking at random, *nothing* failed to terminate in any configuration, including with no multiplier at all — flat damage on a 40-point bar ends at a median of 8 rounds and a p99 of 15. And escalation is *itself* what makes round order decisive: weighting later rounds more heavily is exactly a statement that the same results in a different order should give a different winner, and it costs **6 to 10 points** of agreement with total score. The cap credited with fixing that moves agreement by 0.6 to 2.7 points, and in one cell moves it the wrong way. The cap stays regardless, for what it actually does — 16.2% of rounds against the null are at or above 15 IMPs, and without it one catastrophic chart ends a duel outright. See `docs/rules.md` §21.2. |
 
 
 ### 4.4 Restraint, bounded
@@ -706,10 +706,10 @@ One content library, many framings, at zero additional content cost. The reclass
 | **Practice** | Unlimited, free, filterable by theme, tier, regime and difficulty band. Never metered. | This is where reps happen, where Layer 6 gets its data, and where the "thousand reps" claim becomes true. Also a competitive weapon — see §10.4. |
 | **Ranked** | Five-chart sessions at Naked, minimum three entries, compressed scoring, Glicko-2 against rated charts. | The ladder. Gated behind a minimum trade count. |
 | **Manage** | Same charts, candles advance in real time, player may trail, scale out, move to breakeven, or exit early. **Separate rating.** | The other half of the skill. Fixes the largest architectural gap in v0.1. Structurally, this is Hindsight’s "Moving" to Naked’s NMPZ. |
-| **Storm** | Three-minute clock. +1 per chart where you beat the distribution median. −10 seconds when stopped out. Combo bonuses at 5, 12, 20 and 30 and every 10 thereafter. | A flat penalty against a superlinear bonus is what produces the one-more-run pull. Highest rep-per-minute mode in the product. |
-| **Streak** | Untimed. The run ends on the first sub-median result. One skip per run. | Pure loss aversion, zero content cost, and the mode most likely to produce a shareable number. |
-| **Duel** | Two players, identical charts, health-bar damage equal to the compressed score difference. Escalating multiplier, **capped per round in ranked**, uncapped in casual. | Guarantees termination without a fixed length, cancels chart difficulty because only the gap matters, and produces a tension curve a spectator can read at a glance. |
-| **Racer** | Five to ten players, same charts, ninety seconds, live positions. | The lowest-friction multiplayer format: no matchmaking, no lobby negotiation, no rating. |
+| **Storm** | Three-minute clock. +1 per chart where you beat the distribution median. −10 seconds when stopped out. Combo bonuses at 5, 12, 20 and 30 and every 10 thereafter. | A flat penalty against a superlinear bonus is what produces the one-more-run pull. Highest rep-per-minute mode in the product. **Two corrections to v0.2 as first drafted, both found by building it.** First, the mode as written is farmed by passing: `par_r` is negative on **950 of 1,000 charts** (mean −0.792R) and a pass is exactly 0R, so standing aside beats the median 95 times in 100 and scores +1 each time. Streak's one skip is the rationing that fixes this; Storm has none in the specification, so one is added and marked as ours — **a pass scores nothing**. Second, the three minutes are **decision time, not wall-clock time**. A round takes about eleven seconds of which ten are the reveal animation, and the reveal can be skipped — so a wall clock makes the optimal strategy "commit and never look at the outcome", which is the one thing the product exists to make people do. Each round now charges `committed_at − issued_at`; the reveal and the debrief are free. The bonus at each rung is **the rung itself**, which is ours: the row asks for a superlinear bonus and does not say what it is. See `docs/rules.md` §19. |
+| **Streak** | Untimed. The run ends on the first sub-median result. One skip per run. | Pure loss aversion, zero content cost, and the mode most likely to produce a shareable number. **The one skip is load-bearing, which the row does not say:** a pass is 0R and the median bracket is negative on 95% of charts, so without rationing a player passes for ever and never posts a sub-median result. One clarification from building it — a pass with no skip left **ends the run** rather than being rejected, because a rejected move would let a player sit on a chart they disliked until the mode offered a different one, which is §15's cherry-picking with extra steps. |
+| **Duel** | Two players, identical charts, health-bar damage equal to the compressed score difference. Escalating multiplier, **capped per round in ranked**, uncapped in casual. | Guarantees termination without a fixed length, cancels chart difficulty because only the gap matters, and produces a tension curve a spectator can read at a glance. **Two corrections from building it.** The multiplier is withdrawn — see §4.3. And the row omits the rule that decides whether the mode works at all: **a duel's charts must be drawn from ones neither player has played**, which requires knowing both players, which is why a duel is a link rather than a lobby. That also makes it asynchronous, which matters for a product with no player base — each chart resolves as the *second* player finishes it. Health is 40, which is ours; §10.1 asks for a bar and never sizes it. Measured warning: between the eight engines, **79.5% of rounds do zero damage** and the cap never binds, because two players who both stand aside score identically. A duel between players who mostly agree does not move a health bar. |
+| **Racer** | Five to ten players, same charts, ninety seconds, live positions. | The lowest-friction multiplayer format: no matchmaking, no lobby negotiation, no rating. **Correction to v0.2 as first drafted:** five simultaneous humans is not something this product can produce, and filling a lobby with bots is the one move it exists to avoid — a leaderboard whose opponents are fabricated is worse than no leaderboard. What ships is a **ghost race**: the same fixed sequence, with opponents who are recordings of people who ran it earlier and are labelled as recordings. "Live positions" survives intact, since a recording's position at each second is known exactly. It is scored on **IMPs rather than charts finished** — rushing eight badly loses to reading three well, because making raw speed the objective would reward the guessing everything else here discourages. |
 | **Calibration** | Instead of a stop and target, the player declares a confidence interval: "80% chance price stays inside this box over the next N bars." Scored with a proper scoring rule. | The only genuinely novel mode in the category, the only one that appeals to the quant-adjacent audience, and the one that trains the one skill with clean evidence of trainability. A co-operative variant where several players negotiate one shared box is a strong stream format. |
 | **Beat the Council** | Race a named engine, or Engine Zero, over a fixed set of charts. | Natural progression target with a public record attached. |
 
@@ -751,20 +751,40 @@ Organised by market regime rather than by instrument, because the same pattern m
 
 - **Crash** — violent downside, volatility expansion, failed bounces.
 - **Euphoria** — parabolic advances, shallow pullbacks, blow-off tops.
+
+  > **Correction to v0.2 as first drafted:** these two are the *same map reflected*, and neither may
+  > claim crash or euphoria dynamics on this corpus. §12.2 mirrors vertically at random, so half of
+  > every displayed crash is a mirrored rally — measured at the ±8 ATR threshold they ship on, 135
+  > charts fall in one and 138 in the other, and of the 453 past ±6 the down tail holds 237 against
+  > an expected 226.5 (0.99 standard errors). The asymmetry the descriptions assert is real in
+  > markets and was destroyed by the identity-hiding this product cannot do without. They ship as
+  > **The Drop** and **The Ramp**, described as what they are: charts that have been going one way
+  > for sixty candles. Whether players score worse on one than the other is an open question the
+  > pair exists to answer. See `docs/rules.md` §20.2.
 - **Chop** — efficiency ratio below 0.2. The account killer.
 - **Compression** — coiling volatility ahead of expansion.
 - **Liquidity Sweeps** — setups built around failed breaks of prior extremes.
 - **Council Split** — the charts where the engines disagree most. The hardest map in the game.
+
+  > **Correction to v0.2 as first drafted:** it is not harder, and "disagree most" is not a spectrum.
+  > §5's own exit condition asks whether engine disagreement predicts chart difficulty; measured over
+  > the corpus it predicts nothing. Median `par_r` on the 71 conflicted charts is **−1.022** against
+  > **−1.019** for the whole library, median pass percentile **0.612** against **0.612**, and Welch's
+  > *t* is **0.10** and **0.79**. Every difficulty measure is flat across all four council states,
+  > including the state where no school will touch the chart. The minority side also never exceeds
+  > one anywhere in the corpus, so there is no "most" to sort by — it is a single 71-chart set. It
+  > ships as **Split Decision**, named for the thing that is true: the 7.1% where two published
+  > methodologies read the same candles and reach opposite conclusions.
 - **The Null Set** *(new)* — charts where the achievable distribution’s median is negative and passing is the correct play. A map that trains restraint and nothing else.
 
 ### 11.2 Creator maps
 
 Any user can assemble a map from filter-generated or hand-picked charts, name it, describe it and share it by link. This is the feature that makes the product sellable and licensable: an educator, a community operator or a proprietary trading firm can hand their students a curated set that trains one specific skill in a controlled sequence rather than leaving them on random charts, and the cohort’s results roll up into a private leaderboard the operator can see.
 
-- Filter-based generation by regime, volatility percentile, council agreement, theme, chart rating band, timeframe or instrument class.
+- Filter-based generation by regime, volatility percentile, council agreement, theme, chart rating band, timeframe or instrument class. **Correction to v0.2 as first drafted:** the "or hand-picked" option in the paragraph above is not built, and the reason is §11.1's own. A map has to be a published filter "so the map's difficulty distribution is reproducible and its statistics are valid"; a set chosen chart by chart has no such distribution, and every percentile computed on it is conditioned on a choice nobody can state. It is unbuilt rather than refused.
 - Ordered sequences, so a map can function as a structured lesson rather than a shuffle.
 - Private, unlisted and public visibility.
-- Cohort dashboards for the owner: aggregate scores, weakest axes across the group, per-student progress, per-theme ratings.
+- Cohort dashboards for the owner: aggregate scores, weakest axes across the group, per-student progress, per-theme ratings. **Built, and it is the one surface in the product with no null behind it** — there is no second cohort to compare a cohort against, and no baseline for what a group of a given size should score on a map of a given difficulty. It says so on itself, gates every figure on its sample size, and tells an owner with one player that "the group's weakest axis" is one person's weakest axis with a wider heading. Note also that nothing in this product *invites* anyone to a map, so a cohort is whoever played it.
 - **A tier lock**, so an operator can require that their cohort plays at Naked and the results are comparable.
 
 ### 11.3 Why this matters commercially

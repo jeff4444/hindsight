@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { listTapes } from '@/lib/viewer';
 import { TapeCard } from '@/components/home/TapeCard';
 import { Eyebrow } from '@/components/ui';
@@ -39,6 +40,21 @@ export default async function TapesPage() {
         words — so the choice is not between the right definition and ours. It is between an
         undisclosed one and a published one.
       </p>
+
+      <div className="mt-6 flex flex-wrap gap-2">
+        <Link
+          href="/tapes/new"
+          className="press border-line bg-surface-1 text-ink-hi hover:border-line-strong rounded-md border px-3 py-1.5 text-sm transition-colors"
+        >
+          Make your own
+        </Link>
+        <Link
+          href="/tapes/mine"
+          className="press border-line bg-surface-1 text-ink-hi hover:border-line-strong rounded-md border px-3 py-1.5 text-sm transition-colors"
+        >
+          Your maps
+        </Link>
+      </div>
 
       <section className="mt-10">
         <h2 className="text-ink-max text-xl font-semibold">Open now</h2>

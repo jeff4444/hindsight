@@ -347,15 +347,51 @@ export interface Tape {
   name: string;
   blurb: string;
   tier: string;
+  /** §11.2: the tape's ruleset is required rather than suggested, and the launcher says so. */
+  tierLocked: boolean;
   charts: number;
   lockedReason: string | null;
+  /** Null for §11.1's official maps. Non-null is what makes a tape someone's (§11.2). */
+  ownerId: string | null;
+  visibility: 'private' | 'unlisted' | 'public';
+  isOwner: boolean;
+  /**
+   * The published rule, in the shape the UI prints it.
+   *
+   * Required rather than optional, so no caller can render a map without being able to say what is
+   * in it. §11.1's requirement is that the definition is *published*, not merely applied.
+   */
+  filter: TapeFilter;
+}
+
+export interface TapeFilter {
+  er: string[];
+  vol: string[];
+  themes: string[];
+  driftBelow: number | null;
+  driftAbove: number | null;
+  councilSplit: boolean;
+}
+
+/** The filter columns as the UI wants them. One reader, so the three call sites cannot disagree. */
+function filterOf(row: Record<string, unknown>): TapeFilter {
+  return {
+    er: (row.er_buckets as string[] | null) ?? [],
+    vol: (row.vol_buckets as string[] | null) ?? [],
+    themes: (row.themes as string[] | null) ?? [],
+    driftBelow: (row.drift_below as number | null) ?? null,
+    driftAbove: (row.drift_above as number | null) ?? null,
+    councilSplit: Boolean(row.council_split),
+  };
 }
 
 export async function listTapes(): Promise<Tape[]> {
   const supabase = serviceClient();
   const { data, error } = await supabase
     .from('tapes')
-    .select('slug, name, blurb, tier, er_buckets, vol_buckets, themes, locked_reason, sort')
+    .select(
+      'slug, name, blurb, tier, tier_locked, er_buckets, vol_buckets, themes, drift_below, drift_above, council_split, locked_reason, sort',
+    )
     .eq('published', true)
     .order('sort');
 
@@ -367,27 +403,27 @@ export async function listTapes(): Promise<Tape[]> {
 
   const tapes = data ?? [];
 
-  // The chart count is the honest size of the tape, so it is counted rather than guessed. It has to
-  // stay in step with the predicates in `issue_round`, or a tape advertises a size it cannot serve.
+  // The chart count is the honest size of the tape, so it is counted rather than guessed, and by the
+  // one function that knows `issue_round`'s predicates — a tape that advertises a size it cannot
+  // serve is the failure this block exists to prevent, and three copies of the rule is how that
+  // happens.
   const counted = await Promise.all(
     tapes.map(async (t) => {
-      let query = supabase.from('charts').select('id', { count: 'exact', head: true });
-      const er = t.er_buckets as string[] | null;
-      const vol = t.vol_buckets as string[] | null;
-      const themes = t.themes as string[] | null;
-      if (er) query = query.in('regime_er_bucket', er);
-      if (vol) query = query.in('regime_vol_bucket', vol);
-      // `overlaps`, matching the `&&` the issuance function runs: a chart qualifies if it carries
-      // *any* of the tape's themes.
-      if (themes) query = query.overlaps('themes', themes);
-      const { count } = await query;
       return {
+        charts: await countTapeCharts(supabase, t),
         slug: t.slug as string,
         name: t.name as string,
         blurb: t.blurb as string,
         tier: t.tier as string,
-        charts: count ?? 0,
+        /** §11.2's tier lock: the ruleset is required, not suggested. */
+        tierLocked: Boolean(t.tier_locked),
         lockedReason: t.locked_reason as string | null,
+        // Everything on this index is official by construction: the query filters `published`, and
+        // a creator map is never published.
+        ownerId: null,
+        visibility: 'public' as const,
+        isOwner: false,
+        filter: filterOf(t),
       };
     }),
   );
@@ -395,9 +431,107 @@ export async function listTapes(): Promise<Tape[]> {
   return counted;
 }
 
-export async function getTape(slug: string): Promise<Tape | null> {
-  const tapes = await listTapes();
-  return tapes.find((t) => t.slug === slug) ?? null;
+/**
+ * One tape by slug, official or creator-made.
+ *
+ * Not `listTapes().find(...)` any more, for two reasons that both matter. That version counted every
+ * tape in the library to answer a question about one of them; and it filtered on `published`, which
+ * creator maps deliberately are not — an owner's map is reached from their own page and from its
+ * share link, never from the official grid.
+ *
+ * Visibility is enforced here *and* in `issue_round`. This one stops a private map being *read*; the
+ * one in the database stops it being *played*. Neither is redundant: a page that hid itself but
+ * still issued rounds would be a private map anyone could farm by guessing the play URL.
+ */
+export async function getTape(slug: string, viewerUserId?: string | null): Promise<Tape | null> {
+  const supabase = serviceClient();
+  const { data, error } = await supabase
+    .from('tapes')
+    .select(
+      'slug, name, blurb, tier, tier_locked, er_buckets, vol_buckets, themes, drift_below, drift_above, council_split, locked_reason, owner_id, visibility',
+    )
+    .eq('slug', slug)
+    .maybeSingle();
+
+  if (error) throw new Error(`could not read tape ${slug}: ${error.message}`);
+  if (!data) return null;
+
+  const ownerId = (data.owner_id as string | null) ?? null;
+  const isOwner = Boolean(ownerId && viewerUserId && ownerId === viewerUserId);
+  if (data.visibility === 'private' && ownerId && !isOwner) return null;
+
+  return {
+    slug: data.slug as string,
+    name: data.name as string,
+    blurb: data.blurb as string,
+    tier: data.tier as string,
+    tierLocked: Boolean(data.tier_locked),
+    charts: await countTapeCharts(supabase, data),
+    lockedReason: (data.locked_reason as string | null) ?? null,
+    ownerId,
+    visibility: data.visibility as Tape['visibility'],
+    isOwner,
+    filter: filterOf(data),
+  };
+}
+
+/** Every map this user owns, newest first. */
+export async function listMyTapes(userId: string): Promise<Tape[]> {
+  const supabase = serviceClient();
+  const { data, error } = await supabase
+    .from('tapes')
+    .select(
+      'slug, name, blurb, tier, tier_locked, er_buckets, vol_buckets, themes, drift_below, drift_above, council_split, locked_reason, owner_id, visibility',
+    )
+    .eq('owner_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (error) throw new Error(`could not list your maps: ${error.message}`);
+
+  return Promise.all(
+    (data ?? []).map(async (row) => ({
+      slug: row.slug as string,
+      name: row.name as string,
+      blurb: row.blurb as string,
+      tier: row.tier as string,
+      tierLocked: Boolean(row.tier_locked),
+      charts: await countTapeCharts(supabase, row),
+      lockedReason: (row.locked_reason as string | null) ?? null,
+      ownerId: (row.owner_id as string | null) ?? null,
+      visibility: row.visibility as Tape['visibility'],
+      isOwner: true,
+      filter: filterOf(row),
+    })),
+  );
+}
+
+/**
+ * The honest size of a tape, counted with `issue_round`'s predicates.
+ *
+ * One function rather than the two copies that existed, because the failure mode of a second copy is
+ * a tape advertising a size it cannot serve — which is the thing the original comment here warned
+ * about, written before there was more than one caller to warn.
+ */
+async function countTapeCharts(
+  supabase: ReturnType<typeof serviceClient>,
+  row: Record<string, unknown>,
+): Promise<number> {
+  let query = supabase.from('charts').select('id', { count: 'exact', head: true });
+  const er = row.er_buckets as string[] | null;
+  const vol = row.vol_buckets as string[] | null;
+  const themes = row.themes as string[] | null;
+  const below = row.drift_below as number | null;
+  const above = row.drift_above as number | null;
+  if (er) query = query.in('regime_er_bucket', er);
+  if (vol) query = query.in('regime_vol_bucket', vol);
+  // `overlaps`, matching the `&&` the issuance function runs: a chart qualifies if it carries *any*
+  // of the tape's themes.
+  if (themes) query = query.overlaps('themes', themes);
+  if (below !== null && below !== undefined) query = query.lte('lead_in_drift_atr', below);
+  if (above !== null && above !== undefined) query = query.gte('lead_in_drift_atr', above);
+  if (row.council_split) query = query.gt('council_minority', 0);
+  const { count } = await query;
+  return count ?? 0;
 }
 
 /* ------------------------------------------------------------------ series */

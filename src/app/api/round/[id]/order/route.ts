@@ -19,6 +19,15 @@ import { InvalidOrderError, NO_COSTS, resolve } from '@/core/resolve';
 import { SPOT_COSTS } from '@/core/costs';
 import { brier } from '@/core/calibration';
 import { resembles, shapeOf } from '@/core/style';
+import { DUEL_SPEC, damageFor } from '@/core/duel';
+import { imp } from '@/core/ranked';
+import {
+  beatsMedian,
+  chargeClock,
+  stormAfter,
+  streakAfter,
+  type RunOutcome,
+} from '@/core/run';
 import {
   ACHIEVABLE_VERSION,
   NORMALIZATION_VERSION,
@@ -26,7 +35,9 @@ import {
 } from '@/core/versions';
 import type {
   ChartProvenance,
+  MatchPayload,
   RevealPayload,
+  RunPayload,
   RoundResult,
   ScorePayload,
 } from '@/lib/api-types';
@@ -82,7 +93,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
   const { data: round, error: roundError } = await supabase
     .from('rounds')
-    .select('id, chart_id, session_id, user_id, owner, committed_at, tier, expires_at')
+    .select('id, chart_id, session_id, user_id, owner, committed_at, tier, expires_at, run_id, issued_at, match_id, match_index')
     .eq('id', id)
     .maybeSingle();
 
@@ -107,7 +118,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     .from('charts')
     // One literal, not a concatenation: supabase-js parses this string to type the row, and a
     // concatenated one degrades every field to an error type.
-    .select('reveal_bars, resolution_path, detail_path, entry_price, symbol, window_start, decision_at, mirrored, index_factor, synthetic, source_note, achievable_r, achievable_outcome, oracle_r, atr14, lead_in_bars, lead_in_extra')
+    .select('reveal_bars, resolution_path, detail_path, entry_price, symbol, window_start, decision_at, mirrored, index_factor, synthetic, source_note, achievable_r, achievable_outcome, oracle_r, par_r, atr14, lead_in_bars, lead_in_extra')
     .eq('id', round.chart_id)
     .single();
 
@@ -408,6 +419,130 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     sourceNote: (chart.source_note as string | null) ?? null,
   };
 
+  /*
+   * §10.1's run modes, advanced by the same commit that scored the round.
+   *
+   * One scoring path, not two. Storm and Streak exist to generate volume for measurements taken
+   * everywhere else — calibration's 30 forecasts, the fingerprint's 152 rounds — so a round played
+   * inside a run has to be scored exactly as one played outside it, or the volume is worthless.
+   *
+   * The clock is read from the run row and never from the client. A pass scores nothing in Storm and
+   * spends the single skip in Streak: `par_r` is negative on 95% of charts and a pass is 0R, so
+   * without that rationing both modes are farmed by standing aside. See `src/core/run.ts`.
+   */
+  let run: RunPayload | null = null;
+  if (round.run_id) {
+    const { data: row } = await supabase
+      .from('runs')
+      .select('id, mode, remaining_ms, score, combo, best_combo, length, best_length, skips_left, charts, alive')
+      .eq('id', round.run_id as string)
+      .maybeSingle();
+
+    if (row && row.alive) {
+      const outcome: RunOutcome = {
+        beatMedian: beatsMedian(result.rMultiple, (chart.par_r as number | null) ?? null),
+        stoppedOut: result.outcome === 'stop',
+        passed: result.outcome === 'pass',
+      };
+
+      if (row.mode === 'storm') {
+        /*
+         * The charge is what the player spent deciding, not what the wall clock did.
+         *
+         * Storm's clock used to be a deadline, and playing it showed what that charges for: about
+         * ten of every eleven seconds went to the reveal animation, which the player can skip. The
+         * mode therefore paid them to commit and look away — and looking at the outcome is the
+         * product. So the reveal, the debrief and the pause between charts are free, and only the
+         * gap between `issued_at` and now is spent. See `chargeClock`.
+         */
+        const decisionMs = Date.now() - Date.parse(round.issued_at as string);
+        const remainingMs = chargeClock(row.remaining_ms as number, decisionMs);
+        const next = stormAfter(
+          {
+            score: row.score as number,
+            combo: row.combo as number,
+            bestCombo: row.best_combo as number,
+            charts: row.charts as number,
+            remainingMs,
+            // Never true here: the block is guarded by `row.alive`, so the run was live when this
+            // round was committed. Deciding whether *this* chart ran the clock out is
+            // `stormAfter`'s job, and conflating the two lost the final chart from the count.
+            over: false,
+          },
+          outcome,
+          remainingMs,
+        );
+        await supabase
+          .from('runs')
+          .update({
+            score: next.score,
+            combo: next.combo,
+            best_combo: next.bestCombo,
+            charts: next.charts,
+            remaining_ms: next.remainingMs,
+            alive: !next.over,
+            ended_at: next.over ? new Date().toISOString() : null,
+          })
+          .eq('id', row.id);
+        run = {
+          id: row.id as string,
+          mode: 'storm',
+          alive: !next.over,
+          charts: next.charts,
+          score: next.score,
+          combo: next.combo,
+          bestCombo: next.bestCombo,
+          remainingMs: next.remainingMs,
+          beatMedian: outcome.beatMedian,
+        };
+      } else {
+        const next = streakAfter(
+          {
+            length: row.length as number,
+            best: row.best_length as number,
+            skipsLeft: row.skips_left as number,
+            charts: row.charts as number,
+            alive: true,
+          },
+          outcome,
+        );
+        await supabase
+          .from('runs')
+          .update({
+            length: next.length,
+            best_length: next.best,
+            skips_left: next.skipsLeft,
+            charts: next.charts,
+            alive: next.alive,
+            ended_at: next.alive ? null : new Date().toISOString(),
+          })
+          .eq('id', row.id);
+        run = {
+          id: row.id as string,
+          mode: 'streak',
+          alive: next.alive,
+          charts: next.charts,
+          length: next.length,
+          bestLength: next.best,
+          skipsLeft: next.skipsLeft,
+          beatMedian: outcome.beatMedian,
+        };
+      }
+    }
+  }
+
+  /*
+   * §10.1's Duel and Racer, advanced by the same commit that scored the round.
+   *
+   * One scoring path, as with the run modes. A chart played inside a match has to be scored exactly
+   * as one played outside it, or a duel is measuring something the rest of the product is not.
+   *
+   * **A duel round resolves when the second player finishes it, not when the first does.** Damage is
+   * the difference between two readings of the same chart, so there is nothing to apply until both
+   * exist — which is also what makes the mode work asynchronously: the opponent may arrive tomorrow.
+   */
+  const match = round.match_id ? await advanceMatch(supabase, round, score?.percentile ?? null) : null;
+
   const payload: RevealPayload = {
     result,
     revealBars: chart.reveal_bars,
@@ -416,6 +551,139 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     score,
     council: verdicts,
     style,
+    run,
+    match,
   };
   return NextResponse.json(payload);
+}
+
+/**
+ * Apply one committed chart to its match.
+ *
+ * Returns what the player should be shown: their own standing, and the opponent's where the pairing
+ * has actually happened. A duel round that the opponent has not reached yet reports `pending`, which
+ * is the honest state and the common one — most duels are played hours apart.
+ */
+async function advanceMatch(
+  supabase: ReturnType<typeof serviceClient>,
+  round: Record<string, unknown>,
+  percentile: number | null,
+): Promise<MatchPayload | null> {
+  const matchId = round.match_id as string;
+  const index = round.match_index as number;
+  const owner = round.owner as string;
+
+  const { data: match } = await supabase
+    .from('matches')
+    .select('id, mode, length, status, chart_ids')
+    .eq('id', matchId)
+    .maybeSingle();
+  if (!match) return null;
+
+  const total = ((match.chart_ids as string[] | null) ?? []).length;
+
+  // The player's own progress, whatever the mode. A race scores IMPs and a duel does not, but both
+  // want a chart count and both want the run's own clock.
+  const { data: me } = await supabase
+    .from('match_players')
+    .select('owner, seat, health, score, charts, started_at, clean')
+    .eq('match_id', matchId)
+    .eq('owner', owner)
+    .maybeSingle();
+  if (!me) return null;
+
+  const charts = (me.charts as number) + 1;
+  const score = (me.score as number) + (percentile === null ? 0 : imp(percentile));
+  const finished = charts >= total;
+
+  await supabase
+    .from('match_players')
+    .update({
+      charts,
+      score,
+      finished_at: finished ? new Date().toISOString() : null,
+    })
+    .eq('match_id', matchId)
+    .eq('owner', owner);
+
+  if (match.mode === 'race') {
+    return {
+      mode: 'race',
+      index,
+      length: total,
+      charts,
+      score,
+      complete: finished,
+      clean: Boolean(me.clean),
+      elapsedMs: me.started_at ? Date.now() - Date.parse(me.started_at as string) : 0,
+    };
+  }
+
+  /*
+   * A duel. Find the opponent's round at this same position — `match_index` is what pairs them,
+   * rather than the chart id, so the pairing survives a sequence containing a repeat.
+   */
+  const { data: theirRound } = await supabase
+    .from('rounds')
+    .select('owner, percentile')
+    .eq('match_id', matchId)
+    .eq('match_index', index)
+    .neq('owner', owner)
+    .not('committed_at', 'is', null)
+    .maybeSingle();
+
+  const { data: seats } = await supabase
+    .from('match_players')
+    .select('owner, seat, health, charts')
+    .eq('match_id', matchId)
+    .order('seat');
+
+  const opponentSeat = (seats ?? []).find((s) => s.owner !== owner) ?? null;
+
+  if (!theirRound || theirRound.percentile === null || percentile === null || !opponentSeat) {
+    return {
+      mode: 'duel',
+      index,
+      length: total,
+      charts,
+      health: (me.health as number) ?? DUEL_SPEC.health,
+      opponentHealth: (opponentSeat?.health as number) ?? null,
+      pending: true,
+      complete: false,
+      winner: null,
+    };
+  }
+
+  // Both readings exist, so the exchange happens now. `damageFor` is the one place the rule lives.
+  const { toA: toMe, toB: toThem } = damageFor(imp(percentile), imp(theirRound.percentile as number));
+  const myHealth = Math.max(0, ((me.health as number) ?? DUEL_SPEC.health) - toMe);
+  const theirHealth = Math.max(0, ((opponentSeat.health as number) ?? DUEL_SPEC.health) - toThem);
+
+  await supabase.from('match_players').update({ health: myHealth }).eq('match_id', matchId).eq('owner', owner);
+  await supabase
+    .from('match_players')
+    .update({ health: theirHealth })
+    .eq('match_id', matchId)
+    .eq('owner', opponentSeat.owner as string);
+
+  const over = myHealth <= 0 || theirHealth <= 0 || charts >= total;
+  if (over) {
+    await supabase
+      .from('matches')
+      .update({ status: 'done', ended_at: new Date().toISOString() })
+      .eq('id', matchId);
+  }
+
+  return {
+    mode: 'duel',
+    index,
+    length: total,
+    charts,
+    health: myHealth,
+    opponentHealth: theirHealth,
+    pending: false,
+    complete: over,
+    // From this player's point of view, which is the only one this response is for.
+    winner: !over ? null : myHealth <= 0 && theirHealth <= 0 ? 'draw' : myHealth <= 0 ? 'them' : 'me',
+  };
 }

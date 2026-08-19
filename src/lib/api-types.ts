@@ -213,7 +213,86 @@ export interface RevealPayload {
    * until an engine has 30 charts behind it.
    */
   style: { available: Record<string, number>; matched: string[] } | null;
+
+  /**
+   * §10.1's Storm or Streak state, after this round moved it. Null outside a run.
+   *
+   * The clock and the score are the server's — `remainingMs` is what was left when the commit was
+   * processed, not a duration the client may extend.
+   */
+  run: RunPayload | null;
+
+  /**
+   * §10.1's duel or race state, after this chart moved it. Null outside a match.
+   *
+   * A duel round reports `pending` until the opponent has played the same position — damage is the
+   * difference between two readings, so there is nothing to apply until both exist. That is the
+   * common state, not an edge case: most duels are played hours apart.
+   */
+  match: MatchPayload | null;
 }
+
+export type MatchPayload =
+  | {
+      mode: 'duel';
+      /** Position in the sequence, 0-based. */
+      index: number;
+      length: number;
+      charts: number;
+      health: number;
+      /** Null until an opponent has taken the other seat. */
+      opponentHealth: number | null;
+      /** True when the opponent has not reached this chart yet, so no damage was exchanged. */
+      pending: boolean;
+      complete: boolean;
+      /** From the reading player's point of view, which is whose response this is. */
+      winner: 'me' | 'them' | 'draw' | null;
+    }
+  | {
+      mode: 'race';
+      index: number;
+      length: number;
+      charts: number;
+      score: number;
+      complete: boolean;
+      /** False if this runner had already seen a chart in the sequence (§10.1's ghost caveat). */
+      clean: boolean;
+      elapsedMs: number;
+    };
+
+/**
+ * A run's state (§10.1), as a union rather than one shape with nulls in it.
+ *
+ * The two modes share a scoring rule and nothing else: Storm has a clock, a score and a combo,
+ * Streak has a length and a skip. A single flat shape would carry four fields that are meaningless
+ * in each mode and let the UI read `combo` off a Streak without complaint. Discriminating on `mode`
+ * makes that a type error instead.
+ */
+export type RunState =
+  | {
+      id: string;
+      mode: 'storm';
+      alive: boolean;
+      /** Charts seen, including passes — a pass costs the clock, so it counts as a chart. */
+      charts: number;
+      score: number;
+      combo: number;
+      bestCombo: number;
+      /** What the server's clock said when it last advanced. Never a duration the client sets. */
+      remainingMs: number;
+    }
+  | {
+      id: string;
+      mode: 'streak';
+      alive: boolean;
+      charts: number;
+      length: number;
+      bestLength: number;
+      skipsLeft: number;
+    };
+
+/** The run state on a reveal, plus the one fact about the round that moved it. */
+export type RunPayload = RunState & { beatMedian: boolean };
 
 /**
  * The player's state in a daily (§10.1).
