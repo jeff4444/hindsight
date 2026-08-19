@@ -25,6 +25,10 @@ export type AuthErrorCode =
   | 'expired-link'
   | 'no-session'
   | 'provider-failed'
+  | 'provider-disabled'
+  | 'access-denied'
+  | 'session-required'
+  | 'password-mismatch'
   | 'unknown';
 
 interface AuthErrorCopy {
@@ -59,6 +63,21 @@ const COPY: Record<AuthErrorCode, AuthErrorCopy> = {
     title: 'Google could not be reached.',
     body: 'Try again, or use a sign-in link instead.',
   },
+  'provider-disabled': {
+    title: 'Google sign-in is not switched on yet.',
+    body: 'Nothing you did — the provider has not been configured for this project. Email yourself a link instead; it signs you into the same account Google would have.',
+  },
+  'access-denied': {
+    title: 'You stopped at the Google screen.',
+    body: 'No account was created and nothing was shared. Try again, or use a sign-in link.',
+  },
+  'session-required': {
+    title: 'That link has already been used.',
+    body: 'Password links work once and last an hour. Send a fresh one.',
+  },
+  'password-mismatch': {
+    title: 'The two passwords do not match.',
+  },
   unknown: {
     title: 'That did not work.',
     body: 'Nothing was lost. Try again, or use a different sign-in method.',
@@ -79,9 +98,37 @@ export function authError(code: string | undefined): AuthErrorCopy | null {
 export function codeForAuthMessage(message: string | undefined): AuthErrorCode {
   const text = (message ?? '').toLowerCase();
   if (text.includes('invalid login') || text.includes('invalid credentials')) return 'invalid-credentials';
+  if (text.includes('provider is not enabled') || text.includes('unsupported provider')) return 'provider-disabled';
   if (text.includes('already registered') || text.includes('already been registered')) return 'email-taken';
   if (text.includes('password should be') || text.includes('weak password')) return 'weak-password';
   if (text.includes('rate limit') || text.includes('too many')) return 'rate-limited';
   if (text.includes('expired') || text.includes('invalid token')) return 'expired-link';
   return 'unknown';
+}
+
+/**
+ * A provider's own failure, as it arrives back at the callback.
+ *
+ * OAuth does not fail by throwing; it fails by redirecting to us with `?error=` set. Before this
+ * existed the callback saw no `code` and no `token_hash`, concluded the link had expired, and told
+ * the player so — which is wrong in the one case they most need a straight answer, because "that
+ * link has expired" reads as *our* fault when in fact they pressed Cancel, or the provider is not
+ * configured at all.
+ */
+export function codeForProviderError(
+  error: string | null | undefined,
+  description?: string | null,
+): AuthErrorCode {
+  const code = (error ?? '').toLowerCase();
+  const text = (description ?? '').toLowerCase();
+
+  if (code === 'access_denied' || text.includes('cancel') || text.includes('denied')) {
+    return 'access-denied';
+  }
+  if (text.includes('provider is not enabled') || text.includes('unsupported provider')) {
+    return 'provider-disabled';
+  }
+  if (code === 'server_error' || code === 'temporarily_unavailable') return 'provider-failed';
+  if (text.includes('expired')) return 'expired-link';
+  return 'provider-failed';
 }
