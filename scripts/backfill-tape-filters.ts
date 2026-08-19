@@ -1,10 +1,10 @@
 /**
- * Compute the tags that three of §11.1's official maps are filtered on.
+ * Compute the tags that three of §11.1's official tapes are filtered on.
  *
- *   npm run map-filters              # only charts that have never been tagged
- *   npm run map-filters -- --recompute
+ *   npm run tape-filters              # only charts that have never been tagged
+ *   npm run tape-filters -- --recompute
  *
- * §11.1 requires that an official map be "defined by a published filter over the regime tags and
+ * §11.1 requires that an official tape be "defined by a published filter over the regime tags and
  * theme tags, not by hand-picking, so the map's difficulty distribution is reproducible". Crash,
  * Euphoria and Council Split each need a tag no chart carries yet, and neither can be computed at
  * query time — the council alone is eight engines over 300 candles per chart.
@@ -13,9 +13,9 @@
  *
  * **`lead_in_drift_atr`** is the move across the *visible* lead-in, expressed in ATRs, as a log
  * return over a relative ATR — see the note on the calculation for why both halves of that matter.
- * It reads `lead_in_bars` rather than the extended history, because the map is a claim about the
+ * It reads `lead_in_bars` rather than the extended history, because the tape is a claim about the
  * chart the player is shown — and those bars are already mirrored (§12.2), so this is the drift on
- * the screen rather than the instrument's. Versioned by `MAP_FILTER_VERSION`; it invalidates map
+ * the screen rather than the instrument's. Versioned by `TAPE_FILTER_VERSION`; it invalidates tape
  * membership and nothing else.
  *
  * **The council columns** read the full stored history, exactly as the council does on the reveal,
@@ -27,21 +27,21 @@
  *
  * Two claims in the scope do not survive it, both recorded in `docs/phase-5d-research.md`:
  *
- * - **Crash and Euphoria are the same map reflected.** Random mirroring means half of every
+ * - **Crash and Euphoria are the same tape reflected.** Random mirroring means half of every
  *   displayed crash is a mirrored rally: 237 charts below −6 ATR against 216 above +6, and 65
- *   against 65 past ±10. A map named Crash here is a map of falling *charts*, not of crash
+ *   against 65 past ±10. A tape named Crash here is a tape of falling *charts*, not of crash
  *   dynamics.
  * - **Council Split is not "the hardest map in the game".** Median `par_r` −1.022 against −1.019 for
  *   the corpus, median pass percentile 0.612 against 0.612, Welch's t of 0.10 and 0.79. Flat.
  *
- * Writes five columns and reads nothing it does not need. Synthetic charts are tagged too — a map
+ * Writes five columns and reads nothing it does not need. Synthetic charts are tagged too — a tape
  * filter is a property of a chart, and §7.2's controls are charts.
  */
 
 import { createClient } from '@supabase/supabase-js';
 import type { Bar } from '../src/core/bars';
 import { council } from '../src/core/engines';
-import { ENGINE_VERSION, MAP_FILTER_VERSION } from '../src/core/versions';
+import { ENGINE_VERSION, TAPE_FILTER_VERSION } from '../src/core/versions';
 
 const RECOMPUTE = process.argv.includes('--recompute');
 const PAGE = 100;
@@ -54,8 +54,8 @@ interface ChartRow {
   entry_price: number;
 }
 
-/** Everything the map filters store for one chart. Pure given the row. */
-export function mapFiltersFor(row: {
+/** Everything the tape filters store for one chart. Pure given the row. */
+export function tapeFiltersFor(row: {
   id: string;
   lead_in_bars: Bar[];
   lead_in_extra: Bar[] | null;
@@ -67,8 +67,8 @@ export function mapFiltersFor(row: {
    * A *log* return over a *relative* ATR, normalised by the window's geometric mean price.
    *
    * All three choices are forced by one requirement: §12.2 mirrors half the corpus at random, so
-   * **mirroring a chart must negate its drift**, or Crash and Euphoria are not the same map
-   * reflected and any asymmetry between them is an artifact. `tests/map-filters.test.ts` is that
+   * **mirroring a chart must negate its drift**, or Crash and Euphoria are not the same tape
+   * reflected and any asymmetry between them is an artifact. `tests/tape-filters.test.ts` is that
    * requirement as a test, and it rejected two earlier definitions.
    *
    * - `(last - first) / atr14` fails twice. The mirror is `BASE² / p`, exact in *log* space, so a
@@ -106,7 +106,7 @@ export function mapFiltersFor(row: {
 
   return {
     lead_in_drift_atr: drift,
-    map_filter_version: MAP_FILTER_VERSION,
+    tape_filter_version: TAPE_FILTER_VERSION,
     council_speakers: schools.length,
     // 0 when unanimous or silent. The minority side is the honest measure of conflict: two schools
     // agreeing is not a split, and one school speaking alone is not either.
@@ -135,14 +135,14 @@ async function run() {
       .select('id, lead_in_bars, lead_in_extra, atr14, entry_price')
       .order('id')
       .range(from, from + PAGE - 1);
-    if (!RECOMPUTE) query = query.is('map_filter_version', null);
+    if (!RECOMPUTE) query = query.is('tape_filter_version', null);
 
     const { data, error } = await query;
     if (error) throw new Error(error.message);
     if (!data || data.length === 0) break;
 
     for (const row of data as ChartRow[]) {
-      const columns = mapFiltersFor(row);
+      const columns = tapeFiltersFor(row);
       const { error: writeError } = await supabase.from('charts').update(columns).eq('id', row.id);
       if (writeError) throw new Error(writeError.message);
 
@@ -153,7 +153,7 @@ async function run() {
       if (done % 200 === 0) console.log(`  ${done} tagged`);
     }
 
-    // Without --recompute the filter is `map_filter_version is null`, so finished rows leave the
+    // Without --recompute the filter is `tape_filter_version is null`, so finished rows leave the
     // result set and paging forward would skip the ones that shift down into the window.
     if (!RECOMPUTE) from = -PAGE;
     if (data.length < PAGE) break;
@@ -184,10 +184,10 @@ async function run() {
   console.log('at random, so Crash and Euphoria are the same charts reflected. See docs/phase-5d-research.md.');
 }
 
-// Only when invoked as the script. `mapFiltersFor` is imported by `tests/map-filters.test.ts`, and
+// Only when invoked as the script. `tapeFiltersFor` is imported by `tests/tape-filters.test.ts`, and
 // an unguarded `run()` would have the test suite rewrite the corpus — the same guard
 // `backfill-manage.ts` carries, for the same reason.
-if (process.argv[1] && process.argv[1].endsWith('backfill-map-filters.ts')) {
+if (process.argv[1] && process.argv[1].endsWith('backfill-tape-filters.ts')) {
   run().catch((error) => {
     console.error(error);
     process.exit(1);

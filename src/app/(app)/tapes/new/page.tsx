@@ -3,20 +3,20 @@ import { redirect } from 'next/navigation';
 import { currentViewer } from '@/lib/viewer';
 import { Eyebrow } from '@/components/ui';
 import { Icon } from '@/components/ui/icons';
-import { MapBuilder } from '@/components/tapes/MapBuilder';
+import { TapeBuilder } from '@/components/tapes/TapeBuilder';
 
 export const dynamic = 'force-dynamic';
 
-export const metadata = { title: 'New map' };
+export const metadata = { title: 'New tape' };
 
 /**
  * §11.2's builder.
  *
- * Sign-in is required and enforced here as well as in `/api/tapes`. A map is a thing an operator
+ * Sign-in is required and enforced here as well as in `/api/tapes`. A tape is a thing an operator
  * comes back to, shares by link and reads a cohort off — none of which survives an anonymous session
  * whose only identity is a cookie the player may clear.
  */
-export default async function NewMapPage() {
+export default async function NewTapePage() {
   const viewer = await currentViewer();
   if (!viewer.userId) redirect('/sign-in?next=/tapes/new');
 
@@ -31,7 +31,7 @@ export default async function NewMapPage() {
       </Link>
 
       <div className="mt-5">
-        <Eyebrow>Make a map</Eyebrow>
+        <Eyebrow>Make a tape</Eyebrow>
         <h1 className="text-ink-max mt-1.5 text-3xl font-semibold text-balance">
           A slice of the library, defined by a rule
         </h1>
@@ -44,7 +44,7 @@ export default async function NewMapPage() {
       </div>
 
       <div className="mt-8">
-        <MapBuilder />
+        <TapeBuilder />
       </div>
     </div>
   );

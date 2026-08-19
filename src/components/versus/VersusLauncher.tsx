@@ -98,7 +98,7 @@ export function VersusLauncher({ tapes }: { tapes: { slug: string; name: string;
         </section>
 
         <section>
-          <Eyebrow>Map</Eyebrow>
+          <Eyebrow>Tape</Eyebrow>
           <div className="mt-2 flex flex-wrap gap-2">
             {tapes.map((t) => (
               <button

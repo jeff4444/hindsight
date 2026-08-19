@@ -52,7 +52,7 @@ export default async function TapesPage() {
           href="/tapes/mine"
           className="press border-line bg-surface-1 text-ink-hi hover:border-line-strong rounded-md border px-3 py-1.5 text-sm transition-colors"
         >
-          Your maps
+          Your tapes
         </Link>
       </div>
 

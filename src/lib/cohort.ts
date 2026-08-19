@@ -1,7 +1,7 @@
 import { serviceClient } from '@/lib/supabase/server';
 
 /**
- * §11.2's cohort roll-up: the operator's view over a map's players.
+ * §11.2's cohort roll-up: the operator's view over a tape's players.
  *
  * > "Cohort dashboards for the owner: aggregate scores, weakest axes across the group, per-student
  * > progress, per-theme ratings."
@@ -19,9 +19,9 @@ import { serviceClient } from '@/lib/supabase/server';
  *
  * ## There is no invitation, so this is everyone who played
  *
- * §11.2 imagines a cohort as an operator's students. Nothing in the product invites anyone to a map:
- * a link is a link. So this is every player who has committed a round on the map, which for a
- * private or unlisted map is the cohort and for a public one is the public. The page names which.
+ * §11.2 imagines a cohort as an operator's students. Nothing in the product invites anyone to a
+ * tape: a link is a link. So this is every player who has committed a round on the tape, which for a
+ * private or unlisted tape is the cohort and for a public one is the public. The page names which.
  */
 
 export interface CohortPlayer {

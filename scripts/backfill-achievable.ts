@@ -146,7 +146,7 @@ async function run() {
     console.log(
       `par_r < 0        ${negativePar}/${parValues.length} ` +
         `(${((negativePar / parValues.length) * 100).toFixed(0)}%) — charts where passing beats ` +
-        `most entries (§4.4), and the Null Set map (§11.1)`,
+        `most entries (§4.4), and the Null Set tape (§11.1)`,
     );
   }
   console.log('done');
