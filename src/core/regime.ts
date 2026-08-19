@@ -43,7 +43,7 @@ export function efficiencyRatio(closes: readonly number[]): number {
  * that baseline rather than round numbers someone liked.
  *
  * §11.1 independently fixes the bottom of the range — "Chop — efficiency ratio below 0.2" — for
- * the official map of that name, which spans the first two buckets here.
+ * the official tape of that name, which spans the first two buckets here.
  */
 export const ER_BUCKETS = ['chop', 'noise', 'directional', 'trend'] as const;
 export type ErBucket = (typeof ER_BUCKETS)[number];

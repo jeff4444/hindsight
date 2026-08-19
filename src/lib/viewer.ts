@@ -351,20 +351,33 @@ export interface Tape {
   tierLocked: boolean;
   charts: number;
   lockedReason: string | null;
-  /** Null for §11.1's official maps. Non-null is what makes a tape someone's (§11.2). */
+  /** Null for §11.1's official tapes. Non-null is what makes a tape someone's (§11.2). */
   ownerId: string | null;
   visibility: 'private' | 'unlisted' | 'public';
   isOwner: boolean;
   /**
    * The published rule, in the shape the UI prints it.
    *
-   * Required rather than optional, so no caller can render a map without being able to say what is
+   * Required rather than optional, so no caller can render a tape without being able to say what is
    * in it. §11.1's requirement is that the definition is *published*, not merely applied.
    */
-  filter: TapeFilter;
+  filter: StoredTapeFilter;
 }
 
-export interface TapeFilter {
+/**
+ * A tape's filter as the database hands it back.
+ *
+ * String arrays rather than `@/core/tapes`'s `TapeFilter`, and the difference is the direction of
+ * travel. That one is what a person may *write*: a closed vocabulary, enforced by zod at the one
+ * route that inserts a tape. This one is what comes *back* out of three text[] columns carrying no
+ * check constraint, so naming the buckets here would be a cast asserting something the schema does
+ * not promise.
+ *
+ * Nothing downstream needs the narrower type: `describeFilter` prints these, and it takes
+ * `readonly string[]` precisely so both shapes can reach it. A value the vocabulary has since
+ * dropped therefore prints as itself rather than crashing the page that lists it.
+ */
+export interface StoredTapeFilter {
   er: string[];
   vol: string[];
   themes: string[];
@@ -374,7 +387,7 @@ export interface TapeFilter {
 }
 
 /** The filter columns as the UI wants them. One reader, so the three call sites cannot disagree. */
-function filterOf(row: Record<string, unknown>): TapeFilter {
+function filterOf(row: Record<string, unknown>): StoredTapeFilter {
   return {
     er: (row.er_buckets as string[] | null) ?? [],
     vol: (row.vol_buckets as string[] | null) ?? [],
@@ -419,7 +432,7 @@ export async function listTapes(): Promise<Tape[]> {
         tierLocked: Boolean(t.tier_locked),
         lockedReason: t.locked_reason as string | null,
         // Everything on this index is official by construction: the query filters `published`, and
-        // a creator map is never published.
+        // a creator tape is never published.
         ownerId: null,
         visibility: 'public' as const,
         isOwner: false,
@@ -436,12 +449,12 @@ export async function listTapes(): Promise<Tape[]> {
  *
  * Not `listTapes().find(...)` any more, for two reasons that both matter. That version counted every
  * tape in the library to answer a question about one of them; and it filtered on `published`, which
- * creator maps deliberately are not — an owner's map is reached from their own page and from its
+ * creator tapes deliberately are not — an owner's tape is reached from their own page and from its
  * share link, never from the official grid.
  *
- * Visibility is enforced here *and* in `issue_round`. This one stops a private map being *read*; the
+ * Visibility is enforced here *and* in `issue_round`. This one stops a private tape being *read*; the
  * one in the database stops it being *played*. Neither is redundant: a page that hid itself but
- * still issued rounds would be a private map anyone could farm by guessing the play URL.
+ * still issued rounds would be a private tape anyone could farm by guessing the play URL.
  */
 export async function getTape(slug: string, viewerUserId?: string | null): Promise<Tape | null> {
   const supabase = serviceClient();
@@ -475,7 +488,7 @@ export async function getTape(slug: string, viewerUserId?: string | null): Promi
   };
 }
 
-/** Every map this user owns, newest first. */
+/** Every tape this user owns, newest first. */
 export async function listMyTapes(userId: string): Promise<Tape[]> {
   const supabase = serviceClient();
   const { data, error } = await supabase
@@ -486,7 +499,7 @@ export async function listMyTapes(userId: string): Promise<Tape[]> {
     .eq('owner_id', userId)
     .order('created_at', { ascending: false });
 
-  if (error) throw new Error(`could not list your maps: ${error.message}`);
+  if (error) throw new Error(`could not list your tapes: ${error.message}`);
 
   return Promise.all(
     (data ?? []).map(async (row) => ({

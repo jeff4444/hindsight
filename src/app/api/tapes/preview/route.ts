@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { serviceClient } from '@/lib/supabase/server';
-import { DRIFT_LIMIT, MAP_VOCABULARY, type MapFilter } from '@/core/maps';
+import { DRIFT_LIMIT, TAPE_VOCABULARY, type TapeFilter } from '@/core/tapes';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic';
  * The builder is a form whose one consequential output is invisible: a person picking conditions has
  * no way to know whether they have described a third of the library or four charts. §11.1's whole
  * argument for filters over hand-picking is that the resulting difficulty distribution is
- * reproducible — but a map of four charts has a distribution nobody should quote, and finding that
+ * reproducible — but a tape of four charts has a distribution nobody should quote, and finding that
  * out only at creation means starting the form again.
  *
  * The same predicates as `/api/tapes` and `issue_round`. Three copies of one filter is two too many,
@@ -23,9 +23,9 @@ export const dynamic = 'force-dynamic';
  */
 
 const schema = z.object({
-  er: z.array(z.enum(MAP_VOCABULARY.er)).max(4).default([]),
-  vol: z.array(z.enum(MAP_VOCABULARY.vol)).max(4).default([]),
-  themes: z.array(z.enum(MAP_VOCABULARY.themes)).max(6).default([]),
+  er: z.array(z.enum(TAPE_VOCABULARY.er)).max(4).default([]),
+  vol: z.array(z.enum(TAPE_VOCABULARY.vol)).max(4).default([]),
+  themes: z.array(z.enum(TAPE_VOCABULARY.themes)).max(6).default([]),
   driftBelow: z.number().min(-DRIFT_LIMIT).max(DRIFT_LIMIT).nullable().default(null),
   driftAbove: z.number().min(-DRIFT_LIMIT).max(DRIFT_LIMIT).nullable().default(null),
   councilSplit: z.boolean().default(false),
@@ -36,7 +36,7 @@ export async function POST(request: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
   }
-  const filter = parsed.data as MapFilter;
+  const filter = parsed.data as TapeFilter;
 
   const supabase = serviceClient();
   let query = supabase.from('charts').select('id', { count: 'exact', head: true });
@@ -49,7 +49,7 @@ export async function POST(request: Request) {
 
   const { count, error } = await query;
   if (error) {
-    console.error('map preview failed', error);
+    console.error('tape preview failed', error);
     return NextResponse.json({ error: 'Could not count that.' }, { status: 500 });
   }
 

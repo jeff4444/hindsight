@@ -986,6 +986,22 @@ const INPUT_CLASS =
   "bg-surface-1 border-line text-ink placeholder:text-ink-faint h-12 w-full rounded-lg border px-3.5 text-base " +
   "transition-colors outline-none focus:border-focus";
 
+/**
+ * A labelled control, with its hint and its error.
+ *
+ * Two shapes, because there are two kinds of caller. Pass input props and `Field` renders the
+ * `<input>` itself — that is the common case and the one the sign-in form uses. Pass a control as
+ * `children` and it wraps yours instead, which is the only way to put a `<textarea>` or a
+ * controlled input under this label.
+ *
+ * The second shape is not a convenience. Without it, `children` fell into `...rest` and was spread
+ * onto the `<input>` — and an input is a void element, so React *throws* rather than warns. The tape
+ * builder did exactly that and took `/tapes/new` down to the error boundary with it.
+ *
+ * Association differs between the two on purpose. The input shape points a `htmlFor` at the caller's
+ * `id`; the children shape has no id to point at, so the `<label>` wraps the control and associates
+ * it implicitly rather than aiming at an id nobody supplied.
+ */
 export function Field({
   label,
   hint,
@@ -993,14 +1009,44 @@ export function Field({
   mono,
   id,
   className,
+  children,
   ...rest
 }: {
   label: string;
   hint?: string;
   error?: string;
   mono?: boolean;
+  children?: ReactNode;
 } & React.InputHTMLAttributes<HTMLInputElement>) {
   const describedBy = error ? `${id}-error` : hint ? `${id}-hint` : undefined;
+  const note = error ? (
+    <p
+      id={id ? `${id}-error` : undefined}
+      role="alert"
+      className="text-short-ink mt-1.5 text-xs"
+    >
+      {error}
+    </p>
+  ) : hint ? (
+    <p id={id ? `${id}-hint` : undefined} className="text-ink-dim mt-1.5 text-xs">
+      {hint}
+    </p>
+  ) : null;
+
+  if (children) {
+    return (
+      <div className={className}>
+        <label className="block">
+          <span className="text-ink-lo mb-1.5 block text-sm font-medium">
+            {label}
+          </span>
+          {children}
+        </label>
+        {note}
+      </div>
+    );
+  }
+
   return (
     <div className={className}>
       <label
@@ -1020,19 +1066,7 @@ export function Field({
           error && "border-short-line",
         )}
       />
-      {error ? (
-        <p
-          id={`${id}-error`}
-          role="alert"
-          className="text-short-ink mt-1.5 text-xs"
-        >
-          {error}
-        </p>
-      ) : hint ? (
-        <p id={`${id}-hint`} className="text-ink-dim mt-1.5 text-xs">
-          {hint}
-        </p>
-      ) : null}
+      {note}
     </div>
   );
 }

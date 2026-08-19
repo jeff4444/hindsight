@@ -16,7 +16,7 @@ export const dynamic = 'force-dynamic';
  * that is the whole reason the draw waits: both players must see the same charts, and a chart either
  * of them has already played is one they have already been shown the answer to.
  *
- * If the map cannot supply enough charts unseen by both, the join fails and says so. It does not
+ * If the tape cannot supply enough charts unseen by both, the join fails and says so. It does not
  * quietly shorten the duel, and it does not fall back to charts one player has seen — a duel decided
  * by which player recognised chart four is not a duel.
  *
@@ -90,7 +90,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     if (!drawn) {
       return NextResponse.json(
         {
-          error: `Between you, you have played too much of that map for a fair ${match.length}-chart duel. Try a bigger map or a shorter one.`,
+          error: `Between you, you have played too much of that tape for a fair ${match.length}-chart duel. Try a bigger tape or a shorter one.`,
         },
         { status: 422 },
       );

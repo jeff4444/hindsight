@@ -107,14 +107,14 @@ export const MANAGE_VERSION = 'manage-1';
 export const RATING_VERSION = 'rating-1';
 
 /**
- * The map filter tags: the lead-in drift that Crash and Euphoria select on.
+ * The tape filter tags: the lead-in drift that Crash and Euphoria select on.
  *
- * Separate from everything above because of what it invalidates, which is *map membership* and
- * nothing else. A change here moves charts in and out of a map, so §11.1's promise that a map's
+ * Separate from everything above because of what it invalidates, which is *tape membership* and
+ * nothing else. A change here moves charts in and out of a tape, so §11.1's promise that a tape's
  * difficulty distribution is reproducible only holds within one version of the rule. It invalidates
  * no percentile, no rating and no track record.
  *
  * The council columns are versioned by `ENGINE_VERSION` instead, since they are the council's output
  * and move when the roster does.
  */
-export const MAP_FILTER_VERSION = 'map-filter-1';
+export const TAPE_FILTER_VERSION = 'tape-filter-1';

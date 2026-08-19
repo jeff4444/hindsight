@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { currentViewer, getTape } from '@/lib/viewer';
-import { describeFilter } from '@/core/maps';
+import { describeFilter } from '@/core/tapes';
 import { Button, Chip, Eyebrow, Panel } from '@/components/ui';
 import { Icon } from '@/components/ui/icons';
 import { TapeLaunch } from '@/components/tapes/TapeLaunch';
@@ -29,7 +29,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 export default async function TapePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const viewer = await currentViewer();
-  // A private map is not found rather than forbidden: 404 and 403 differ only in whether they
+  // A private tape is not found rather than forbidden: 404 and 403 differ only in whether they
   // confirm the thing exists, and confirming it exists is exactly what private means it should not.
   const tape = await getTape(slug, viewer.userId);
   if (!tape) notFound();
@@ -49,7 +49,7 @@ export default async function TapePage({ params }: { params: Promise<{ slug: str
 
       <div className="mt-5 grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
         <div>
-          <Eyebrow>{tape.ownerId ? 'A map someone made' : 'Tape'}</Eyebrow>
+          <Eyebrow>{tape.ownerId ? 'A tape someone made' : 'Tape'}</Eyebrow>
           <div className="mt-1.5 flex flex-wrap items-center gap-2">
             <h1 className="text-ink-max text-3xl font-semibold text-balance">{tape.name}</h1>
             {tape.ownerId && <Chip tone="neutral">{tape.visibility}</Chip>}
@@ -59,8 +59,8 @@ export default async function TapePage({ params }: { params: Promise<{ slug: str
             {locked ? tape.lockedReason : tape.blurb}
           </p>
 
-          {/* The rule, printed rather than merely applied. §11.1's requirement is that a map's
-              definition is published — and for a creator map that matters more, not less, because
+          {/* The rule, printed rather than merely applied. §11.1's requirement is that a tape's
+              definition is published — and for a creator tape that matters more, not less, because
               the owner's own description is marketing and this is not. */}
           {conditions.length > 0 && (
             <div className="border-line-faint mt-6 border-t pt-4">

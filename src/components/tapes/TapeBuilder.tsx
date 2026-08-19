@@ -6,35 +6,35 @@ import { TIERS, type TierCode } from '@/core/tiers';
 import {
   DRIFT_LIMIT,
   EMPTY_FILTER,
-  MAP_VOCABULARY,
-  MIN_MAP_CHARTS,
+  TAPE_VOCABULARY,
+  MIN_TAPE_CHARTS,
   describeFilter,
   hasAnyCondition,
-  type MapFilter,
+  type TapeFilter,
   type Visibility,
-} from '@/core/maps';
+} from '@/core/tapes';
 import { Button, Eyebrow, Field, INPUT_CLASS, Panel, cx } from '../ui';
 
 /**
- * §11.2's map builder.
+ * §11.2's tape builder.
  *
  * The whole design problem here is that the consequential output is invisible. Someone picking
  * conditions cannot see whether they have described a third of the library or four charts, and
  * finding out at submit means starting again — so the count is live, it is the largest number on the
  * screen, and the create button refuses below §11.1's usable minimum.
  *
- * The vocabulary is closed on purpose and the reason is worth reading in `src/core/maps.ts`: every
- * condition is a stored tag computed from the lead-in, which is what makes a map's difficulty
+ * The vocabulary is closed on purpose and the reason is worth reading in `src/core/tapes.ts`: every
+ * condition is a stored tag computed from the lead-in, which is what makes a tape's difficulty
  * distribution reproducible (§11.1) and what keeps §12.1 intact. Hand-picking, which §11.2 also
  * offers, is deliberately absent.
  */
-export function MapBuilder() {
+export function TapeBuilder() {
   const router = useRouter();
   const [name, setName] = useState('');
   const [blurb, setBlurb] = useState('');
   const [visibility, setVisibility] = useState<Visibility>('unlisted');
   const [lockedTier, setLockedTier] = useState<TierCode | null>(null);
-  const [filter, setFilter] = useState<MapFilter>(EMPTY_FILTER);
+  const [filter, setFilter] = useState<TapeFilter>(EMPTY_FILTER);
   const [charts, setCharts] = useState<number | null>(null);
   const [counting, setCounting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -70,7 +70,7 @@ export function MapBuilder() {
   // A count belongs to a filter. With no conditions there is nothing to count, and showing the last
   // filter's number beside no conditions would be showing someone a stale answer.
   const shownCharts = hasAnyCondition(filter) ? charts : null;
-  const tooSmall = shownCharts !== null && shownCharts < MIN_MAP_CHARTS;
+  const tooSmall = shownCharts !== null && shownCharts < MIN_TAPE_CHARTS;
   const ready = name.trim().length >= 3 && hasAnyCondition(filter) && shownCharts !== null && !tooSmall;
 
   async function create() {
@@ -84,7 +84,7 @@ export function MapBuilder() {
     const body = await response.json().catch(() => ({}));
     setBusy(false);
     if (!response.ok) {
-      setError(body.error ?? 'Could not create the map.');
+      setError(body.error ?? 'Could not create the tape.');
       return;
     }
     router.push(`/tapes/${body.slug}`);
@@ -117,13 +117,13 @@ export function MapBuilder() {
           <Eyebrow>Conditions</Eyebrow>
           <p className="text-ink-lo mt-2 max-w-prose text-sm leading-relaxed">
             Every condition reads a tag computed from the lead-in alone. That is what makes the
-            map&rsquo;s difficulty distribution reproducible, and it is why nothing here can filter on
-            what happened next — a map that could would announce part of the answer in its own
+            tape&rsquo;s difficulty distribution reproducible, and it is why nothing here can filter on
+            what happened next — a tape that could would announce part of the answer in its own
             definition.
           </p>
 
           <Group label="Regime">
-            {MAP_VOCABULARY.er.map((value) => (
+            {TAPE_VOCABULARY.er.map((value) => (
               <Toggle
                 key={value}
                 active={filter.er.includes(value)}
@@ -137,7 +137,7 @@ export function MapBuilder() {
           </Group>
 
           <Group label="Volatility">
-            {MAP_VOCABULARY.vol.map((value) => (
+            {TAPE_VOCABULARY.vol.map((value) => (
               <Toggle
                 key={value}
                 active={filter.vol.includes(value)}
@@ -149,7 +149,7 @@ export function MapBuilder() {
           </Group>
 
           <Group label="Themes" hint="A chart qualifies if it carries any one of these.">
-            {MAP_VOCABULARY.themes.map((value) => (
+            {TAPE_VOCABULARY.themes.map((value) => (
               <Toggle
                 key={value}
                 active={filter.themes.includes(value)}
@@ -207,8 +207,8 @@ export function MapBuilder() {
         <section>
           <Eyebrow>Ruleset</Eyebrow>
           <p className="text-ink-lo mt-2 max-w-prose text-sm leading-relaxed">
-            Lock one and everybody plays this map under it, which is what makes a cohort&rsquo;s
-            results comparable. Mods are off on a locked map for the same reason.
+            Lock one and everybody plays this tape under it, which is what makes a cohort&rsquo;s
+            results comparable. Mods are off on a locked tape for the same reason.
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             <Toggle active={lockedTier === null} onClick={() => setLockedTier(null)}>
@@ -250,7 +250,7 @@ export function MapBuilder() {
       </div>
 
       <Panel tone="hero" pad="md" className="lg:sticky lg:top-6">
-        <Eyebrow>In this map</Eyebrow>
+        <Eyebrow>In this tape</Eyebrow>
         <div className="mt-1.5 flex items-baseline gap-2">
           <span
             className={cx(
@@ -272,13 +272,13 @@ export function MapBuilder() {
           </ul>
         ) : (
           <p className="text-ink-dim mt-4 text-sm leading-relaxed">
-            Pick at least one condition. A map with none is the whole library, which already exists.
+            Pick at least one condition. A tape with none is the whole library, which already exists.
           </p>
         )}
 
         {tooSmall && (
           <p className="text-loss-ink mt-4 text-sm leading-relaxed">
-            A map needs at least {MIN_MAP_CHARTS} charts. Below that the same ones come round inside a
+            A tape needs at least {MIN_TAPE_CHARTS} charts. Below that the same ones come round inside a
             single sitting.
           </p>
         )}
@@ -292,7 +292,7 @@ export function MapBuilder() {
           className="mt-6 w-full"
           disabled={!ready || busy}
         >
-          {busy ? 'Creating…' : 'Create the map'}
+          {busy ? 'Creating…' : 'Create the tape'}
         </Button>
       </Panel>
     </div>

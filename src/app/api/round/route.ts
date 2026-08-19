@@ -54,12 +54,12 @@ export async function POST(request: Request) {
   const lockedTo = tapeRuleset?.tier_locked ? (tapeRuleset.tier as string) : null;
 
   // A lock that does not resolve refuses the round. Falling back to the default here would issue a
-  // *different* ruleset than the map requires and record it as if it were the required one, which is
+  // *different* ruleset than the tape requires and record it as if it were the required one, which is
   // the same silent invalidation the failed-lookup branch above exists to avoid.
   if (lockedTo !== null && !isTierCode(lockedTo)) {
     console.error('tape locked to an unknown ruleset', { tape, lockedTo });
     return NextResponse.json(
-      { error: 'This map requires a ruleset that no longer exists. It cannot be played until its owner changes it.' },
+      { error: 'This tape requires a ruleset that no longer exists. It cannot be played until its owner changes it.' },
       { status: 409 },
     );
   }
@@ -90,8 +90,8 @@ export async function POST(request: Request) {
   if (error) {
     console.error('issue_round failed', error);
     const empty = error.message.includes('corpus is empty');
-    // A private map answers exactly as a missing one does. The two differ only in whether they
-    // confirm the map exists, and confirming that is the one thing private has to withhold.
+    // A private tape answers exactly as a missing one does. The two differ only in whether they
+    // confirm the tape exists, and confirming that is the one thing private has to withhold.
     const badTape =
       error.message.includes('no such tape') ||
       error.message.includes('is locked') ||

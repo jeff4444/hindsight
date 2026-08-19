@@ -23,8 +23,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
  * is, today, one player — so *"the group's weakest axis"* is that player's weakest axis with extra
  * words. Every figure carries its sample size and the same §4.9 gate a player's own percentile gets.
  *
- * Owner-only, and 404 rather than 403 for anyone else: a page that says "forbidden" confirms the map
- * exists, which is the one thing a private map must not do.
+ * Owner-only, and 404 rather than 403 for anyone else: a page that says "forbidden" confirms the tape
+ * exists, which is the one thing a private tape must not do.
  */
 export default async function CohortPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -51,7 +51,7 @@ export default async function CohortPage({ params }: { params: Promise<{ slug: s
         <Eyebrow>Cohort</Eyebrow>
         <h1 className="text-ink-max mt-1.5 text-2xl font-semibold">{tape.name}</h1>
         <p className="text-ink-lo mt-3 max-w-prose text-sm leading-relaxed">
-          Everyone who has committed a round on this map.{' '}
+          Everyone who has committed a round on this tape.{' '}
           {tape.visibility === 'public'
             ? 'It is public, so this is the public rather than a class — there is no invitation in this product, and a link is a link.'
             : 'It is not listed, so this is whoever you gave the link to.'}
@@ -63,7 +63,7 @@ export default async function CohortPage({ params }: { params: Promise<{ slug: s
           <EmptyState
             icon="distribution"
             title="Nobody has played it yet"
-            body="Share the map's link. Results appear here as rounds are committed — nothing is counted until an order is placed, so an opened-and-abandoned chart never inflates the numbers."
+            body="Share the tape's link. Results appear here as rounds are committed — nothing is counted until an order is placed, so an opened-and-abandoned chart never inflates the numbers."
           />
         </div>
       ) : (
@@ -90,7 +90,7 @@ export default async function CohortPage({ params }: { params: Promise<{ slug: s
 
             {single && (
               <p className="text-attention-ink bg-attention/10 ring-attention/30 mt-5 max-w-prose rounded-md px-3 py-2 text-sm leading-relaxed ring-1">
-                One player has results on this map, so nothing below is a group statistic. A
+                One player has results on this tape, so nothing below is a group statistic. A
                 cohort&rsquo;s weakest axis needs a cohort; this is one person&rsquo;s weakest axis
                 with a wider heading.
               </p>
@@ -178,8 +178,8 @@ export default async function CohortPage({ params }: { params: Promise<{ slug: s
               Every other number in this product is published beside a measured null — a shuffle, a
               coin flip, a random engine. This page has none available: there is no second cohort to
               compare yours against, and no baseline for what a group of a given size should score on
-              a map of a given difficulty. Read it as a description of who did what, not as evidence
-              that the map taught anybody anything.
+              a tape of a given difficulty. Read it as a description of who did what, not as evidence
+              that the tape taught anybody anything.
             </p>
           </Panel>
         </>

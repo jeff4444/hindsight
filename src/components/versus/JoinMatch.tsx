@@ -8,7 +8,7 @@ import { Button } from '../ui';
  * Take the seat, then play.
  *
  * Joining a duel is what draws its charts, so the failure worth handling is the one where it cannot:
- * between them the two players may have played too much of the map for a fair sequence to exist. The
+ * between them the two players may have played too much of the tape for a fair sequence to exist. The
  * server refuses rather than shortening the duel or reusing a chart one of them has seen, and this
  * shows what it said.
  */

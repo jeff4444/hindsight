@@ -25,7 +25,7 @@ export function TapeLaunch({
   slug: string;
   locked: boolean;
   /**
-   * §11.2's tier lock. When a map requires a ruleset, the choice is not the player's — and the
+   * §11.2's tier lock. When a tape requires a ruleset, the choice is not the player's — and the
    * surface says so rather than accepting a pick and quietly issuing something else.
    */
   requiredTier?: string | null;
@@ -53,7 +53,7 @@ export function TapeLaunch({
         <Eyebrow>Ruleset</Eyebrow>
         {pinned && (
           <p className="text-attention-ink bg-attention/10 ring-attention/30 mt-2 rounded-md px-3 py-2 text-sm ring-1">
-            This map requires <span className="font-mono font-semibold">{pinned}</span>, so every
+            This tape requires <span className="font-mono font-semibold">{pinned}</span>, so every
             result on it is comparable. Mods are off here for the same reason.
           </p>
         )}

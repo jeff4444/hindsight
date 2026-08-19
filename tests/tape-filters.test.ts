@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { mapFiltersFor } from '../scripts/backfill-map-filters';
+import { tapeFiltersFor } from '../scripts/backfill-tape-filters';
 import { INDEX_BASE, mirrorBar } from '../src/core/normalize';
 import type { Bar } from '../src/core/bars';
 import { atr } from '../src/core/atr';
 
 /**
- * The map filter tags, and mostly the one property that caught a real error.
+ * The tape filter tags, and mostly the one property that caught a real error.
  *
  * §11.1's Crash and Euphoria are selected on lead-in drift, and §12.2 mirrors half the corpus at
  * random. Those two facts together give a property no other tag in this product has: **mirroring a
@@ -55,7 +55,7 @@ function atrOf(bars: Bar[]): number {
 }
 
 function driftOf(bars: Bar[]): number {
-  return mapFiltersFor({
+  return tapeFiltersFor({
     id: 'a-fixed-id-so-engine-zero-is-fixed',
     lead_in_bars: bars,
     lead_in_extra: null,
@@ -75,25 +75,25 @@ describe('drift survives the mirror, which is what makes Crash and Euphoria hone
     expect(a).toBeGreaterThan(0);
     expect(b).toBeLessThan(0);
     // Measured at 2.6% on this fixture, which sits out at roughly ±13 ATR — the tail where the two
-    // maps actually live, not the median chart. Against the 2.3× the linear definition produced over
+    // tapes actually live, not the median chart. Against the 2.3× the linear definition produced over
     // the real corpus. This is the number that decides whether Crash and Euphoria can be called the
-    // same map reflected, and it is checked rather than assumed.
+    // same tape reflected, and it is checked rather than assumed.
     expect(Math.abs(a + b) / Math.abs(a)).toBeLessThan(0.03);
   });
 
   it('degrades only in the second order, so an extreme chart is wrong but not misleading', () => {
     // Stated as a bound rather than left implicit: a chart that ran 61% inside its lead-in is
     // mismeasured by about a fifth. None exist in the corpus, and if one ever does, this is the size
-    // of the error it carries into a map rather than a surprise found later.
+    // of the error it carries into a tape rather than a surprise found later.
     const steep = rising(60, 1.008);
     const a = driftOf(steep);
     const b = driftOf(steep.map(mirrorBar));
     expect(Math.abs(a + b) / Math.abs(a)).toBeLessThan(0.25);
   });
 
-  it('does not change when the chart is re-indexed, so a map cannot select on price level', () => {
+  it('does not change when the chart is re-indexed, so a tape cannot select on price level', () => {
     // §12.2 indexes every chart to 100 at the first visible candle. A drift measure that moved with
-    // the raw price level would put expensive instruments in one map and cheap ones in the other.
+    // the raw price level would put expensive instruments in one tape and cheap ones in the other.
     const base = rising();
     const scaled = base.map((b) => ({ ...b, o: b.o * 7, h: b.h * 7, l: b.l * 7, c: b.c * 7 }));
     expect(driftOf(scaled)).toBeCloseTo(driftOf(base), 6);
@@ -111,7 +111,7 @@ describe('the council columns count schools, not the null', () => {
     // Counting the null would make every chart look like a live council: Engine Zero never abstains,
     // so `council_speakers` would have a floor of one on every chart in the corpus.
     const bars = rising();
-    const tags = mapFiltersFor({
+    const tags = tapeFiltersFor({
       id: 'zero-must-not-be-counted',
       lead_in_bars: bars,
       lead_in_extra: null,
@@ -126,7 +126,7 @@ describe('the council columns count schools, not the null', () => {
 
   it('reports no conflict when nothing conflicts', () => {
     const bars = rising();
-    const tags = mapFiltersFor({
+    const tags = tapeFiltersFor({
       id: 'unanimous-or-silent',
       lead_in_bars: bars,
       lead_in_extra: null,

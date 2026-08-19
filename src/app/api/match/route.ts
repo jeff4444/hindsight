@@ -65,14 +65,14 @@ export async function POST(request: Request) {
       console.error('draw_sequence failed', error);
       const badTape = error.message.includes('no such tape') || error.message.includes('is locked');
       return NextResponse.json(
-        { error: badTape ? 'That map is not open.' : 'Could not open the race.' },
+        { error: badTape ? 'That tape is not open.' : 'Could not open the race.' },
         { status: badTape ? 404 : 500 },
       );
     }
     if (!data) {
       return NextResponse.json(
         {
-          error: `That map cannot supply ${length} charts you have not already played. Pick a bigger map or a shorter race.`,
+          error: `That tape cannot supply ${length} charts you have not already played. Pick a bigger tape or a shorter race.`,
         },
         { status: 422 },
       );
