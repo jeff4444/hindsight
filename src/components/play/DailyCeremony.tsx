@@ -192,7 +192,7 @@ function StreakBump({ streak }: { streak: NonNullable<DailyPayload['streak']> })
       )}
 
       <span className="text-ink-dim flex items-center gap-1.5 text-xs">
-        <Icon name="freeze" size={14} className={streak.freezesRemaining > 0 ? 'text-info' : 'text-ink-faint'} />
+        <Icon name="freeze" size={14} className={streak.freezesRemaining > 0 ? 'text-info' : 'text-ink-dim'} />
         {streak.freezesRemaining} {streak.freezesRemaining === 1 ? 'freeze' : 'freezes'} left
       </span>
     </div>

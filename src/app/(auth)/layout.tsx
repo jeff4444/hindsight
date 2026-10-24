@@ -60,7 +60,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
               />
             ))}
           </div>
-          <p className="text-ink-faint numeral mt-4 text-xs">
+          <p className="text-ink-dim numeral mt-4 text-xs">
             1,000 charts · 98 outcomes scored per chart · no future data on the client
           </p>
         </div>

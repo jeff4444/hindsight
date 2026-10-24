@@ -101,7 +101,7 @@ export function StyleProfile({ rounds }: { rounds: StyleRound[] }) {
                     <span
                       className={cx(
                         'numeral text-xs',
-                        affinity.reportable ? 'text-ink' : 'text-ink-faint',
+                        affinity.reportable ? 'text-ink' : 'text-ink-dim',
                       )}
                     >
                       {affinity.reportable
@@ -121,7 +121,7 @@ export function StyleProfile({ rounds }: { rounds: StyleRound[] }) {
         </>
       )}
 
-      <p className="text-ink-faint mt-3 max-w-prose text-xs leading-relaxed">
+      <p className="text-ink-dim mt-3 max-w-prose text-xs leading-relaxed">
         Resembling a school is a description, not a grade — none of them has beaten a coin flip on
         the charts it chose. The Coin is left out: matching it would only mean you place 2 ATR
         stops.

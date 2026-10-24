@@ -208,7 +208,7 @@ export function HeroReveal({ className }: { className?: string }) {
 
       <div className="border-line-faint text-ink-dim flex items-center justify-between border-t px-4 py-2.5 text-xs">
         <span>{sealed ? (scoring ? 'Scored against 98 brackets' : `Revealing ${revealed}/${TOTAL_REVEAL}`) : 'Place a stop and a target'}</span>
-        <span className="numeral text-ink-faint">demo · synthetic path</span>
+        <span className="numeral text-ink-dim">demo · synthetic path</span>
       </div>
     </div>
   );

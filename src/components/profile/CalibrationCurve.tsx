@@ -113,7 +113,7 @@ export function CalibrationCurve({ forecasts }: { forecasts: Forecast[] }) {
                       <span
                         className={cx(
                           'numeral w-16 shrink-0 text-right text-xs',
-                          Math.abs(gap) < 0.05 ? 'text-ink-faint' : 'text-attention-ink',
+                          Math.abs(gap) < 0.05 ? 'text-ink-dim' : 'text-attention-ink',
                         )}
                       >
                         {gap >= 0 ? '+' : ''}
@@ -140,7 +140,7 @@ export function CalibrationCurve({ forecasts }: { forecasts: Forecast[] }) {
         </>
       )}
 
-      <p className="text-ink-faint mt-3 max-w-prose text-xs leading-relaxed">
+      <p className="text-ink-dim mt-3 max-w-prose text-xs leading-relaxed">
         Scored with the Brier score, which is <em>proper</em>: the way to score best is to state what
         you actually believe, so there is no shading that helps. Read it against{' '}
         <span className="numeral">{reference.toFixed(3)}</span> — what saying the corpus base rate of{' '}
@@ -157,7 +157,7 @@ function Stat({ label, value, hint }: { label: string; value: string; hint: stri
     <div>
       <dt className="text-ink-dim text-[0.6875rem] font-medium tracking-wide uppercase">{label}</dt>
       <dd className="numeral text-ink-max mt-0.5 text-lg font-semibold">{value}</dd>
-      <dd className="text-ink-faint text-xs">{hint}</dd>
+      <dd className="text-ink-dim text-xs">{hint}</dd>
     </div>
   );
 }

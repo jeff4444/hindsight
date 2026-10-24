@@ -88,7 +88,7 @@ export function SignaturePicker({
             </button>
           ))}
         </div>
-        <p className="text-ink-faint text-micro mt-2">
+        <p className="text-ink-dim text-micro mt-2">
           The accent colours the line and the ring only — never a candle, so it can never be
           mistaken for direction.
         </p>
@@ -97,7 +97,7 @@ export function SignaturePicker({
       <label className="mt-6 block" style={{ '--i': 2 } as React.CSSProperties}>
         <span className="text-ink-lo text-xs font-medium">Handle</span>
         <div className="mt-1 flex items-center gap-1.5">
-          <span className="text-ink-faint font-mono text-sm">@</span>
+          <span className="text-ink-dim font-mono text-sm">@</span>
           <input
             name="handle"
             value={handle}
@@ -114,7 +114,7 @@ export function SignaturePicker({
             className={cx(INPUT_CLASS, 'font-mono')}
           />
         </div>
-        <p className={cx('mt-1.5 text-xs', localError && handle ? 'text-short-ink' : 'text-ink-faint')}>
+        <p className={cx('mt-1.5 text-xs', localError && handle ? 'text-short-ink' : 'text-ink-dim')}>
           {handle && localError ? localError : '3–22 characters. Letters, numbers, single dashes or underscores.'}
         </p>
       </label>

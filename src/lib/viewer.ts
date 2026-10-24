@@ -114,6 +114,8 @@ export interface DailyState {
   traded: number;
   percentile: number | null;
   complete: boolean;
+  /** Each played chart, in daily order: its score, or 'pass'. For the squares on Today. */
+  charts: (number | 'pass' | null)[];
 }
 
 export async function getDailyState(viewer: Viewer, day = dailyNumber(Date.now())): Promise<DailyState> {
@@ -138,6 +140,9 @@ export async function getDailyState(viewer: Viewer, day = dailyNumber(Date.now()
     traded: rows.filter((r) => !r.passed).length,
     percentile: scored.length ? scored.reduce((a, b) => a + b, 0) / scored.length : null,
     complete: rows.length >= DAILY_CHARTS,
+    charts: [...rows]
+      .sort((a, b) => (a.daily_index as number) - (b.daily_index as number))
+      .map((r) => (r.passed ? 'pass' : ((r.percentile as number | null) ?? null))),
   };
 }
 
@@ -151,7 +156,12 @@ export async function getDailyState(viewer: Viewer, day = dailyNumber(Date.now()
  * either side of a UTC midnight, which would render a strip whose "today" cell is not the day the
  * streak was evaluated for.
  */
-export type StreakSnapshot = StreakView & { today: number };
+export type StreakSnapshot = StreakView & {
+  today: number;
+  /** Days with a completed daily, and days a freeze covered — for drawing the strip honestly. */
+  completedDays: number[];
+  frozenDays: number[];
+};
 
 export async function getStreak(viewer: Viewer): Promise<StreakSnapshot | null> {
   if (!viewer.userId) return null;
@@ -193,7 +203,15 @@ export async function getStreak(viewer: Viewer): Promise<StreakSnapshot | null> 
   // burns one, and there is no cron job deciding their fate while they sleep.
   await applyStreakDecisions(viewer.userId, decisions);
 
-  return { ...view, longest: streak.data?.longest_length ?? 0, today };
+  return {
+    ...view,
+    longest: streak.data?.longest_length ?? 0,
+    today,
+    completedDays: (completions.data ?? []).map((r) => r.day as number).filter((day) => day > today - 30),
+    frozenDays: [...(freezes.data ?? []).map((r) => r.day as number), ...decisions.spendFreezeDays].filter(
+      (day) => day > today - 30,
+    ),
+  };
 }
 
 async function applyStreakDecisions(
@@ -456,6 +474,41 @@ export async function listTapes(): Promise<Tape[]> {
  * one in the database stops it being *played*. Neither is redundant: a page that hid itself but
  * still issued rounds would be a private tape anyone could farm by guessing the play URL.
  */
+/**
+ * Tapes other players made and chose to make public. Never published to the official index —
+ * these are someone's, and the Community tab says so — so they are listed by visibility instead.
+ */
+export async function listCommunityTapes(limit = 48): Promise<Tape[]> {
+  const supabase = serviceClient();
+  const { data, error } = await supabase
+    .from('tapes')
+    .select(
+      'slug, name, blurb, tier, tier_locked, er_buckets, vol_buckets, themes, drift_below, drift_above, council_split, locked_reason, owner_id, visibility',
+    )
+    .eq('visibility', 'public')
+    .not('owner_id', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (error) throw new Error(`could not list community tapes: ${error.message}`);
+
+  return Promise.all(
+    (data ?? []).map(async (row) => ({
+      slug: row.slug as string,
+      name: row.name as string,
+      blurb: row.blurb as string,
+      tier: row.tier as string,
+      tierLocked: Boolean(row.tier_locked),
+      charts: await countTapeCharts(supabase, row),
+      lockedReason: (row.locked_reason as string | null) ?? null,
+      ownerId: (row.owner_id as string | null) ?? null,
+      visibility: 'public' as const,
+      isOwner: false,
+      filter: filterOf(row),
+    })),
+  );
+}
+
 export async function getTape(slug: string, viewerUserId?: string | null): Promise<Tape | null> {
   const supabase = serviceClient();
   const { data, error } = await supabase
@@ -596,4 +649,52 @@ export async function getCompletedDays(
     .eq('user_id', userId)
     .gte('day', today - window + 1);
   return { today, days: new Set((data ?? []).map((row) => row.day as number)) };
+}
+
+/* ------------------------------------------------------------------ matches */
+
+export interface MyMatch {
+  id: string;
+  mode: 'duel' | 'race';
+  tape: string;
+  length: number;
+  status: 'open' | 'live' | 'done';
+  createdAt: string;
+  charts: number;
+  health: number | null;
+  score: number;
+}
+
+/**
+ * Matches this player has a seat in, newest first. A duel used to be findable only through its
+ * link; this is the list the Versus page and the account menu point at.
+ */
+export async function listMyMatches(viewer: Viewer, limit = 12): Promise<MyMatch[]> {
+  const supabase = serviceClient();
+  const owner = viewer.userId ?? viewer.sessionId;
+  const { data, error } = await supabase
+    .from('match_players')
+    .select('charts, health, score, joined_at, matches(id, mode, tape, length, status, created_at)')
+    .eq('owner', owner)
+    .order('joined_at', { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(`could not list your matches: ${error.message}`);
+
+  return (data ?? []).flatMap((row) => {
+    const match = (Array.isArray(row.matches) ? row.matches[0] : row.matches) as Record<string, unknown> | null;
+    if (!match) return [];
+    return [
+      {
+        id: match.id as string,
+        mode: match.mode as 'duel' | 'race',
+        tape: match.tape as string,
+        length: match.length as number,
+        status: match.status as MyMatch['status'],
+        createdAt: match.created_at as string,
+        charts: (row.charts as number) ?? 0,
+        health: (row.health as number | null) ?? null,
+        score: (row.score as number) ?? 0,
+      },
+    ];
+  });
 }

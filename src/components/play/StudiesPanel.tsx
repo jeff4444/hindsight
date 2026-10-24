@@ -220,7 +220,7 @@ export function StudiesPanel({
                             </Chip>
                           )}
                           {locked && rung && (
-                            <span className="text-ink-faint inline-flex items-center gap-1 text-xs font-normal">
+                            <span className="text-ink-dim inline-flex items-center gap-1 text-xs font-normal">
                               <Icon name="lock" size={11} />
                               {rung.name}
                             </span>
@@ -231,7 +231,7 @@ export function StudiesPanel({
                         <>
                           {study.effect}
                           {FORMULA[study.code] && (
-                            <span className="text-ink-faint mt-0.5 block">
+                            <span className="text-ink-dim mt-0.5 block">
                               {FORMULA[study.code]}
                             </span>
                           )}

@@ -769,7 +769,7 @@ export function Gated({
       className="flex items-center gap-2"
       title={`${min - sample} more ${label} until this means anything`}
     >
-      <Icon name="lock" size={14} className="text-ink-faint shrink-0" />
+      <Icon name="lock" size={14} className="text-ink-dim shrink-0" />
       <Meter
         value={sample}
         max={min}
@@ -1006,7 +1006,7 @@ export function Tier({
       <div
         className={cx(
           "mt-0.5 text-xs",
-          state === "live" ? "text-ink" : "text-ink-faint",
+          state === "live" ? "text-ink" : "text-ink-dim",
         )}
       >
         {name}
@@ -1650,5 +1650,48 @@ export function PageHeader({
       </div>
       {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
     </header>
+  );
+}
+
+/* -------------------------------------------------------------- LinkTabs */
+
+/**
+ * Tabs that are links — for a server page whose tab is a URL param. Same look as the client
+ * `Tabs`, but each tab is a real navigation, so it works without JavaScript and can be shared.
+ */
+export function LinkTabs({
+  tabs,
+  active,
+  label,
+  className,
+}: {
+  tabs: { href: string; value: string; label: ReactNode; count?: number }[];
+  active: string;
+  label: string;
+  className?: string;
+}) {
+  return (
+    <nav aria-label={label} className={cx("border-line-faint no-scrollbar flex gap-1 overflow-x-auto border-b", className)}>
+      {tabs.map((tab) => {
+        const on = tab.value === active;
+        return (
+          <Link
+            key={tab.value}
+            href={tab.href}
+            aria-current={on ? "page" : undefined}
+            scroll={false}
+            className={cx(
+              "relative -mb-px flex h-11 shrink-0 items-center gap-2 border-b-2 px-3 text-sm font-medium transition-colors",
+              on ? "border-gold text-ink-max" : "text-ink-lo hover:text-ink-hi border-transparent",
+            )}
+          >
+            {tab.label}
+            {tab.count !== undefined && (
+              <span className="numeral bg-fill-2 text-ink-dim rounded-full px-1.5 text-mini">{tab.count}</span>
+            )}
+          </Link>
+        );
+      })}
+    </nav>
   );
 }

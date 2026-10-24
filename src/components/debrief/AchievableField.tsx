@@ -103,14 +103,14 @@ function Half({
     <figure className="min-w-0">
       <figcaption className="mb-2 flex max-w-[19rem] items-baseline justify-between gap-2">
         <span className={cx('eyebrow', side === 'long' ? 'text-long-ink' : 'text-short-ink')}>{side}</span>
-        <span className="text-ink-faint text-micro">target ▲ · stop ▶</span>
+        <span className="text-ink-dim text-micro">target ▲ · stop ▶</span>
       </figcaption>
 
       <div className="flex gap-1.5">
         {/* target axis */}
         <div className="grid shrink-0 gap-0.5" style={{ gridTemplateRows: `repeat(${rows.length}, minmax(0, 1fr))` }}>
           {rows.map((t) => (
-            <span key={t} className="numeral text-ink-faint flex items-center justify-end text-micro">
+            <span key={t} className="numeral text-ink-dim flex items-center justify-end text-micro">
               {t}R
             </span>
           ))}
@@ -151,7 +151,7 @@ function Half({
             style={{ gridTemplateColumns: `repeat(${STOP_ATR.length}, minmax(0, 1fr))` }}
           >
             {STOP_ATR.map((stopAtr) => (
-              <span key={stopAtr} className="numeral text-ink-faint text-center text-micro">
+              <span key={stopAtr} className="numeral text-ink-dim text-center text-micro">
                 {stopAtr}
               </span>
             ))}

@@ -13,7 +13,7 @@ export default function NotFound() {
     <div className="grid min-h-dvh place-items-center px-5 py-16">
       <div className="w-full max-w-md text-center">
         <Wordmark size="md" className="justify-center" />
-        <div className="numeral text-ink-faint mt-10 text-display-sm">404</div>
+        <div className="numeral text-ink-dim mt-10 text-display-sm">404</div>
         <h1 className="text-ink-max mt-2 text-2xl font-semibold text-balance">
           There is no chart at this address.
         </h1>

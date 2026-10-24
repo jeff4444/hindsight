@@ -66,7 +66,7 @@ export default async function MarketingLayout({ children }: { children: React.Re
           </nav>
         </div>
         <div className="border-line-faint border-t">
-          <div className="max-w-app text-ink-faint mx-auto flex flex-wrap items-center justify-between gap-3 px-5 py-5 text-sm">
+          <div className="max-w-app text-ink-dim mx-auto flex flex-wrap items-center justify-between gap-3 px-5 py-5 text-sm">
             <span>Historical price data from the public Binance archive.</span>
             <span>Not investment advice. Nothing here predicts anything.</span>
           </div>

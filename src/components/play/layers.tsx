@@ -121,7 +121,7 @@ export function InstrumentWatermark({
         </span>
         {weekend && <span className="eyebrow text-attention-ink">thin books</span>}
       </div>
-      <div className="numeral text-ink-faint hidden text-xs sm:block">tick {tickSize}</div>
+      <div className="numeral text-ink-dim hidden text-xs sm:block">tick {tickSize}</div>
     </div>
   );
 }

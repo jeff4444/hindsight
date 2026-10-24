@@ -1,87 +1,133 @@
-import Link from 'next/link';
-import { listTapes } from '@/lib/viewer';
+import { currentViewer, listCommunityTapes, listMyTapes, listTapes, type Tape } from '@/lib/viewer';
+import { routes } from '@/lib/routes';
 import { TapeCard } from '@/components/home/TapeCard';
-import { Eyebrow } from '@/components/ui';
+import { Button, EmptyState, LinkTabs, PageHeader } from '@/components/ui';
+import { Icon } from '@/components/ui/icons';
 
 export const dynamic = 'force-dynamic';
+export const metadata = { title: 'Tapes' };
+
+type Tab = 'official' | 'community' | 'yours';
 
 /**
- * Tapes — §11's maps, named for what they are.
+ * Tapes: playlists of charts that share one rule.
  *
- * §11.1: "Every official map is defined by a published filter over the regime tags and theme tags,
- * not by hand-picking, so the map's difficulty distribution is reproducible and its statistics are
- * valid." Every tape below is a filter you can read, and the counts are queried rather than
- * claimed.
- *
- * §10.4's boxed rule — "never meter the daily, and never meter practice" — is why nothing here is
- * gated, capped or counted against a quota.
+ * Three shelves — the official tapes, the ones other players made public, and yours. The two
+ * methodology paragraphs that used to open this page (why tapes are filters and never hand-picked,
+ * why there is no canonical definition of a sweep) moved to Methods, where the reader who wants
+ * them will look. The rule each tape applies is still printed on every card.
  */
-export default async function TapesPage() {
+export default async function TapesPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+  const params = await searchParams;
+  const tab: Tab = params.tab === 'community' || params.tab === 'yours' ? params.tab : 'official';
+  const viewer = await currentViewer();
+
+  return (
+    <div className="mx-auto max-w-6xl space-y-8">
+      <PageHeader
+        eyebrow="Practice"
+        title="Tapes"
+        lede="Playlists of charts that share one rule — a regime, a pattern, a kind of move. Unlimited and never metered."
+        actions={
+          <Button href={routes.tapes.create} variant="secondary">
+            <Icon name="plus" size={15} />
+            Make a tape
+          </Button>
+        }
+      />
+
+      <LinkTabs
+        label="Tape shelves"
+        active={tab}
+        tabs={[
+          { value: 'official', label: 'Official', href: routes.tapes.index() },
+          { value: 'community', label: 'Community', href: routes.tapes.index('community') },
+          { value: 'yours', label: 'Yours', href: routes.tapes.index('yours') },
+        ]}
+      />
+
+      {tab === 'official' && <Official />}
+      {tab === 'community' && <Community />}
+      {tab === 'yours' &&
+        (viewer.userId ? (
+          <Yours userId={viewer.userId} />
+        ) : (
+          <EmptyState
+            icon="tape"
+            title="Make tapes of your own"
+            body="Sign in to build a tape from a rule, share it by link, and see how everyone who plays it does."
+            action={
+              <Button href={routes.signIn(routes.tapes.index('yours'))} variant="secondary">
+                Sign in
+              </Button>
+            }
+          />
+        ))}
+    </div>
+  );
+}
+
+async function Official() {
   const tapes = await listTapes();
   const open = tapes.filter((t) => !t.lockedReason);
   const locked = tapes.filter((t) => t.lockedReason);
-
   return (
-    <div className="mx-auto max-w-5xl">
-      <Eyebrow>Practice, unlimited and unmetered</Eyebrow>
-      <h1 className="text-ink-max mt-1 text-2xl font-semibold">Tapes</h1>
-      <p className="text-ink-lo mt-3 max-w-prose text-base leading-relaxed">
-        A tape is a slice of the corpus defined by a published rule over the regime tags and the
-        theme tags — never hand-picked, because curating for &ldquo;interesting&rdquo; charts
-        changes the difficulty distribution and invalidates every statistic computed on it.
-      </p>
-      <p className="text-ink-lo mt-3 max-w-prose text-base leading-relaxed">
-        Both rules are written out in the{' '}
-        <a className="text-ink underline underline-offset-2" href="/learn/rulebook">
-          ruleset
-        </a>
-        , thresholds and all. There is no canonical definition of a liquidity sweep or a failed
-        break — the two most-used open implementations disagree by up to thirteenfold on the same
-        words — so the choice is not between the right definition and ours. It is between an
-        undisclosed one and a published one.
-      </p>
-
-      <div className="mt-6 flex flex-wrap gap-2">
-        <Link
-          href="/tapes/new"
-          className="press border-line bg-surface-1 text-ink-hi hover:border-line-strong rounded-md border px-3 py-1.5 text-sm transition-colors"
-        >
-          Make your own
-        </Link>
-        <Link
-          href="/tapes?tab=yours"
-          className="press border-line bg-surface-1 text-ink-hi hover:border-line-strong rounded-md border px-3 py-1.5 text-sm transition-colors"
-        >
-          Your tapes
-        </Link>
-      </div>
-
-      <section className="mt-10">
-        <h2 className="text-ink-max text-xl font-semibold">Open now</h2>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" data-stagger>
-          {open.map((tape, i) => (
-            <TapeCard key={tape.slug} tape={tape} index={i} />
-          ))}
-        </div>
-      </section>
-
+    <>
+      <Grid tapes={open} />
       {locked.length > 0 && (
-        <section className="mt-12">
-          <h2 className="text-ink-max text-xl font-semibold">Not open yet</h2>
-          <p className="text-ink-lo mt-3 max-w-prose text-sm leading-relaxed">
-            A tape&rsquo;s filter has to be computable from the lead-in alone. Anything derived from
-            the reveal path would announce the answer in the tape&rsquo;s own name — which is why
-            the one below is locked rather than shipped.
-          </p>
-          {/* The open grid above staggers its cards in and this one did not, so the locked tapes
-              snapped into place while the ones above them were still arriving. */}
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" data-stagger>
-            {locked.map((tape, index) => (
-              <TapeCard key={tape.slug} tape={tape} index={index} />
-            ))}
-          </div>
+        <section className="space-y-4 pt-4">
+          <h2 className="text-ink-max text-lg font-semibold">Coming later</h2>
+          <Grid tapes={locked} />
         </section>
       )}
+    </>
+  );
+}
+
+async function Community() {
+  const tapes = await listCommunityTapes();
+  if (tapes.length === 0) {
+    return (
+      <EmptyState
+        icon="users"
+        title="No public tapes yet"
+        body="Be the first: pick a rule, name it, and make it public. Anyone with the link can play it."
+        action={
+          <Button href={routes.tapes.create} variant="secondary">
+            Make a tape
+          </Button>
+        }
+      />
+    );
+  }
+  return <Grid tapes={tapes} />;
+}
+
+async function Yours({ userId }: { userId: string }) {
+  const tapes = await listMyTapes(userId);
+  if (tapes.length === 0) {
+    return (
+      <EmptyState
+        icon="tape"
+        title="Make your first tape"
+        body="A tape is a rule over the library — say, choppy charts with a sweep in them. Name it, share it, and see how your cohort does."
+        action={
+          <Button href={routes.tapes.create} variant="secondary">
+            Make a tape
+          </Button>
+        }
+      />
+    );
+  }
+  return <Grid tapes={tapes} />;
+}
+
+function Grid({ tapes }: { tapes: Tape[] }) {
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" data-stagger>
+      {tapes.map((tape, i) => (
+        <TapeCard key={tape.slug} tape={tape} index={i} />
+      ))}
     </div>
   );
 }

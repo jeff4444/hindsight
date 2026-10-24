@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter, Geist_Mono, Instrument_Serif } from 'next/font/google';
 import { THEME_SCRIPT } from '@/lib/theme-script';
+import { InlineScript } from '@/components/InlineScript';
 import './globals.css';
 
 /*
@@ -103,7 +104,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       className={`${inter.variable} ${mono.variable} ${serif.variable}`}
     >
       <body className="bg-surface-0 text-ink min-h-dvh font-sans antialiased">
-        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT + MOTION_SCRIPT }} />
+        <InlineScript html={THEME_SCRIPT + MOTION_SCRIPT} />
         {children}
       </body>
     </html>

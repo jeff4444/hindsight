@@ -211,10 +211,10 @@ function Tile({
     <Panel pad="md" style={{ '--i': index } as React.CSSProperties}>
       <div className="flex items-start justify-between gap-3">
         <Eyebrow>{label}</Eyebrow>
-        {locked && <Icon name="lock" size={14} className="text-ink-faint shrink-0" />}
+        {locked && <Icon name="lock" size={14} className="text-ink-dim shrink-0" />}
       </div>
       <div className="mt-2 flex items-end justify-between gap-3">
-        <div className={cx('numeral font-semibold', locked ? 'text-ink-faint text-2xl' : 'text-ink-max text-display-sm')}>
+        <div className={cx('numeral font-semibold', locked ? 'text-ink-dim text-2xl' : 'text-ink-max text-display-sm')}>
           {value === null ? '—' : value}
           {value !== null && suffix && <span className="text-ink-dim text-xl">{suffix}</span>}
         </div>

@@ -36,7 +36,7 @@ export default function AppError({ error, reset }: { error: Error & { digest?: s
         }
       />
       {error.digest && (
-        <p className="text-ink-faint mt-4 text-center font-mono text-xs">reference {error.digest}</p>
+        <p className="text-ink-dim mt-4 text-center font-mono text-xs">reference {error.digest}</p>
       )}
     </div>
   );

@@ -2,7 +2,9 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { currentViewer, getTape } from '@/lib/viewer';
 import { describeFilter } from '@/core/tapes';
-import { Button, Chip, Eyebrow, Panel } from '@/components/ui';
+import { routes } from '@/lib/routes';
+import { Button, Chip, Panel } from '@/components/ui';
+import { ChartArt, seedOf } from '@/components/ui/ChartArt';
 import { Icon } from '@/components/ui/icons';
 import { TapeLaunch } from '@/components/tapes/TapeLaunch';
 
@@ -16,21 +18,17 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 }
 
 /**
- * A tape, and the settings you play it under.
+ * A tape: what is in it, and the one button that plays it.
  *
- * `TapeLaunch` owns the ruleset, the mods and the button, because those three are one decision —
- * the href it builds carries the tier and the mods, so splitting the button away from the choice
- * would mean two components agreeing about a query string. The sticky panel beside it holds what
- * does not change: how many charts are in here, and the fact that none of it is metered.
- *
- * Two columns at `lg`. On a page whose whole purpose is one button, that button should not scroll
- * away while you read the filter it applies to.
+ * The launcher sits beside the description at desktop widths and sticks, because a page whose
+ * purpose is one button should not scroll that button away while you read what it applies to.
+ * The rule is printed as well as applied: a tape's definition is published, and for a tape someone
+ * made it matters more — their description is marketing, the rule is not.
  */
 export default async function TapePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const viewer = await currentViewer();
-  // A private tape is not found rather than forbidden: 404 and 403 differ only in whether they
-  // confirm the thing exists, and confirming it exists is exactly what private means it should not.
+  // Private tapes are not found rather than forbidden: a 403 would confirm the tape exists.
   const tape = await getTape(slug, viewer.userId);
   if (!tape) notFound();
 
@@ -38,71 +36,73 @@ export default async function TapePage({ params }: { params: Promise<{ slug: str
   const conditions = describeFilter(tape.filter);
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="mx-auto max-w-6xl">
       <Link
-        href="/tapes"
+        href={routes.tapes.index()}
         className="text-ink-dim hover:text-ink-hi inline-flex items-center gap-1.5 text-sm font-medium transition-colors"
       >
         <Icon name="arrow-left" size={14} />
         Tapes
       </Link>
 
-      <div className="mt-5 grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
-        <div>
-          <Eyebrow>{tape.ownerId ? 'A tape someone made' : 'Tape'}</Eyebrow>
-          <div className="mt-1.5 flex flex-wrap items-center gap-2">
-            <h1 className="text-ink-max text-3xl font-semibold text-balance">{tape.name}</h1>
-            {tape.ownerId && <Chip tone="neutral">{tape.visibility}</Chip>}
-            {tape.tierLocked && <Chip tone="attention">{tape.tier} only</Chip>}
+      <div className="mt-5 grid gap-6 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start">
+        <div className="space-y-6">
+          <div className="border-line bg-surface-1 overflow-hidden rounded-3xl border">
+            <ChartArt seed={seedOf(tape.slug)} width={720} height={180} fog={0.3} />
           </div>
-          <p className="text-ink-lo mt-4 max-w-prose text-base leading-relaxed">
-            {locked ? tape.lockedReason : tape.blurb}
-          </p>
 
-          {/* The rule, printed rather than merely applied. §11.1's requirement is that a tape's
-              definition is published — and for a creator tape that matters more, not less, because
-              the owner's own description is marketing and this is not. */}
-          {conditions.length > 0 && (
-            <div className="border-line-faint mt-6 border-t pt-4">
-              <Eyebrow>What is in it</Eyebrow>
-              <ul className="text-ink-lo mt-2 space-y-1 text-sm">
-                {conditions.map((line) => (
-                  <li key={line}>· {line}</li>
-                ))}
-              </ul>
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="eyebrow text-ink-dim">{tape.ownerId ? 'Made by a player' : 'Official tape'}</span>
+              {tape.ownerId && <Chip tone="neutral">{tape.visibility}</Chip>}
             </div>
-          )}
-
-          <Panel pad="md" className="mt-8">
-            <TapeLaunch
-              slug={tape.slug}
-              locked={locked}
-              requiredTier={tape.tierLocked ? tape.tier : null}
-            />
-          </Panel>
-        </div>
-
-        <Panel tone="hero" pad="md" className="lg:sticky lg:top-6">
-          <Eyebrow>In this tape</Eyebrow>
-          <div className="mt-1.5 flex items-baseline gap-2">
-            <span className="numeral text-ink-max text-display-sm font-semibold">
-              {tape.charts.toLocaleString()}
-            </span>
-            <span className="text-ink-dim text-sm">charts</span>
+            <h1 className="font-display text-ink-max mt-2 text-[2.75rem] leading-none md:text-6xl">{tape.name}</h1>
+            <p className="text-ink-lo mt-4 max-w-2xl text-lg leading-relaxed">{locked ? tape.lockedReason : tape.blurb}</p>
           </div>
 
-          <p className="text-ink-dim mt-4 text-sm leading-relaxed">
-            Unlimited and never metered. Practice rounds are scored the same way the daily is, and
-            they count towards your record.
-          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="border-line bg-surface-2 rounded-2xl border p-5">
+              <div className="eyebrow text-ink-dim">The rule</div>
+              {conditions.length > 0 ? (
+                <ul className="text-ink mt-2 space-y-1.5 text-sm leading-relaxed">
+                  {conditions.map((line) => (
+                    <li key={line} className="flex gap-2">
+                      <span aria-hidden className="bg-gold mt-2 h-1 w-1 shrink-0 rounded-full" />
+                      Charts where {line}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-ink mt-2 text-sm">Every chart in the library.</p>
+              )}
+            </div>
+            <div className="border-line bg-surface-2 rounded-2xl border p-5">
+              <div className="eyebrow text-ink-dim">In this tape</div>
+              <div className="mt-1.5 flex items-baseline gap-2">
+                <span className="numeral text-ink-max text-4xl font-semibold">{tape.charts.toLocaleString()}</span>
+                <span className="text-ink-dim text-sm">charts</span>
+              </div>
+              <p className="text-ink-dim mt-2 text-xs leading-relaxed">
+                Unlimited and never metered. Rated play here counts toward your rating like any other.
+              </p>
+            </div>
+          </div>
 
           {tape.isOwner && (
-            <div className="border-line-faint mt-4 border-t pt-4">
-              <Button as="a" href={`/tapes/${tape.slug}/cohort`} variant="secondary" className="w-full">
+            <div className="border-line bg-surface-2 flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-5">
+              <div>
+                <div className="text-ink-max font-semibold">Your cohort</div>
+                <p className="text-ink-lo text-sm">How everyone who played this tape is doing, weakest areas first.</p>
+              </div>
+              <Button href={routes.tapes.cohort(tape.slug)} variant="secondary">
                 Cohort results
               </Button>
             </div>
           )}
+        </div>
+
+        <Panel tone="hero" pad="md" className="rounded-3xl lg:sticky lg:top-8">
+          <TapeLaunch slug={tape.slug} locked={locked} requiredTier={tape.tierLocked ? tape.tier : null} />
         </Panel>
       </div>
     </div>

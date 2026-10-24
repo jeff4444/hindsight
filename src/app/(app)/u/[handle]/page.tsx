@@ -74,7 +74,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
             <h1 className="text-ink-max text-2xl font-semibold">{name}</h1>
             <div className="numeral text-ink-dim mt-1 text-base">@{profile.handle}</div>
             <div className="mt-3 flex flex-wrap items-center gap-3">
-              <span className="text-ink-faint text-sm">
+              <span className="text-ink-dim text-sm">
                 Reading charts since{' '}
                 {new Date(profile.created_at as string).toLocaleDateString('en-GB', {
                   month: 'long',

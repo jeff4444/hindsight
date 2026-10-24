@@ -60,7 +60,7 @@ export default function Landing() {
               </Button>
             </div>
             <p
-              className="text-ink-faint numeral mt-5 text-xs"
+              className="text-ink-dim numeral mt-5 text-xs"
               style={{ '--i': 3 } as React.CSSProperties}
             >
               1,000 charts · 98 outcomes scored per chart · no future data on the client · no
