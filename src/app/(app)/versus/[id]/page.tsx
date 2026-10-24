@@ -84,8 +84,10 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
             const you = p.owner === owner;
             const name = you ? 'You' : profile ? `@${profile.handle}` : `Player ${(p.seat as number) + 1}`;
             const health = (p.health as number | null) ?? DUEL_SPEC.health;
+            // Keyed by seat, never by owner: React sends keys to the browser, and an anonymous
+            // player's owner is their session cookie.
             return (
-              <li key={p.owner as string} className={cx('flex items-center gap-4 px-5 py-4', you && 'bg-fill-1')}>
+              <li key={`seat-${p.seat as number}`} className={cx('flex items-center gap-4 px-5 py-4', you && 'bg-fill-1')}>
                 {mode === 'race' && <span className={cx('numeral w-6 text-sm font-semibold', rank === 0 ? 'text-gold-ink' : 'text-ink-dim')}>{rank + 1}</span>}
                 {profile ? (
                   <MarketSignature seed={profile.avatar_seed as number} accent={isAccent(profile.avatar_accent) ? profile.avatar_accent : 'slate'} size={34} ring="accent" />
