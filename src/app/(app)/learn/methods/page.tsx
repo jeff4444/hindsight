@@ -128,7 +128,7 @@ export default function MethodsPage() {
 
 function Point({ title, body, href }: { title: string; body: string; href: string }) {
   return (
-    <Link href={href} className="press border-line bg-surface-2 hover:border-line-strong group rounded-2xl border p-5 transition-colors">
+    <Link href={href} className="press lift border-line bg-surface-2 hover:border-line-strong group rounded-2xl border p-5 transition-colors">
       <div className="text-ink-max flex items-center justify-between gap-2 font-semibold">
         {title}
         <Icon name="arrow-up-right" size={15} className="text-ink-dim group-hover:text-ink-hi" />

@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { cx } from '../ui';
+import { NumberRoll } from '../ui/kinetic';
 
 /**
  * The end of a session, whatever the mode.
@@ -38,7 +39,10 @@ export function SummaryShell({
       <div className="eyebrow text-ink-dim">{eyebrow}</div>
       <h2 className="font-display text-ink-max mt-3 text-[2.5rem] leading-[1.05] sm:text-5xl">{title}</h2>
       {figure !== undefined && (
-        <div className={cx('numeral mt-6 text-display font-semibold sm:text-display-lg', figureTone)}>{figure}</div>
+        // A figure given as text spins up on its wheels as the summary lands; anything else is drawn as given.
+        <div className={cx('numeral animate-slam mt-6 text-display font-semibold sm:text-display-lg', figureTone)}>
+          {typeof figure === 'string' || typeof figure === 'number' ? <NumberRoll value={figure} rollIn /> : figure}
+        </div>
       )}
       {caption && <p className="text-ink-lo mt-2 text-sm">{caption}</p>}
       {children && <div className="mt-8 w-full">{children}</div>}

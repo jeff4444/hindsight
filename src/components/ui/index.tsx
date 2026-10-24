@@ -6,7 +6,10 @@
  * an `Eyebrow` directly, while a client component that imports the same module still bundles it.
  * Marking the file client-only made even the `cx` string helper a client reference, which a
  * server component cannot call. Anything that needs state, a ref or a portal lives in `./client`,
- * and this file must never import from there or the whole barrel becomes client-only.
+ * and this file must never import from there: `./client` imports from here, and the cycle would
+ * pull the whole barrel into the client graph. The one client module this file does import is
+ * `./kinetic` — the sliding indicator and the rolling number — which imports nothing back, so a
+ * server component importing this file gets a client reference for those two and nothing more.
  *
  * Before this the app hand-rolled eleven buttons, five panels, eight eyebrows and about a dozen
  * badges as class-string literals, and two components defined the same stat readout under
@@ -17,6 +20,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import Link from "next/link";
 import { Icon, type IconName } from "./icons";
+import { Indicator, NumberRoll } from "./kinetic";
 import type { Persona, PersonaGlyph } from "@/lib/panel";
 import type { Division, DivisionId } from "@/core/divisions";
 
@@ -380,7 +384,7 @@ export function Panel({
         shadow,
         PAD[pad],
         glow && "shadow-glow",
-        interactive && "press hover:border-line-strong hover:bg-surface-3/40 transition-colors",
+        interactive && "press lift hover:border-line-strong hover:bg-surface-3/40 transition-colors",
         className,
       )}
     >
@@ -598,7 +602,7 @@ export function ProgressBar({
           "h-full rounded-full transition-[width,background-color]",
           pace === "live"
             ? "duration-100 ease-linear"
-            : "duration-(--dur-6) ease-(--ease-entrance)",
+            : "bar-in duration-(--dur-6) ease-(--ease-entrance)",
           TONE_FILL[tone],
         )}
         style={{ width: `${pct}%` }}
@@ -681,7 +685,9 @@ export function ProgressArc({
           strokeLinecap="round"
           strokeDasharray={circumference}
           strokeDashoffset={circumference * (1 - fraction)}
-          className="transition-[stroke-dashoffset] duration-(--dur-7) ease-(--ease-entrance)"
+          // Fills from empty on mount, then eases between values after that.
+          style={{ "--arc-c": circumference } as CSSProperties}
+          className="arc-in transition-[stroke-dashoffset] duration-(--dur-7) ease-(--ease-entrance)"
         />
       </svg>
       {children && (
@@ -731,11 +737,12 @@ export function Sparkline({
     >
       <path
         d={d}
+        pathLength={1}
         stroke="currentColor"
         strokeWidth="1.5"
         strokeLinecap="round"
         strokeLinejoin="round"
-        className={TONE_INK[tone]}
+        className={cx("draw-in", TONE_INK[tone])}
       />
     </svg>
   );
@@ -810,11 +817,13 @@ export function Segmented<T extends string | number>({
       role="radiogroup"
       aria-label={label}
       className={cx(
-        "bg-fill-2 ring-line-faint rounded-full p-1 ring-1",
+        "bg-fill-2 ring-line-faint relative isolate rounded-full p-1 ring-1",
         block ? "flex" : "inline-flex",
         className,
       )}
     >
+      {/* The thumb slides between segments; until it has measured, the checked one draws its own. */}
+      <Indicator match="[aria-checked=true]" className="bg-thumb shadow-e1 rounded-full" />
       {options.map((option) => {
         const active = option.value === value;
         return (
@@ -831,8 +840,8 @@ export function Segmented<T extends string | number>({
               size === "sm" ? "h-7 px-3 text-xs" : size === "md" ? "h-9 px-4 text-sm" : "h-11 px-5 text-sm",
               block && "flex-1",
               active
-                ? "bg-thumb text-ink-max shadow-e1"
-                : "text-ink-lo hover:text-ink-hi enabled:hover:bg-fill-2",
+                ? "bg-thumb text-ink-max shadow-e1 in-data-[indicator=ready]:bg-transparent in-data-[indicator=ready]:shadow-none"
+                : "text-ink-lo hover:text-ink-hi",
             )}
           >
             {option.label}
@@ -1238,7 +1247,7 @@ export function Toggle({
       disabled={disabled}
       onClick={() => onChange(!on)}
       className={cx(
-        "press group flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left transition-colors",
+        "press group/toggle flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left transition-colors",
         "disabled:cursor-not-allowed disabled:opacity-45",
         "enabled:hover:bg-fill-1",
         className,
@@ -1251,10 +1260,13 @@ export function Toggle({
           on ? "bg-info" : "bg-fill-3 ring-1 ring-line ring-inset",
         )}
       >
+        {/* The knob springs across, and stretches toward its far side while pressed, the way a
+            physical switch gives under a thumb before it flips. */}
         <span
           className={cx(
-            "bg-knob shadow-e1 absolute top-0.5 h-4 w-4 rounded-full transition-[left] duration-150",
-            on ? "left-[1.125rem]" : "left-0.5",
+            "bg-knob shadow-e1 absolute top-0.5 h-4 w-4 rounded-full",
+            "transition-[left,width] duration-(--dur-4) ease-(--ease-spring) group-enabled/toggle:group-active/toggle:w-5",
+            on ? "left-[1.125rem] group-enabled/toggle:group-active/toggle:left-[0.875rem]" : "left-0.5",
           )}
         />
       </span>
@@ -1367,6 +1379,7 @@ export function ScoreRing({
   size = 132,
   thickness = 8,
   label = "Score",
+  roll,
   className,
 }: {
   /** 0–100, or null for a round with no score yet. */
@@ -1374,6 +1387,8 @@ export function ScoreRing({
   size?: number;
   thickness?: number;
   label?: string;
+  /** Spin the figure up from zero on mount, for a score being revealed. */
+  roll?: boolean;
   className?: string;
 }) {
   const tone = score === null ? "neutral" : scoreTone(score);
@@ -1392,7 +1407,7 @@ export function ScoreRing({
           className={cx("numeral leading-none font-semibold", TONE_INK[tone])}
           style={{ fontSize: size * 0.34 }}
         >
-          {score === null ? "–" : Math.round(score)}
+          {score === null ? "–" : <NumberRoll value={Math.round(score)} rollIn={roll} />}
         </span>
         <span className="eyebrow text-ink-dim mt-1.5">{label}</span>
       </div>
@@ -1627,7 +1642,9 @@ export function LinkTabs({
   className?: string;
 }) {
   return (
-    <nav aria-label={label} className={cx("border-line-faint no-scrollbar flex gap-1 overflow-x-auto border-b", className)}>
+    <nav aria-label={label} className={cx("border-line-faint no-scrollbar relative isolate flex gap-1 overflow-x-auto border-b", className)}>
+      {/* Moves on the click, before the server confirms the new tab, then settles on what it marks. */}
+      <Indicator match="[aria-current=page]" edge="bottom" optimistic="a" className="bg-gold rounded-full" />
       {tabs.map((tab) => {
         const on = tab.value === active;
         return (
@@ -1638,7 +1655,7 @@ export function LinkTabs({
             scroll={false}
             className={cx(
               "relative -mb-px flex h-11 shrink-0 items-center gap-2 border-b-2 px-3 text-sm font-medium transition-colors",
-              on ? "border-gold text-ink-max" : "text-ink-lo hover:text-ink-hi border-transparent",
+              on ? "border-gold text-ink-max in-data-[indicator=ready]:border-transparent" : "text-ink-lo hover:text-ink-hi border-transparent",
             )}
           >
             {tab.label}

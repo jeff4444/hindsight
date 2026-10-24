@@ -29,7 +29,7 @@ export function QuickPlay() {
           <Link
             key={item.title}
             href={item.href}
-            className="press bg-fill-1 hover:bg-fill-2 ring-line-faint group flex items-center gap-3 rounded-2xl p-3 ring-1 transition-colors"
+            className="press lift bg-fill-1 hover:bg-fill-2 ring-line-faint group flex items-center gap-3 rounded-2xl p-3 ring-1 transition-colors"
           >
             <span className="bg-surface-3 text-ink-hi grid h-9 w-9 shrink-0 place-items-center rounded-xl">
               <Icon name={item.icon} size={17} />

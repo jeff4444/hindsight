@@ -74,7 +74,7 @@ function ModeCard({
     <Link
       href={href}
       className={cx(
-        'press group relative flex flex-col gap-4 overflow-hidden rounded-2xl border p-5 transition-colors',
+        'press lift group relative flex flex-col gap-4 overflow-hidden rounded-2xl border p-5 transition-colors',
         featured
           ? 'border-gold-line bg-gold-bg hover:border-gold sm:col-span-2 xl:col-span-1'
           : 'border-line bg-surface-2 hover:border-line-strong',

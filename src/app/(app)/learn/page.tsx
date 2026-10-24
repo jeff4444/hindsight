@@ -161,7 +161,7 @@ function Fact({ title, body, gold }: { title: string; body: string; gold?: boole
 
 function Door({ href, icon, title, body }: { href: string; icon: IconName; title: string; body: string }) {
   return (
-    <Link href={href} className="press border-line bg-surface-2 hover:border-line-strong rounded-2xl border p-6 transition-colors">
+    <Link href={href} className="press lift border-line bg-surface-2 hover:border-line-strong rounded-2xl border p-6 transition-colors">
       <Icon name={icon} size={22} className="text-gold-ink" />
       <h2 className="text-ink-max mt-4 text-lg font-semibold">{title}</h2>
       <p className="text-ink-lo mt-1.5 text-sm leading-relaxed">{body}</p>

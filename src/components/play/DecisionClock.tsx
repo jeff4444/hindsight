@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { cx } from '../ui';
+import { NumberRoll } from '../ui/kinetic';
 
 /**
  * §3.2's deliberation clock.
@@ -92,7 +93,8 @@ export function DecisionClock({
         <circle cx="12" cy="13" r="8" />
         <path d="M12 9v4l2 1.5M10 2h4" />
       </svg>
-      {m}:{String(sec).padStart(2, '0')}
+      {/* Each second turns over on its wheel, downward, like a clock running out. */}
+      <NumberRoll value={`${m}:${String(sec).padStart(2, '0')}`} />
     </span>
   );
 }

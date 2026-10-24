@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { ACCENTS, ACCENT_HEX, ACCENT_LABEL, randomSeed, type Accent } from '@/lib/avatar';
 import { MarketSignature } from '../ui/MarketSignature';
 import { Alert, Button, Eyebrow, INPUT_CLASS, cx } from '../ui';
+import { Indicator } from '../ui/kinetic';
 
 /**
  * Choose a handle and a signature.
@@ -77,7 +78,12 @@ export function SignaturePicker({
 
       <div className="mt-5" style={{ '--i': 1 } as React.CSSProperties}>
         <Eyebrow>Accent</Eyebrow>
-        <div className="mt-2 flex flex-wrap gap-2">
+        <div className="relative isolate mt-2 flex flex-wrap gap-2">
+          {/* The selection ring travels from swatch to swatch. */}
+          <Indicator
+            match="[aria-pressed=true]"
+            className="ring-ink-hi rounded-full ring-2 ring-offset-2 ring-offset-(--color-surface-2)"
+          />
           {ACCENTS.map((option) => (
             <button
               key={option}
@@ -86,8 +92,10 @@ export function SignaturePicker({
               title={ACCENT_LABEL[option]}
               onClick={() => setAccent(option)}
               className={cx(
-                'press h-8 w-8 rounded-full transition-transform',
-                option === accent ? 'ring-ink-hi scale-110 ring-2 ring-offset-2 ring-offset-(--color-surface-2)' : 'ring-line ring-1',
+                'press h-8 w-8 rounded-full transition-shadow',
+                option === accent
+                  ? 'ring-ink-hi ring-2 ring-offset-2 ring-offset-(--color-surface-2) in-data-[indicator=ready]:ring-0 in-data-[indicator=ready]:ring-offset-0'
+                  : 'ring-line ring-1',
               )}
               style={{ background: ACCENT_HEX[option] }}
             >

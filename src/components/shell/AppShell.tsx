@@ -6,6 +6,7 @@ import type { ReactNode } from 'react';
 import { MarketSignature } from '../ui/MarketSignature';
 import { cx } from '../ui';
 import { Popover } from '../ui/client';
+import { Indicator } from '../ui/kinetic';
 import { Icon, Mark, Wordmark, type IconName } from '../ui/icons';
 import type { Accent } from '@/lib/avatar';
 import { routes } from '@/lib/routes';
@@ -118,7 +119,18 @@ export function AppShell({
 
         {launcher}
 
-        <div className="mt-5 flex flex-col gap-1">
+        <div className="relative isolate mt-5 flex flex-col gap-1">
+          {/* The highlight and its gold edge travel between destinations, and move on the click
+              rather than waiting for the next page to arrive. */}
+          <Indicator match="[aria-current=page]" optimistic="a" className="bg-fill-2 rounded-lg" />
+          <Indicator
+            match="[aria-current=page]"
+            optimistic="a"
+            edge="left"
+            offset={16}
+            inset={8}
+            className="bg-gold hidden rounded-full lg:block"
+          />
           {DESTINATIONS.map(({ href, label, icon, match }) => {
             const active = isActive(match);
             return (
@@ -129,12 +141,11 @@ export function AppShell({
                 className={cx(
                   'press relative flex flex-col items-center justify-center gap-1 rounded-lg py-2 transition-colors',
                   'lg:h-11 lg:flex-row lg:justify-start lg:gap-3 lg:px-3 lg:py-0',
-                  active ? 'bg-fill-2 text-ink-max' : 'text-ink-lo hover:bg-fill-1 hover:text-ink-hi',
+                  active
+                    ? 'bg-fill-2 text-ink-max in-data-[indicator=ready]:bg-transparent'
+                    : 'text-ink-lo hover:bg-fill-1 hover:text-ink-hi',
                 )}
               >
-                {active && (
-                  <span aria-hidden className="bg-gold absolute top-2 bottom-2 -left-2 hidden w-0.5 rounded-full lg:-left-4 lg:block" />
-                )}
                 <Icon name={icon} size={19} />
                 <span className="text-micro font-medium lg:text-sm">{label}</span>
               </Link>
@@ -180,8 +191,9 @@ export function AppShell({
       {/* Phone tab bar. 44px targets, clear of the home indicator. */}
       <nav
         aria-label="Primary"
-        className="border-line-faint bg-surface-1/95 fixed inset-x-0 bottom-0 z-30 flex border-t pb-[env(safe-area-inset-bottom)] md:hidden"
+        className="border-line-faint bg-surface-1/95 fixed inset-x-0 bottom-0 z-30 isolate flex border-t pb-[env(safe-area-inset-bottom)] md:hidden"
       >
+        <Indicator match="[aria-current=page]" optimistic="a" edge="top" length={32} className="bg-gold rounded-full" />
         {DESTINATIONS.map((tab) => (
           <Tab key={tab.href} {...tab} active={isActive(tab.match)} />
         ))}
@@ -220,8 +232,8 @@ function Tab({ href, label, icon, active }: { href: string; label: string; icon:
         active ? 'text-ink-max' : 'text-ink-dim',
       )}
     >
-      {active && <span aria-hidden className="bg-gold absolute top-0 h-0.5 w-8 rounded-full" />}
-      <Icon name={icon} size={19} />
+      {active && <span aria-hidden className="bg-gold absolute top-0 h-0.5 w-8 rounded-full in-data-[indicator=ready]:hidden" />}
+      <Icon name={icon} size={19} className={cx('transition-transform duration-(--dur-3) ease-(--ease-spring)', active && '-translate-y-px scale-110')} />
       <span className="text-micro font-medium">{label}</span>
     </Link>
   );

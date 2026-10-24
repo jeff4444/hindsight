@@ -59,7 +59,7 @@ export function TapeCard({ tape, index, best }: { tape: Tape; index?: number; be
 
   const shell = cx(
     'flex flex-col overflow-hidden rounded-2xl border transition-colors',
-    locked ? 'border-line-faint border-dashed' : 'border-line bg-surface-2 hover:border-line-strong press',
+    locked ? 'border-line-faint border-dashed' : 'border-line bg-surface-2 hover:border-line-strong press lift',
   );
 
   if (locked) {

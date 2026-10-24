@@ -9,6 +9,7 @@ import { bestBracket, verdictFor } from '@/lib/verdict';
 import { AchievableField } from '../debrief/AchievableField';
 import { Button, Chip, Disclosure, ScoreRing, cx } from '../ui';
 import { Term } from '../ui/client';
+import { NumberRoll } from '../ui/kinetic';
 import { Icon } from '../ui/icons';
 import { PanelRow } from './PanelRow';
 import { RevealCard } from './RevealCard';
@@ -100,7 +101,7 @@ export function ReviewPanel({
         {/* 1–2: the verdict and the score */}
         <section className="animate-rise">
           <div className="flex items-start gap-4">
-            <ScoreRing score={percentile === null ? null : percentile * 100} size={104} thickness={7} />
+            <ScoreRing score={percentile === null ? null : percentile * 100} size={104} thickness={7} roll />
             <div className="min-w-0 flex-1 pt-1">
               <Chip tone={outcome.tone} dot>
                 {outcome.label}
@@ -111,7 +112,7 @@ export function ReviewPanel({
                   passed ? 'text-restraint-ink' : r === null ? 'text-ink-hi' : r > 0.005 ? 'text-gain-ink' : r < -0.005 ? 'text-loss-ink' : 'text-ink-hi',
                 )}
               >
-                {r === null ? '—' : `${r >= 0 ? '+' : ''}${r.toFixed(2)}`}
+                {r === null ? '—' : <NumberRoll value={`${r >= 0 ? '+' : ''}${r.toFixed(2)}`} rollIn />}
                 <span className="text-ink-dim ml-1 text-xl font-medium">
                   <Term id="r">R</Term>
                 </span>

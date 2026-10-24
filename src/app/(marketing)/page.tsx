@@ -114,7 +114,7 @@ export default function LandingPage() {
             <Link
               key={mode.id}
               href={mode.href}
-              className="press border-line bg-surface-2 hover:border-line-strong group flex flex-col rounded-2xl border p-5 transition-colors"
+              className="press lift border-line bg-surface-2 hover:border-line-strong group flex flex-col rounded-2xl border p-5 transition-colors"
             >
               <span className={cx('grid h-10 w-10 place-items-center rounded-xl ring-1', mode.id === 'daily' ? 'bg-gold text-on-gold ring-gold' : 'bg-fill-2 text-ink-hi ring-line')}>
                 <Icon name={mode.icon} size={18} />
