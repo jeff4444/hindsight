@@ -1,9 +1,14 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter, Geist_Mono } from 'next/font/google';
+import { Inter, Geist_Mono, Instrument_Serif } from 'next/font/google';
+import { THEME_SCRIPT } from '@/lib/theme-script';
 import './globals.css';
 
 /*
- * Inter for the interface, Geist Mono for numbers.
+ * Inter for the interface, Geist Mono for numbers, Instrument Serif for the moments.
+ *
+ * The serif is the redesign's voice: a verdict after a round, a page headline, the landing hero.
+ * It is only ever set at 28px or larger, where its contrast reads as editorial rather than as a
+ * body face that lost its way.
  *
  * Inter is deliberately the face with the least voice available. The register the scope document
  * writes in is austere and declarative, and that is not served by a typeface with opinions — it is
@@ -30,6 +35,14 @@ const inter = Inter({
 const mono = Geist_Mono({
   subsets: ['latin'],
   variable: '--font-geist-mono',
+  display: 'swap',
+});
+
+const serif = Instrument_Serif({
+  subsets: ['latin'],
+  weight: '400',
+  style: ['normal', 'italic'],
+  variable: '--font-instrument-serif',
   display: 'swap',
 });
 
@@ -69,24 +82,28 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  // Matches --color-surface-0. The old literal here was #0A0B0F, left behind by an earlier ramp,
-  // so the browser chrome and the page were two different blacks.
-  themeColor: '#080b11',
-  // The drag rails are the primary interaction and §16 requires them to work on touch from
-  // the start. Pinch-zooming the page would fight the vertical drag. This is only defensible
-  // because the type scale is in rem and therefore still responds to browser text zoom.
-  maximumScale: 1,
+  // Both match --color-surface-0 in their theme, so the browser chrome and the page are one colour.
+  themeColor: [
+    { media: '(prefers-color-scheme: dark)', color: '#0e0d11' },
+    { media: '(prefers-color-scheme: light)', color: '#f7f3ec' },
+  ],
+  // No maximumScale. Pinch-zoom is an accessibility floor; the chart and the rails already opt out
+  // of page gestures with `touch-action: none`, so zooming the page cannot fight a rail drag.
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    // `suppressHydrationWarning` covers exactly one attribute: `data-motion`, written by the
-    // blocking script above before React hydrates. The server cannot know the viewer's stored
-    // preference, so the two copies of <html> legitimately differ and React would otherwise warn
-    // on every load. It suppresses the mismatch on this element only, not on its subtree.
-    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${mono.variable}`}>
+    // `suppressHydrationWarning` covers the attributes the blocking scripts write before React
+    // hydrates — `data-motion`, `data-theme` and `data-palette`. The server cannot know the
+    // viewer's stored preferences, so the two copies of <html> legitimately differ. It suppresses
+    // the mismatch on this element only, not on its subtree.
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${inter.variable} ${mono.variable} ${serif.variable}`}
+    >
       <body className="bg-surface-0 text-ink min-h-dvh font-sans antialiased">
-        <script dangerouslySetInnerHTML={{ __html: MOTION_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT + MOTION_SCRIPT }} />
         {children}
       </body>
     </html>

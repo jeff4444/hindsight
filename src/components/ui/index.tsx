@@ -15,7 +15,10 @@
  */
 
 import type { CSSProperties, ReactNode } from "react";
+import Link from "next/link";
 import { Icon, type IconName } from "./icons";
+import type { Persona, PersonaGlyph } from "@/lib/panel";
+import type { Division, DivisionId } from "@/core/divisions";
 
 export function cx(...parts: (string | false | null | undefined)[]): string {
   return parts.filter(Boolean).join(" ");
@@ -47,7 +50,7 @@ const TONE_CHIP: Record<Tone, string> = {
   info: "bg-info-bg text-info-ink ring-info-line",
   attention: "bg-attention-bg text-attention-ink ring-attention-line",
   restraint: "bg-restraint-bg text-restraint-ink ring-restraint-line",
-  gold: "bg-gold/12 text-gold-ink ring-gold-line",
+  gold: "bg-gold-bg text-gold-ink ring-gold-line",
 };
 
 const TONE_INK: Record<Tone, string> = {
@@ -123,8 +126,8 @@ export function Kbd({
   return (
     <kbd
       className={cx(
-        "font-mono text-micro",
-        muted ? "text-ink-inv/55" : "text-ink-faint",
+        "kbd-hint font-mono text-micro",
+        muted ? "text-on-gold/60" : "text-ink-dim",
       )}
     >
       {children}
@@ -134,8 +137,7 @@ export function Kbd({
 
 /* ---------------------------------------------------------------- Button */
 
-type ButtonVariant =
-  "primary" | "secondary" | "ghost" | "danger" | "gold" | "accent" | "subtle";
+type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "subtle";
 
 /**
  * Hover states are explicit colours rather than `brightness()`.
@@ -146,13 +148,13 @@ type ButtonVariant =
  * the thing that silently kills the drag rails. Removing the property removes the class of bug.
  */
 const BUTTON_VARIANT: Record<ButtonVariant, string> = {
-  primary: "bg-surface-inv text-ink-inv hover:bg-white shadow-key",
+  // Gold is the best outcome, and the one thing to do next on a screen is the same promise. One
+  // primary per view; everything beside it is secondary or ghost.
+  primary: "bg-gold text-on-gold hover:bg-gold-hover shadow-key",
   secondary:
     "bg-fill-2 text-ink-hi ring-1 ring-line hover:bg-fill-3 hover:ring-line-strong",
-  ghost: "text-ink-lo hover:text-ink-hi hover:bg-fill-1",
+  ghost: "text-ink-lo hover:text-ink-hi hover:bg-fill-2",
   danger: "bg-short-bg text-short-ink ring-1 ring-short-line hover:bg-short/25",
-  gold: "bg-gold/14 text-gold-ink ring-1 ring-gold-line hover:bg-gold/22",
-  accent: "bg-brand-bg text-brand-ink ring-1 ring-brand-line hover:bg-brand/22",
   subtle:
     "text-ink-lo ring-1 ring-line-faint hover:text-ink-hi hover:ring-line",
 };
@@ -162,8 +164,8 @@ const BUTTON_SIZE = {
   sm: "h-8 px-3 text-xs rounded-md gap-1.5",
   md: "h-10 px-4 text-sm rounded-md gap-2",
   // 44px: the touch-target floor. §16 requires the interaction to work on a phone from the start.
-  lg: "h-12 px-6 text-base rounded-lg gap-2",
-  xl: "h-14 px-8 text-lg rounded-xl gap-2.5",
+  lg: "h-12 px-6 text-base rounded-full gap-2",
+  xl: "h-14 px-8 text-lg rounded-full gap-2.5",
 } as const;
 
 type ButtonOwnProps = {
@@ -175,10 +177,14 @@ type ButtonOwnProps = {
   block?: boolean;
   /** Lights the button with its tone. Reserve for the one primary action on a screen. */
   glow?: Tone | "brand";
-  /** Render as an anchor. A button that navigates should be a link — middle-click, open in a new
-   *  tab and "copy link address" all stop working the moment it is not. */
+  /** Render as a link. A button that navigates should be a link — middle-click, open in a new
+   *  tab and "copy link address" all stop working the moment it is not. Passing `href` alone is
+   *  enough; `as="a"` is kept for older call sites. Internal paths go through `next/link`, so
+   *  navigation is client-side rather than a full reload. */
   as?: "button" | "a";
   href?: string;
+  /** Force a plain anchor even for an internal path — a route handler, a download. */
+  native?: boolean;
 };
 
 export function Button({
@@ -192,36 +198,55 @@ export function Button({
   children,
   as = "button",
   href,
+  native,
   style,
   ...rest
 }: ButtonOwnProps & React.ButtonHTMLAttributes<HTMLButtonElement>) {
-  const Tag = (as === "a" ? "a" : "button") as "button";
-  return (
-    <Tag
-      {...rest}
-      {...(as === "a" ? ({ href } as Record<string, unknown>) : {})}
-      disabled={as === "a" ? undefined : rest.disabled || loading}
-      aria-busy={loading || undefined}
-      style={
-        glow
-          ? ({ ...style, "--glow-color": TONE_GLOW[glow] } as CSSProperties)
-          : style
-      }
-      className={cx(
-        "press relative inline-flex items-center justify-center font-medium transition-colors",
-        "disabled:cursor-not-allowed disabled:opacity-45",
-        BUTTON_VARIANT[variant],
-        BUTTON_SIZE[size],
-        glow && "hover:shadow-glow",
-        block && "w-full",
-        className,
-      )}
-    >
+  const className_ = cx(
+    "press relative inline-flex items-center justify-center font-medium whitespace-nowrap transition-colors",
+    "disabled:cursor-not-allowed disabled:opacity-45",
+    BUTTON_VARIANT[variant],
+    BUTTON_SIZE[size],
+    glow && "hover:shadow-glow",
+    block && "w-full",
+    className,
+  );
+  const styled = glow
+    ? ({ ...style, "--glow-color": TONE_GLOW[glow] } as CSSProperties)
+    : style;
+  const content = (
+    <>
       {/* The label keeps its width while busy, so the button does not resize mid-commit. */}
       {loading && <Spinner className="-ml-1" />}
       {children}
       {kbd && !loading && <Kbd muted={variant === "primary"}>{kbd}</Kbd>}
-    </Tag>
+    </>
+  );
+
+  if (href !== undefined || as === "a") {
+    const anchorProps = rest as unknown as React.AnchorHTMLAttributes<HTMLAnchorElement>;
+    const internal = href !== undefined && href.startsWith("/") && !native;
+    return internal ? (
+      <Link {...anchorProps} href={href} style={styled} className={className_}>
+        {content}
+      </Link>
+    ) : (
+      <a {...anchorProps} href={href} style={styled} className={className_}>
+        {content}
+      </a>
+    );
+  }
+
+  return (
+    <button
+      {...rest}
+      disabled={rest.disabled || loading}
+      aria-busy={loading || undefined}
+      style={styled}
+      className={className_}
+    >
+      {content}
+    </button>
   );
 }
 
@@ -306,7 +331,6 @@ export function Panel({
   tone = "raised",
   elevation,
   glow,
-  rim,
   interactive,
   pad = "sm",
   className,
@@ -318,7 +342,6 @@ export function Panel({
   tone?: "raised" | "inset" | "over-chart" | "flush" | "hero";
   elevation?: 0 | 1 | 2 | 3;
   glow?: Tone | "brand";
-  rim?: boolean;
   interactive?: boolean;
   pad?: keyof typeof PAD;
   className?: string;
@@ -327,12 +350,11 @@ export function Panel({
   // The top-edge gradient is what makes a panel read as a lit face rather than a lighter
   // rectangle. It is a background-image, so it creates no stacking context and is legal anywhere.
   const tones = {
-    raised:
-      "bg-surface-2 bg-linear-to-b from-white/[0.038] to-transparent to-44% border border-line rounded-xl",
+    raised: "bg-surface-2 border border-line rounded-xl",
     inset: "bg-surface-1 border border-line-faint rounded-xl",
     "over-chart": "bg-scrim border border-line rounded-lg",
     flush: "bg-transparent rounded-xl",
-    hero: "bg-surface-2 bg-linear-to-b from-white/[0.045] to-transparent to-40% border border-line rounded-2xl",
+    hero: "bg-surface-2 border border-line rounded-2xl",
   } as const;
 
   const shadow = {
@@ -358,8 +380,7 @@ export function Panel({
         shadow,
         PAD[pad],
         glow && "shadow-glow",
-        rim && "rim",
-        interactive && "press hover:border-line-strong transition-colors",
+        interactive && "press hover:border-line-strong hover:bg-surface-3/40 transition-colors",
         className,
       )}
     >
@@ -394,7 +415,7 @@ export function Chip({
     <span
       title={title}
       className={cx(
-        "inline-flex items-center gap-1.5 rounded ring-1",
+        "inline-flex items-center gap-1.5 rounded-full ring-1 whitespace-nowrap",
         size === "md" ? "px-2.5 py-1.5 text-xs" : "px-2 py-1 text-mini",
         mono && "font-mono tabular-nums",
         TONE_CHIP[tone],
@@ -771,18 +792,26 @@ export function Segmented<T extends string | number>({
   value,
   onChange,
   size = "sm",
+  label,
+  block,
   className,
 }: {
-  options: { value: T; label: string; disabled?: boolean; title?: string }[];
+  options: { value: T; label: ReactNode; disabled?: boolean; title?: string }[];
   value: T;
   onChange: (value: T) => void;
-  size?: "sm" | "md";
+  size?: "sm" | "md" | "lg";
+  /** Required for a screen reader: the group is announced by this name. */
+  label?: string;
+  block?: boolean;
   className?: string;
 }) {
   return (
     <div
+      role="radiogroup"
+      aria-label={label}
       className={cx(
-        "bg-fill-1 ring-line inline-flex rounded-md p-0.5 ring-1",
+        "bg-fill-2 ring-line-faint rounded-full p-1 ring-1",
+        block ? "flex" : "inline-flex",
         className,
       )}
     >
@@ -794,13 +823,15 @@ export function Segmented<T extends string | number>({
             type="button"
             title={option.title}
             disabled={option.disabled}
-            aria-pressed={active}
+            role="radio"
+            aria-checked={active}
             onClick={() => onChange(option.value)}
             className={cx(
-              "press rounded-sm font-medium transition-colors disabled:opacity-35",
-              size === "sm" ? "h-7 px-2.5 text-xs" : "h-9 px-3.5 text-sm",
+              "press rounded-full font-medium whitespace-nowrap transition-colors disabled:opacity-35",
+              size === "sm" ? "h-7 px-3 text-xs" : size === "md" ? "h-9 px-4 text-sm" : "h-11 px-5 text-sm",
+              block && "flex-1",
               active
-                ? "bg-surface-inv text-ink-inv"
+                ? "bg-thumb text-ink-max shadow-e1"
                 : "text-ink-lo hover:text-ink-hi enabled:hover:bg-fill-2",
             )}
           >
@@ -826,11 +857,15 @@ export function Skeleton({
   lines = 1,
   className,
 }: {
-  variant?: "block" | "text" | "circle";
+  /** `fog` is for a chart-shaped hole: the future, still loading. */
+  variant?: "block" | "text" | "circle" | "fog";
   lines?: number;
   className?: string;
 }) {
   const base = "bg-fill-2 sheen-track animate-shimmer";
+  if (variant === "fog") {
+    return <div className={cx("bg-fill-1 fog fog-drift rounded-xl", className)} aria-hidden />;
+  }
   if (variant === "text") {
     return (
       <div className={cx("flex flex-col gap-2", className)}>
@@ -874,16 +909,16 @@ export function EmptyState({
   return (
     <div
       className={cx(
-        "border-line-faint flex flex-col items-center gap-3 rounded-xl border border-dashed px-6 py-14 text-center",
+        "border-line flex flex-col items-center gap-3 rounded-2xl border border-dashed px-6 py-14 text-center",
         className,
       )}
     >
       {icon && (
-        <span className="bg-fill-1 text-ink-dim grid h-12 w-12 place-items-center rounded-full">
+        <span className="bg-surface-2 text-ink-lo ring-line grid h-12 w-12 place-items-center rounded-full ring-1">
           <Icon name={icon} size={22} />
         </span>
       )}
-      <div className="text-ink-hi text-base font-medium">{title}</div>
+      <div className="font-display text-ink-max text-2xl">{title}</div>
       {body && <p className="text-ink-lo max-w-prose text-sm">{body}</p>}
       {action && <div className="mt-1">{action}</div>}
     </div>
@@ -907,7 +942,7 @@ export function SectionHeader({
     <div className={cx("flex items-end justify-between gap-4", className)}>
       <div>
         {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
-        <h2 className="text-ink-max mt-1 text-xl font-semibold md:text-2xl">
+        <h2 className="text-ink-max mt-1.5 text-xl font-semibold tracking-tight md:text-2xl">
           {title}
         </h2>
       </div>
@@ -930,7 +965,7 @@ export function Divider({
   return (
     <div className={cx("flex items-center gap-3", className)}>
       <hr className="border-line-faint flex-1 border-t" />
-      <span className="eyebrow text-ink-faint">{label}</span>
+      <span className="eyebrow text-ink-dim">{label}</span>
       <hr className="border-line-faint flex-1 border-t" />
     </div>
   );
@@ -982,9 +1017,11 @@ export function Tier({
 
 /* ----------------------------------------------------------------- Field */
 
+// The focus treatment is a 3px ring plus the border, not the border alone: a 1px colour change
+// was the only focus signal before, and on a dark field it was close to invisible.
 const INPUT_CLASS =
-  "bg-surface-1 border-line text-ink placeholder:text-ink-faint h-12 w-full rounded-lg border px-3.5 text-base " +
-  "transition-colors outline-none focus:border-focus";
+  "bg-surface-1 border-line text-ink-hi placeholder:text-ink-dim h-12 w-full rounded-lg border px-3.5 text-base " +
+  "transition-[border-color,box-shadow] outline-none focus-visible:border-focus focus-visible:ring-3 focus-visible:ring-focus/30";
 
 /**
  * A labelled control, with its hint and its error.
@@ -1184,15 +1221,23 @@ export function TextLink({
   className?: string;
   children: React.ReactNode;
 } & Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, "href">) {
+  const classes = cx(
+    "text-ink-hi decoration-gold-line hover:decoration-gold rounded-xs underline decoration-from-font underline-offset-4 transition-colors",
+    className,
+  );
+  if (!external && href.startsWith("/")) {
+    return (
+      <Link {...rest} href={href} className={classes}>
+        {children}
+      </Link>
+    );
+  }
   return (
     <a
       {...rest}
       href={href}
       {...(external ? { target: "_blank", rel: "noreferrer noopener" } : null)}
-      className={cx(
-        "text-ink-lo hover:text-ink-hi rounded-xs underline decoration-from-font underline-offset-4 transition-colors",
-        className,
-      )}
+      className={classes}
     >
       {children}
     </a>
@@ -1247,12 +1292,12 @@ export function Toggle({
         aria-hidden
         className={cx(
           "relative h-5 w-9 shrink-0 rounded-full transition-colors",
-          on ? "bg-info" : "bg-fill-3",
+          on ? "bg-info" : "bg-fill-3 ring-1 ring-line ring-inset",
         )}
       >
         <span
           className={cx(
-            "absolute top-0.5 h-4 w-4 rounded-full bg-white transition-[left] duration-150",
+            "bg-knob shadow-e1 absolute top-0.5 h-4 w-4 rounded-full transition-[left] duration-150",
             on ? "left-[1.125rem]" : "left-0.5",
           )}
         />
@@ -1338,10 +1383,240 @@ export function Disclosure({
         />
         <span className="min-w-0 flex-1">{label}</span>
         {aside && (
-          <span className="text-ink-faint shrink-0 text-xs">{aside}</span>
+          <span className="text-ink-dim shrink-0 text-xs">{aside}</span>
         )}
       </summary>
       <div className="mt-3">{children}</div>
     </details>
+  );
+}
+
+/* ------------------------------------------------------------- ScoreRing */
+
+/**
+ * The Score, as a ring: how this trade ranked against every trade that was possible on the chart.
+ *
+ * The ring's colour is the score's band, not the trade's direction — a winning trade can score 40
+ * and a losing one can score 70, and that gap is the lesson. Gold is reserved for the top decile.
+ */
+export function scoreTone(score: number): Tone {
+  if (score >= 90) return "gold";
+  if (score >= 60) return "long";
+  if (score >= 35) return "neutral";
+  return "short";
+}
+
+export function ScoreRing({
+  score,
+  size = 132,
+  thickness = 8,
+  label = "Score",
+  className,
+}: {
+  /** 0–100, or null for a round with no score yet. */
+  score: number | null;
+  size?: number;
+  thickness?: number;
+  label?: string;
+  className?: string;
+}) {
+  const tone = score === null ? "neutral" : scoreTone(score);
+  return (
+    <ProgressArc
+      value={score ?? 0}
+      max={100}
+      size={size}
+      thickness={thickness}
+      tone={tone}
+      label={score === null ? label : `${label} ${Math.round(score)} of 100`}
+      className={className}
+    >
+      <div className="flex flex-col items-center">
+        <span
+          className={cx("numeral leading-none font-semibold", TONE_INK[tone])}
+          style={{ fontSize: size * 0.34 }}
+        >
+          {score === null ? "–" : Math.round(score)}
+        </span>
+        <span className="eyebrow text-ink-dim mt-1.5">{label}</span>
+      </div>
+    </ProgressArc>
+  );
+}
+
+/* ---------------------------------------------------------- PersonaAvatar */
+
+const PERSONA_GLYPHS: Record<PersonaGlyph, ReactNode> = {
+  // A level, broken upward.
+  breakout: (
+    <>
+      <path d="M4 14h16" strokeDasharray="2 2.5" />
+      <path d="M12 19V6M8 10l4-4 4 4" />
+    </>
+  ),
+  // A dip in a rising line.
+  dip: <path d="M3 17l5-6 3 4 3-7 3 3 4-6" />,
+  // A plain V.
+  v: <path d="M5 6l7 12 7-12" />,
+  // A reticle.
+  reticle: (
+    <>
+      <circle cx="12" cy="12" r="6.5" />
+      <path d="M12 3v4M12 17v4M3 12h4M17 12h4" />
+    </>
+  ),
+  // Head and shoulders.
+  peaks: <path d="M3 18l4-6 3 3 3-9 3 9 3-3 3 6" />,
+  // XABCD.
+  zigzag: <path d="M3 16l4-9 4 6 4-8 6 12" />,
+  // Volume bars.
+  bars: <path d="M6 19v-5M10 19v-9M14 19v-3M18 19V7" />,
+  // A coin.
+  coin: (
+    <>
+      <circle cx="12" cy="12" r="7.5" />
+      <circle cx="12" cy="12" r="4" />
+    </>
+  ),
+};
+
+/**
+ * A Panel persona's face: its glyph in a ring of its colour. The colour is the same one its bracket
+ * is drawn in on the chart, which is what ties the avatar in the review to the line on the canvas.
+ */
+export function PersonaAvatar({
+  persona,
+  size = 36,
+  direction,
+  muted,
+  className,
+}: {
+  persona: Persona;
+  size?: number;
+  /** The persona's call on this chart, badged in the corner. Undefined shows no badge. */
+  direction?: "long" | "short" | null;
+  /** Dims the avatar — a persona that sat out, beside ones that traded. */
+  muted?: boolean;
+  className?: string;
+}) {
+  const badge = Math.max(14, Math.round(size * 0.42));
+  return (
+    <span
+      className={cx("relative inline-grid shrink-0 place-items-center rounded-full", className)}
+      style={{
+        width: size,
+        height: size,
+        background: `color-mix(in oklch, ${persona.colour} ${muted ? 8 : 16}%, transparent)`,
+        boxShadow: `inset 0 0 0 1.5px color-mix(in oklch, ${persona.colour} ${muted ? 30 : 70}%, transparent)`,
+        color: muted ? "var(--color-ink-dim)" : persona.colour,
+      }}
+      aria-hidden
+    >
+      <svg
+        width={size * 0.56}
+        height={size * 0.56}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        {PERSONA_GLYPHS[persona.glyph]}
+      </svg>
+      {direction !== undefined && (
+        <span
+          className={cx(
+            "ring-surface-2 absolute -right-1 -bottom-1 grid place-items-center rounded-full ring-2",
+            direction === "long"
+              ? "bg-long text-on-gold"
+              : direction === "short"
+                ? "bg-short text-on-gold"
+                : "bg-surface-3 text-ink-dim",
+          )}
+          style={{ width: badge, height: badge }}
+        >
+          <svg width={badge * 0.6} height={badge * 0.6} viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            {direction === "long" ? (
+              <path d="M6 9.5V2.5M3 5.5l3-3 3 3" />
+            ) : direction === "short" ? (
+              <path d="M6 2.5v7M3 6.5l3 3 3-3" />
+            ) : (
+              <path d="M3 6h6" />
+            )}
+          </svg>
+        </span>
+      )}
+    </span>
+  );
+}
+
+/* --------------------------------------------------------- DivisionBadge */
+
+const DIVISION_TONE: Record<DivisionId, string> = {
+  paper: "text-ink-lo ring-line bg-fill-1",
+  retail: "text-ink-hi ring-line-strong bg-fill-2",
+  swing: "text-info-ink ring-info-line bg-info-bg",
+  desk: "text-long-ink ring-long-line bg-long-bg",
+  prop: "text-restraint-ink ring-restraint-line bg-restraint-bg",
+  fund: "text-gold-ink ring-gold-line bg-gold-bg",
+  wizard: "text-on-gold ring-gold bg-gold",
+};
+
+/** A division, named. `placing` shows the unplaced state with rounds to go. */
+export function DivisionBadge({
+  division,
+  placing,
+  size = "md",
+  className,
+}: {
+  division: Division | null;
+  /** Rounds left before placement, when not yet placed. */
+  placing?: number;
+  size?: "sm" | "md" | "lg";
+  className?: string;
+}) {
+  const box = {
+    sm: "h-6 px-2.5 text-mini gap-1.5",
+    md: "h-8 px-3 text-xs gap-2",
+    lg: "h-10 px-4 text-sm gap-2",
+  }[size];
+  if (!division) {
+    return (
+      <span className={cx("fog text-ink-lo border-line-strong inline-flex items-center rounded-full border border-dashed font-medium", box, className)}>
+        Placing{placing !== undefined && <span className="numeral text-ink-dim">· {placing} to go</span>}
+      </span>
+    );
+  }
+  return (
+    <span className={cx("inline-flex items-center rounded-full font-semibold ring-1", DIVISION_TONE[division.id], box, className)}>
+      <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden fill="currentColor">
+        <path d="M5 0l1.5 3.5L10 5 6.5 6.5 5 10 3.5 6.5 0 5l3.5-1.5z" />
+      </svg>
+      {division.name}
+    </span>
+  );
+}
+
+/* -------------------------------------------------------------- FogPanel */
+
+/**
+ * The future, as a surface: a hatched block with a dashed "now" edge. For anything not yet known —
+ * an empty tape, a locked figure, a chart still loading.
+ */
+export function FogPanel({
+  label,
+  className,
+  children,
+}: {
+  label?: string;
+  className?: string;
+  children?: ReactNode;
+}) {
+  return (
+    <div className={cx("fog border-line relative overflow-hidden rounded-xl border border-dashed", className)}>
+      {label && <span className="numeral text-ink-dim absolute top-2.5 right-3 text-mini">{label}</span>}
+      {children}
+    </div>
   );
 }

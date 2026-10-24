@@ -122,10 +122,9 @@ export function StyleProfile({ rounds }: { rounds: StyleRound[] }) {
       )}
 
       <p className="text-ink-faint mt-3 max-w-prose text-xs leading-relaxed">
-        Resembling a school is a description, not a grade — §14.7 could not tell any of them apart
-        from a coin flip on the charts they chose. Engine Zero is excluded here: it trades every
-        chart with a fixed bracket, so matching it would mean you place 2 ATR stops, not that you
-        trade at random.
+        Resembling a school is a description, not a grade — none of them has beaten a coin flip on
+        the charts it chose. The Coin is left out: matching it would only mean you place 2 ATR
+        stops.
       </p>
     </Panel>
   );

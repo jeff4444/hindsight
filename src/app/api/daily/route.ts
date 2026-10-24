@@ -37,7 +37,7 @@ export async function POST(request: Request) {
 
   if (!isDailyOpen(day, now)) {
     return NextResponse.json(
-      { error: 'That daily has closed. §10.1 keeps each one open for 48 hours.' },
+      { error: 'That daily has closed. Each one stays open for 48 hours.' },
       { status: 410 },
     );
   }

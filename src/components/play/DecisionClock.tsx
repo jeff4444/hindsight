@@ -89,7 +89,7 @@ export function DecisionClock({
       role="timer"
       aria-live={urgent ? 'polite' : 'off'}
       aria-label={`${seconds} seconds left to decide`}
-      title="§3.2 puts a clock on deliberation at this tier: the player willing to spend four minutes should not win by spending four minutes."
+      title="This ruleset is timed, so a slow read cannot beat a good one."
     >
       <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden className="-ml-0.5">
         <circle cx="10" cy="10" r={R} fill="none" stroke="currentColor" strokeWidth="2" opacity={0.18} />

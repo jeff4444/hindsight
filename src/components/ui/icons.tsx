@@ -1,4 +1,5 @@
-import type { ReactElement } from 'react';
+import { useId, type ReactElement } from 'react';
+import { MARK } from './brand';
 
 /**
  * The icon set.
@@ -289,30 +290,11 @@ export function Icon({
 }
 
 /**
- * The mark.
+ * The mark: two candle bodies form an H, and the bar between them is the entry line. Solid on the
+ * left — the past, revealed. Hatched on the right — the future, still fog. Geometry lives in
+ * `brand.ts`, which also feeds the favicon, the OG image and the error page.
  *
- * Two candle bodies form the stems of an H and the bar between them is the entry line. The left
- * body is filled — the past, revealed. The right body is an outline — the next sixty bars, not yet
- * shown. The bar is the price level the player commits at.
- *
- * At 16px it resolves as a letter. At 96px it resolves as two candles with a level between them.
- * It encodes the mechanic: one side is known, the other is not, and you commit at the line
- * between them.
- *
- * Two things were tried first and are worth recording, because both look right in the abstract
- * and neither survives contact with a favicon:
- *
- *   The bar used to run the full width and knock a channel through both bodies, so that it read
- *   as "a level extending across the chart". It severs the stems exactly where an H needs them
- *   continuous, so the mark became four floating blobs and a line, and below 32px it was mush.
- *   Running the bar only through the counter costs the extension and buys the entire letterform.
- *
- *   The candles had wicks. They add a tick of noise at 16-24px in exchange for candle-ness at
- *   sizes where the mark is already sitting next to an actual chart and does not need to argue
- *   the point. Solid-versus-outline carries "revealed versus not" on its own, at every size.
- *
- * `tone="mono"` inherits `currentColor` and is the default — nav, footers, favicons. `tone="duo"`
- * spends the brand hue and is allowed at 32px and up only, per the colour rule in globals.css.
+ * `tone="mono"` inherits `currentColor` — nav, footers. `tone="duo"` paints the future candle gold.
  */
 export function Mark({
   size = 24,
@@ -323,47 +305,51 @@ export function Mark({
   size?: number;
   tone?: 'mono' | 'duo';
   className?: string;
-  /** Draws the unrevealed body in, using the shared `draw` keyframe. The mark reveals itself. */
+  /** Draws the future body in, using the shared `draw` keyframe. The mark reveals itself. */
   drawing?: boolean;
 }) {
-  const past = tone === 'duo' ? 'var(--color-long)' : 'currentColor';
-  const future = tone === 'duo' ? 'var(--color-brand)' : 'currentColor';
-  const bar = tone === 'duo' ? 'var(--color-ink-max)' : 'currentColor';
+  // Sanitised: React's ids carry characters that are not legal inside `url(#…)`.
+  const id = `hs-mark-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
+  const { past, future, bar, hatch } = MARK;
+  const ink = 'currentColor';
+  const gold = tone === 'duo' ? 'var(--color-gold)' : 'currentColor';
 
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" className={className} aria-hidden>
-      {/* the revealed candle */}
-      <rect x="5.5" y="4" width="6" height="24" rx="2" fill={past} />
-
-      {/* the unrevealed candle. Perimeter is 2*(6+24) minus the corner easing, near enough 58. */}
+      <rect {...past} fill={ink} />
+      <clipPath id={id}>
+        <rect x={future.x} y={future.y} width={future.width} height={future.height} rx={future.rx} />
+      </clipPath>
+      <g clipPath={`url(#${id})`} stroke={gold} strokeWidth="1.1" strokeLinecap="round" opacity="0.8">
+        {hatch.map(([x1, y1, x2, y2]) => (
+          <line key={y1} x1={x1} y1={y1} x2={x2} y2={y2} />
+        ))}
+      </g>
       <rect
-        x="20.5"
-        y="4"
-        width="6"
-        height="24"
-        rx="2"
+        x={future.x}
+        y={future.y}
+        width={future.width}
+        height={future.height}
+        rx={future.rx}
         fill="none"
-        stroke={future}
-        strokeWidth="2.2"
-        opacity={tone === 'duo' ? 1 : 0.75}
+        stroke={gold}
+        strokeWidth={future.stroke}
         className={drawing ? 'animate-draw' : undefined}
         style={drawing ? ({ strokeDasharray: 58, '--len': 58 } as React.CSSProperties) : undefined}
       />
-
-      {/* the entry line. Sits half a unit above centre, where an H's bar optically belongs. */}
-      <rect x="10.5" y="13.9" width="11" height="3.2" rx="1.6" fill={bar} />
+      <rect {...bar} fill={ink} />
     </svg>
   );
 }
 
 /**
- * Mark plus wordmark. All-caps is otherwise reserved for eyebrows and immutable state badges; a
- * logotype is the third and last exception.
+ * Mark plus logotype. The name is set in the serif, mixed case: the product's voice, at the one
+ * size it appears on every screen.
  */
 export function Wordmark({
   size = 'md',
   showMark = true,
-  tone = 'mono',
+  tone = 'duo',
   className,
 }: {
   size?: 'sm' | 'md' | 'lg';
@@ -372,11 +358,11 @@ export function Wordmark({
   className?: string;
 }) {
   const mark = size === 'sm' ? 18 : size === 'lg' ? 30 : 22;
-  const text = size === 'sm' ? 'text-sm' : size === 'lg' ? 'text-lg' : 'text-base';
+  const text = size === 'sm' ? 'text-lg' : size === 'lg' ? 'text-[1.75rem]' : 'text-[1.375rem]';
   return (
-    <span className={['inline-flex items-center gap-2', className].filter(Boolean).join(' ')}>
+    <span className={['text-ink-max inline-flex items-center gap-2', className].filter(Boolean).join(' ')}>
       {showMark && <Mark size={mark} tone={tone} />}
-      <span className={`text-ink-hi tracking-wordmark font-hero ${text}`}>HINDSIGHT</span>
+      <span className={`font-display leading-none ${text}`}>Hindsight</span>
     </span>
   );
 }

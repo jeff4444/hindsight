@@ -150,9 +150,7 @@ export function VersusLauncher({ tapes }: { tapes: { slug: string; name: string;
       <Panel tone="hero" pad="md" className="lg:sticky lg:top-6">
         <Eyebrow>Unrated</Eyebrow>
         <p className="text-ink-lo mt-2 text-sm leading-relaxed">
-          Neither mode feeds §12&rsquo;s ladder. A format has to be shown to measure the same skill
-          before its results are allowed to move a rating that means something else — the same call
-          Manage got, for the same reason.
+          Versus never moves your rating. Play loose, play a friend, play the ghosts.
         </p>
         {error && <p className="text-loss-ink mt-4 text-sm">{error}</p>}
         <Button onClick={() => void open()} variant="primary" size="lg" className="mt-5 w-full" disabled={busy}>

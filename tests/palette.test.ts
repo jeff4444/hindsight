@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { CANDLE, exitColour } from '@/lib/palette';
+import { CANDLE, CANDLE_CB, exitColour } from '@/lib/palette';
 
 /**
  * The chart draws through lightweight-charts, which takes plain strings and cannot read a custom
@@ -25,6 +25,18 @@ describe('the canvas and the interface agree on what green and red mean', () => 
     expect(themeValue('short')).toBe(CANDLE.down);
   });
 
+  it('the stage repeats the same pair, so a dark chart under a light page still agrees', () => {
+    const stage = css.slice(css.indexOf("[data-theme='dark'] {"));
+    expect(stage.match(/--color-long:\s*([^;]+);/)?.[1].trim()).toBe(CANDLE.up);
+    expect(stage.match(/--color-short:\s*([^;]+);/)?.[1].trim()).toBe(CANDLE.down);
+  });
+
+  it('the colour-blind palette agrees too', () => {
+    const cb = css.slice(css.indexOf("[data-palette='cb'] {"));
+    expect(cb.match(/--color-long:\s*([^;]+);/)?.[1].trim()).toBe(CANDLE_CB.up);
+    expect(cb.match(/--color-short:\s*([^;]+);/)?.[1].trim()).toBe(CANDLE_CB.down);
+  });
+
   it('gain and loss alias direction rather than redeclaring it', () => {
     // The same hue serves an up candle, a target rail and a positive R. Aliasing keeps them from
     // being tuned apart by someone who only meant to change one of them.
@@ -40,6 +52,7 @@ describe('exit markers', () => {
     // A timeout marked to market can be positive, but it is not a target being hit, and the
     // marker says which of the three happened rather than whether it made money.
     expect(exitColour('timeout')).toBe(CANDLE.down);
+    expect(exitColour('target', CANDLE_CB)).toBe(CANDLE_CB.up);
   });
 });
 

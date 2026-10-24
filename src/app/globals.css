@@ -1,353 +1,238 @@
 @import "tailwindcss";
 
 /*
- * The design system.
+ * Afterglow — the design system.
  *
- * The scope document has no design section. It has one explicit aesthetic instruction — §10.4's
- * "plain Unicode, no image, no link" for the share card — and one target, §14's "a debrief screen
- * worth screenshotting". The original reading of those was:
+ * Hindsight is the view from after the fact, so the palette is dusk: a violet-black ink for the
+ * room, a warm off-white for the words, and one colour that means something before anything else
+ * does — gold, which is the best trade there was. Gold marks the trade you could have made in
+ * hindsight, the one primary action on a screen, a perfect streak and first place. Nothing else.
  *
- *   Premium means density, alignment and motion quality. Not gradients, not glass, not decoration.
+ * Three rules carry the whole system:
  *
- * Alignment and motion quality were right and are kept. Density and the blanket ban on decoration
- * were wrong, and they were wrong in a specific, traceable way, so it is worth writing down:
+ *   1. Every colour has exactly one job. Long and short are directions; gain and loss alias them
+ *      because an up candle and a positive R are the same fact. Lavender is sitting out. Blue is
+ *      information and focus. Gold is the best outcome.
+ *   2. The future is fog. Anything not yet known — the reveal window before it plays, a chart
+ *      still loading, an empty state — wears the same 45° hairline hatch (`.fog`). It is the
+ *      product's signature and it should never be decoration on something already known.
+ *   3. Serif speaks, mono counts. Instrument Serif is for the handful of moments the game has a
+ *      voice — a verdict, a headline. Every number is Geist Mono with tabular figures, because
+ *      numbers here animate and a proportional face reflows on every frame.
  *
- *   Density is correct next to the chart and was cargo-culted everywhere else. A HUD that sits
- *   beside sixty live candles should get out of the way. A debrief, a landing page and a daily
- *   ceremony should not. The old scale put 119 of 172 sizing decisions at 13px or below and
- *   capped the product's loudest number — the R-multiple — at 44px, so nothing on any screen was
- *   bigger than anything else and the eye had nowhere to land.
+ * Themes. The token names did not change in the redesign; their values did, and they now exist
+ * twice. Dark is the default and lives in `@theme`. Light ("Daylight") lives in
+ * `[data-theme='light']`. `<html data-theme>` is written before first paint by the script in
+ * layout.tsx from the stored preference or the OS setting. The play stage pins
+ * `data-theme='dark'` on its own root, so the dark values are repeated under that selector too:
+ * a chart is read against ink, in either theme, and the overlay palette is tuned for it.
  *
- *   The gradient ban was reasoned from a real constraint and then over-generalised. The real
- *   constraint is that `backdrop-filter` creates a stacking context, and TradeOverlay's z-10 rail
- *   layer over the lightweight-charts canvas is load-bearing: the moment an ancestor of ChartFrame
- *   establishes a stacking context, the rails still paint perfectly and stop being grabbable.
- *   But `background-image` and `box-shadow` create no stacking context at all. They were banned by
- *   association with a property they have nothing in common with.
- *
- * So the rules that actually hold:
- *
- *   `filter`, `backdrop-filter`, `transform`, `perspective`, `isolation`, `will-change`,
- *   `mix-blend-mode`, `contain`, `mask`, `clip-path`, `opacity < 1` and `view-transition-name` are
- *   forbidden on <html>, <body>, PlaySurface's root and ChartFrame's root. Those four elements are
- *   the entire ancestor chain, and they never animate. Nothing checks this automatically, so it
- *   is on review to hold the line — the failure is invisible: the rails still paint perfectly and
- *   simply stop being grabbable.
- *
- *   Gradients and shadows are legal everywhere, including on the chart frame — whose canvas is
- *   drawn with a transparent background, so a gradient behind it shows through between the candles.
- *
- * Two aesthetic prohibitions that are not structural but should survive review:
- *
- *   Never a gradient inside a data mark. Bars, cells, rails, progress fills and chips stay flat.
- *   A gradient on a bar makes its height ambiguous, and this is a product about reading levels.
- *
- *   Never a gradient on text. It needs `color: transparent`, which destroys selection contrast
- *   and forced-colours mode.
- *
- * Names are semantic (surface, ink, long, short) rather than value-based (slate-900). A light mode
- * is not planned, but naming it this way means one is possible later without a rename.
- */
-
-/*
- * `static` rather than a bare `@theme`.
- *
- * Tailwind drops any theme variable no utility class references, which is the right default and
- * the wrong one here. Several tokens are consumed from hand-written CSS instead of from a utility
- * — `.flare` reads --color-brand-glow, `.rim` reads --color-surface-2, the reduced-motion block
- * rewrites the duration tokens — and the scanner cannot see a `var()` inside a rule it did not
- * generate. Those tokens were being emitted as nothing, which fails silently: the rule still
- * applies, it just paints transparent.
- *
- * It also means a token exists the moment it is declared, so JS and devtools can read the whole
- * palette rather than the subset that happens to be in use on the current page.
+ * `@theme static` emits every token whether or not a utility uses it, so JS and devtools can read
+ * the whole palette.
  */
 @theme static {
   /* ------------------------------------------------------------------ type */
 
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-display: var(--font-instrument-serif), ui-serif, Georgia, serif;
 
-  /* ---------------------------------------------------------------- surface
+  /* -------------------------------------------------------------- surfaces
    *
-   * Slate is oklch chroma 0.042 — a lot of blue. It reads consumer-app and it fights the teal
-   * candles, which sit on the same screen at all times. This ramp runs at 0.014–0.018: a third of
-   * slate, but roughly double what it was. That matters more than it sounds. Achromatic dark greys
-   * are the single most reliable way to make an interface look unfinished, and the old ramp at
-   * 0.008 was very nearly achromatic.
-   *
-   * The base also drops and the panel rises, so page-to-panel is 8.5% lightness rather than 6.7%.
-   * Combined with the elevation ladder below, a panel now reads as an object sitting on a surface
-   * rather than as a slightly different rectangle.
+   * Hue 300 at low chroma: violet-black ink, the last light after sunset. Achromatic greys read
+   * unfinished on a screen this dark; a cool tint under warm text is what gives the room depth.
    */
-  --color-surface-0: oklch(0.150 0.014 265); /* the page */
-  --color-surface-1: oklch(0.188 0.015 265); /* wells, inputs, the chart frame */
-  --color-surface-2: oklch(0.235 0.016 265); /* the panel */
-  --color-surface-3: oklch(0.290 0.017 265); /* a panel on a panel, hover */
-  --color-surface-4: oklch(0.350 0.018 265); /* controls at rest */
-  --color-surface-5: oklch(0.418 0.018 265); /* controls hovered */
-  --color-surface-inv: oklch(0.965 0.004 265);
+  --color-surface-0: oklch(0.160 0.008 300); /* the page            #0E0D11 */
+  --color-surface-1: oklch(0.190 0.009 300); /* wells, the chart    #151419 */
+  --color-surface-2: oklch(0.225 0.010 300); /* the card            #1C1B21 */
+  --color-surface-3: oklch(0.270 0.011 300); /* nested, hover       #25232B */
+  --color-surface-inv: oklch(0.965 0.009 80);
 
-  /* Translucent, for anything painted OVER the chart canvas, where an opaque panel would occlude
-   * candles the player is still reading. Panels use the opaque ramp above; stacking a translucent
-   * chip inside a translucent panel compounds alpha and the same chip ends up two colours. */
-  --color-fill-1: oklch(1 0 0 / 0.045);
-  --color-fill-2: oklch(1 0 0 / 0.075);
-  --color-fill-3: oklch(1 0 0 / 0.115);
-  --color-scrim: oklch(0.120 0.014 265 / 0.78);
+  /* Translucent, for anything painted over the chart canvas or over another surface. */
+  --color-fill-1: oklch(0.97 0.01 80 / 0.045);
+  --color-fill-2: oklch(0.97 0.01 80 / 0.075);
+  --color-fill-3: oklch(0.97 0.01 80 / 0.12);
+  --color-scrim: oklch(0.13 0.008 300 / 0.82);
 
-  /* ----------------------------------------------------------------- lines */
-  --color-line-faint: oklch(1 0 0 / 0.06);
-  --color-line: oklch(1 0 0 / 0.10);
-  --color-line-strong: oklch(1 0 0 / 0.17);
+  --color-line-faint: oklch(0.97 0.01 80 / 0.065);
+  --color-line: oklch(0.97 0.01 80 / 0.11);
+  --color-line-strong: oklch(0.97 0.01 80 / 0.19);
 
   /* ------------------------------------------------------------------- ink
    *
-   * Contrast ratios below are measured against surface-2, the panel, because that is the worst
-   * realistic case — a panel is lighter than the page, so text on one has less to work with.
-   *
-   *   ink        9.55:1   body copy. THE DEFAULT for prose.
-   *   ink-lo     6.72:1   a deliberate demotion. Secondary prose, captions.
-   *   ink-dim    4.67:1   the AA floor. Metadata and eyebrows. Never a sentence.
-   *   ink-faint  2.78:1   decorative and disabled ONLY. Never carries information.
-   *
-   * The old ramp put ink-dim at 3.50:1 and then used it for body text, including the debrief's
-   * generated diagnosis — the product's actual thesis, rendered at 12px below the AA floor. That
-   * one decision was a large share of "looks dead to the eye".
-   *
-   * ink-dim falls to 3.96:1 on surface-3, so an eyebrow does not belong on a nested panel.
+   * Warm, against the cool room. Ratios against surface-2, the worst realistic case:
+   *   ink-max / ink-hi   headings and figures
+   *   ink                body copy, ~10:1
+   *   ink-lo             secondary copy, ~7:1
+   *   ink-dim            metadata and eyebrows, ~5:1 — the AA floor, never a paragraph
+   *   ink-faint          decorative and disabled ONLY
    */
-  --color-ink-max: oklch(0.980 0.003 265);
-  --color-ink-hi: oklch(0.915 0.005 265);
-  --color-ink: oklch(0.820 0.008 265);
-  --color-ink-lo: oklch(0.720 0.010 265);
-  --color-ink-dim: oklch(0.625 0.011 265);
-  --color-ink-faint: oklch(0.500 0.011 265);
-  --color-ink-inv: oklch(0.165 0.012 265);
+  --color-ink-max: oklch(0.975 0.008 80);
+  --color-ink-hi: oklch(0.925 0.010 80);
+  --color-ink: oklch(0.840 0.012 78);
+  --color-ink-lo: oklch(0.735 0.013 76);
+  --color-ink-dim: oklch(0.645 0.013 74);
+  --color-ink-faint: oklch(0.505 0.012 72);
+  --color-ink-inv: oklch(0.170 0.008 300);
 
   /* ------------------------------------------------------------- direction
    *
-   * Pinned to the candle colours the chart actually draws (see src/lib/palette.ts, which a test
-   * holds against these values). Before this, the panel green was emerald-400 and the candle green
-   * was #26a69a — two different greens forty pixels apart during the reveal.
-   *
-   * tests/palette.test.ts matches the first occurrence of each token name followed by a colon, so
-   * the two literal hexes and the two aliases must stay the first place those four names appear
-   * with a colon after them. Do not name them that way in a comment above their declaration.
+   * Pinned to the candles the chart draws (src/lib/palette.ts; tests/palette.test.ts holds the two
+   * together by matching the first declaration of each name, so these four must stay the first).
    */
-  --color-long: #26a69a;
-  --color-long-ink: oklch(0.845 0.135 172);
-  --color-long-line: oklch(0.660 0.110 172 / 0.36);
-  --color-long-bg: oklch(0.660 0.110 172 / 0.145);
-  --color-long-wash: oklch(0.660 0.110 172 / 0.08);
-  --color-long-glow: oklch(0.660 0.110 172 / 0.18);
+  --color-long: #3fd49b;
+  --color-long-ink: oklch(0.860 0.120 162);
+  --color-long-line: oklch(0.790 0.150 162 / 0.38);
+  --color-long-bg: oklch(0.790 0.150 162 / 0.14);
+  --color-long-wash: oklch(0.790 0.150 162 / 0.08);
+  --color-long-glow: oklch(0.790 0.150 162 / 0.20);
 
-  --color-short: #ef5350;
-  --color-short-ink: oklch(0.800 0.155 24);
-  --color-short-line: oklch(0.630 0.190 24 / 0.36);
-  --color-short-bg: oklch(0.630 0.190 24 / 0.145);
-  --color-short-wash: oklch(0.630 0.190 24 / 0.08);
-  --color-short-glow: oklch(0.630 0.190 24 / 0.18);
+  --color-short: #ff6b57;
+  --color-short-ink: oklch(0.805 0.130 32);
+  --color-short-line: oklch(0.700 0.185 32 / 0.40);
+  --color-short-bg: oklch(0.700 0.185 32 / 0.14);
+  --color-short-wash: oklch(0.700 0.185 32 / 0.08);
+  --color-short-glow: oklch(0.700 0.185 32 / 0.20);
 
-  /* The same hue serves an up candle, a target rail, a long-direction chip and a positive R — and
-   * only the last of those is a "win". Aliasing costs nothing and keeps call sites honest. */
   --color-gain: var(--color-long);
   --color-gain-ink: var(--color-long-ink);
   --color-loss: var(--color-short);
   --color-loss-ink: var(--color-short-ink);
 
-  /* ---------------------------------------------------------- other meaning */
-  --color-info: oklch(0.720 0.130 240);
-  --color-info-ink: oklch(0.845 0.100 240);
-  --color-info-bg: oklch(0.720 0.130 240 / 0.145);
-  --color-info-line: oklch(0.720 0.130 240 / 0.36);
-  --color-info-glow: oklch(0.720 0.130 240 / 0.18);
-
-  --color-attention: oklch(0.800 0.140 78);
-  --color-attention-ink: oklch(0.890 0.110 84);
-  --color-attention-bg: oklch(0.800 0.140 78 / 0.12);
-  --color-attention-line: oklch(0.800 0.140 78 / 0.30);
-  --color-attention-glow: oklch(0.800 0.140 78 / 0.16);
-
-  /* Restraint: a pass, and any control sitting away from its default. §4.4 makes passing a
-   * first-class scored action, so it gets a colour of its own rather than reading as "off". */
-  --color-restraint: oklch(0.700 0.150 292);
-  --color-restraint-ink: oklch(0.815 0.130 292);
-  --color-restraint-bg: oklch(0.700 0.150 292 / 0.14);
-  --color-restraint-line: oklch(0.700 0.150 292 / 0.34);
-  --color-restraint-glow: oklch(0.700 0.150 292 / 0.18);
-
-  /* §10.3's perfect-streak state, and nothing else. Spending it elsewhere would cheapen the one
-   * thing it exists to mark. */
-  --color-gold: oklch(0.855 0.115 92);
-  --color-gold-ink: oklch(0.920 0.090 95);
-  --color-gold-line: oklch(0.855 0.115 92 / 0.42);
-  --color-gold-glow: oklch(0.855 0.115 92 / 0.18);
-
-  /* ------------------------------------------------------------------ brand
+  /* ------------------------------------------------------------------ gold
    *
-   * A deliberate exception to "every colour has meaning", and the exception is what fixes the
-   * greyness. Every hue in the system above is spoken for — teal is a direction, red is a
-   * direction, blue is information, amber is a warning, violet is a pass, gold is a perfect
-   * streak. So a screen that is not currently expressing a state has no colour on it at all, and
-   * that is every screen except the debrief. A correct principle, applied one level too literally.
-   *
-   * Hue 264 means nothing. It is the product's voice, not a state. The rule survives because it is
-   * re-cut on scale instead of on semantics:
-   *
-   *   Brand may appear at 18% alpha or less, at 32px or larger, or inside the mark.
-   *   Never a chip fill, a dot, a bar, a rail, a badge or a number.
-   *
-   * Every state colour in this app is small and opaque, so the two categories cannot collide.
-   * 264 is 24 degrees from both info (240) and restraint (292) — the coolest indigo that still
-   * reads as signal rather than as purple. focus moves 232 → 240 so the blues consolidate.
+   * The best trade there was. Also the one primary action per screen, a perfect streak and first
+   * place — all four are "the best outcome", which is the only reason they may share a hue.
    */
-  --color-brand: oklch(0.680 0.165 264);
-  --color-brand-2: oklch(0.740 0.125 196); /* the mark's second stop, and only that */
-  --color-brand-ink: oklch(0.855 0.085 264); /* links, and the wordmark's accent */
-  --color-brand-line: oklch(0.680 0.165 264 / 0.34);
-  --color-brand-bg: oklch(0.680 0.165 264 / 0.14);
-  --color-brand-wash: oklch(0.680 0.165 264 / 0.10);
-  --color-brand-glow: oklch(0.660 0.175 264 / 0.20);
+  --color-gold: oklch(0.815 0.140 78); /* #F2B544 */
+  --color-gold-hover: oklch(0.855 0.125 82);
+  --color-gold-ink: oklch(0.875 0.115 84);
+  --color-gold-line: oklch(0.815 0.140 78 / 0.42);
+  --color-gold-bg: oklch(0.815 0.140 78 / 0.14);
+  --color-gold-glow: oklch(0.815 0.140 78 / 0.22);
+  --color-on-gold: oklch(0.205 0.025 60);
 
-  --color-focus: oklch(0.780 0.130 240);
+  /* ------------------------------------------------------- other meanings */
+  --color-info: oklch(0.740 0.110 250);
+  --color-info-ink: oklch(0.845 0.080 250);
+  --color-info-bg: oklch(0.740 0.110 250 / 0.14);
+  --color-info-line: oklch(0.740 0.110 250 / 0.36);
+  --color-info-glow: oklch(0.740 0.110 250 / 0.18);
+
+  /* Rare: a warning that is not a loss. The decision clock uses short, not this. */
+  --color-attention: oklch(0.760 0.150 55);
+  --color-attention-ink: oklch(0.850 0.110 60);
+  --color-attention-bg: oklch(0.760 0.150 55 / 0.13);
+  --color-attention-line: oklch(0.760 0.150 55 / 0.34);
+  --color-attention-glow: oklch(0.760 0.150 55 / 0.16);
+
+  /* Sitting out. Restraint is a scored action, so it has a colour of its own, not "off". */
+  --color-restraint: oklch(0.745 0.120 300);
+  --color-restraint-ink: oklch(0.840 0.090 300);
+  --color-restraint-bg: oklch(0.745 0.120 300 / 0.14);
+  --color-restraint-line: oklch(0.745 0.120 300 / 0.36);
+  --color-restraint-glow: oklch(0.745 0.120 300 / 0.18);
+
+  /* Brand is gold. These aliases keep older call sites (links, the mark) on-palette. */
+  --color-brand: var(--color-gold);
+  --color-brand-ink: var(--color-gold-ink);
+  --color-brand-line: var(--color-gold-line);
+  --color-brand-bg: var(--color-gold-bg);
+  --color-brand-glow: var(--color-gold-glow);
+
+  --color-focus: oklch(0.800 0.110 250);
+
+  /* The selected segment of a pick-one control, and the knob of a switch. Raised in both themes:
+   * a lighter step on ink, white on paper. Never the call-to-action fill. */
+  --color-thumb: oklch(0.330 0.012 300);
+  --color-knob: oklch(0.975 0.008 80);
 
   /* ------------------------------------------------------------ type scale
    *
-   * rem throughout. The old scale was 31 pixel literals, which combined with `maximumScale: 1` in
-   * layout.tsx left a low-vision player with no path to larger text at all: pinch-zoom is disabled
-   * for a good §16 reason, and px type ignores browser text zoom. This is WCAG 1.4.4, not taste.
-   *
-   * Two families. `--text-*` is for reading. `--text-display-*` is for the six places the game has
-   * a moment: the R-multiple, the percentile, the daily score, the streak count, and the two
-   * headlines that sell the product. Mixing them into one ramp is what produced a dead zone at
-   * 13–15px (the old sm→base step was 2px, so nobody could use it and nobody did) and a ceiling
-   * at 44px on the number the entire game exists to deliver.
-   *
-   * micro and mini are reserved: micro is the eyebrow and nothing else, mini is chips, kbd hints
-   * and the play-surface HUD. Neither is ever a paragraph.
+   * rem throughout, so browser text zoom works. micro is the eyebrow; mini is chips, kbd hints and
+   * the HUD. Neither is ever a paragraph.
    */
-  /* Weight and tracking are deliberately absent from the reading steps: a size token that also
-   * sets weight cannot be used for an axis label. The all-caps eyebrow treatment lives in the
-   * .eyebrow class instead. The display steps do bake in weight, because they have exactly one
-   * job and a call site should be one class. */
-  --text-micro: 0.6875rem; /* 11 — was 10. Caps at 0.085em tracking on near-black was below the
-                              legibility floor, and it is the system's signature element. */
+  --text-micro: 0.6875rem; /* 11 */
   --text-micro--line-height: 1.25;
-
-  --text-mini: 0.75rem; /* 12 — was 11 */
+  --text-mini: 0.75rem; /* 12 */
   --text-mini--line-height: 1.4;
-
-  --text-xs: 0.8125rem; /* 13 — was 12. Metadata, HUD readouts, captions. */
+  --text-xs: 0.8125rem; /* 13 */
   --text-xs--line-height: 1.5;
-
-  --text-sm: 0.9375rem; /* 15 — was 13. Secondary prose. */
+  --text-sm: 0.9375rem; /* 15 */
   --text-sm--line-height: 1.6;
-
-  --text-base: 1.0625rem; /* 17 — was 15. Primary prose. This is the app's speaking voice. */
+  --text-base: 1.0625rem; /* 17 — the speaking voice */
   --text-base--line-height: 1.65;
-
-  --text-lg: 1.25rem; /* 20 — was 18 */
+  --text-lg: 1.25rem; /* 20 */
   --text-lg--line-height: 1.45;
   --text-lg--letter-spacing: -0.008em;
-
-  --text-xl: 1.5rem; /* 24 — unchanged. Section headings. */
+  --text-xl: 1.5rem; /* 24 */
   --text-xl--line-height: 1.3;
   --text-xl--letter-spacing: -0.014em;
-
-  --text-2xl: 1.9375rem; /* 31 — page titles */
+  --text-2xl: 1.9375rem; /* 31 */
   --text-2xl--line-height: 1.16;
   --text-2xl--letter-spacing: -0.019em;
-
   --text-3xl: 2.5rem; /* 40 */
   --text-3xl--line-height: 1.06;
   --text-3xl--letter-spacing: -0.024em;
-
   --text-4xl: 3.25rem; /* 52 */
   --text-4xl--line-height: 1.02;
   --text-4xl--letter-spacing: -0.028em;
 
-  /* ---------------------------------------------------------------- display
-   *
-   * Line-height is at or below 1 deliberately: a hero numeral has no descenders and no second
-   * line, so leading is dead space that pushes the label it belongs to out of the same optical
-   * block. Weight sits at 620–640 rather than 700 because Inter's optical-size axis is on at these
-   * sizes and a display cut already reads heavier than the same weight at 17px.
-   */
-  --text-display-sm: 3rem; /* 48 — phone hero, panel figures */
+  /* Display: numerals at moment scale. Line-height at or under 1 — a hero numeral has no
+   * descenders and no second line. */
+  --text-display-sm: 3rem; /* 48 */
   --text-display-sm--line-height: 1;
   --text-display-sm--letter-spacing: -0.030em;
-  --text-display-sm--font-weight: 620;
-
-  --text-display: 4.25rem; /* 68 — the percentile, tablet and up */
+  --text-display-sm--font-weight: 600;
+  --text-display: 4.25rem; /* 68 */
   --text-display--line-height: 0.95;
   --text-display--letter-spacing: -0.034em;
-  --text-display--font-weight: 620;
-
-  --text-display-lg: 5.75rem; /* 92 — the R-multiple on the chart */
+  --text-display--font-weight: 600;
+  --text-display-lg: 5.75rem; /* 92 */
   --text-display-lg--line-height: 0.92;
   --text-display-lg--letter-spacing: -0.038em;
-  --text-display-lg--font-weight: 640;
-
-  --text-display-xl: 7.5rem; /* 120 — the daily score. Once per session. */
+  --text-display-lg--font-weight: 600;
+  --text-display-xl: 7.5rem; /* 120 */
   --text-display-xl--line-height: 0.88;
   --text-display-xl--letter-spacing: -0.042em;
-  --text-display-xl--font-weight: 640;
+  --text-display-xl--font-weight: 600;
 
-  --tracking-eyebrow: 0.085em;
-  --tracking-wordmark: 0.17em; /* was 0.2em — at 17px that reads as a form label, not a logo */
+  --tracking-eyebrow: 0.08em;
+  --tracking-wordmark: 0.02em;
   --tracking-numeral: -0.025em;
-
-  --font-weight-hero: 620;
+  --font-weight-hero: 600;
 
   /* ----------------------------------------------------------------- radii */
-  --radius-xs: 3px;
-  --radius-sm: 6px;
-  --radius-md: 9px;
-  --radius-lg: 13px;
-  --radius-xl: 18px;
-  --radius-2xl: 26px;
-  --radius-3xl: 34px;
+  --radius-xs: 4px;
+  --radius-sm: 7px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-2xl: 28px;
 
   /* ------------------------------------------------------------- elevation
    *
-   * The old note — "shadows do almost nothing on a near-black surface" — is true of one 2px shadow
-   * at 40% and false of a stack. What actually reads on dark is the contact layer (tight, dark,
-   * directly under the edge) plus the rim (a 1px inset highlight on the top edge, which is the
-   * only thing that says "this face is lit from above"). The wide ambient layer does almost
-   * nothing alone and everything in combination.
-   *
-   * None of these create a stacking context, so the whole ladder is legal beside the chart.
+   * Contact shadow plus a 1px top rim. None of these create a stacking context, so the whole
+   * ladder is legal beside the chart.
    */
-  --shadow-rim: inset 0 1px 0 0 oklch(1 0 0 / 0.07);
   --shadow-well: inset 0 1px 2px 0 oklch(0 0 0 / 0.38), inset 0 0 0 1px oklch(1 0 0 / 0.025);
-
   --shadow-e1:
-    inset 0 1px 0 0 oklch(1 0 0 / 0.055), 0 1px 1px -0.5px oklch(0 0 0 / 0.34),
-    0 2px 4px -1px oklch(0 0 0 / 0.28);
-
+    inset 0 1px 0 0 oklch(1 0.01 80 / 0.05), 0 1px 1px -0.5px oklch(0 0 0 / 0.34),
+    0 2px 4px -1px oklch(0 0 0 / 0.26);
   --shadow-e2:
-    inset 0 1px 0 0 oklch(1 0 0 / 0.075), 0 1px 1px -0.5px oklch(0 0 0 / 0.40),
-    0 4px 8px -2px oklch(0 0 0 / 0.34), 0 10px 20px -6px oklch(0 0 0 / 0.28);
-
+    inset 0 1px 0 0 oklch(1 0.01 80 / 0.07), 0 1px 1px -0.5px oklch(0 0 0 / 0.4),
+    0 4px 8px -2px oklch(0 0 0 / 0.32), 0 12px 24px -8px oklch(0 0 0 / 0.3);
   --shadow-e3:
-    inset 0 1px 0 0 oklch(1 0 0 / 0.10), 0 2px 4px -1px oklch(0 0 0 / 0.44),
-    0 12px 24px -6px oklch(0 0 0 / 0.46), 0 32px 56px -18px oklch(0 0 0 / 0.55);
-
+    inset 0 1px 0 0 oklch(1 0.01 80 / 0.09), 0 2px 4px -1px oklch(0 0 0 / 0.42),
+    0 12px 24px -6px oklch(0 0 0 / 0.44), 0 32px 56px -18px oklch(0 0 0 / 0.55);
   --shadow-e4:
-    0 0 0 1px oklch(1 0 0 / 0.07), inset 0 1px 0 0 oklch(1 0 0 / 0.11),
+    0 0 0 1px oklch(1 0.01 80 / 0.07), inset 0 1px 0 0 oklch(1 0.01 80 / 0.1),
     0 4px 8px -2px oklch(0 0 0 / 0.42), 0 24px 48px -12px oklch(0 0 0 / 0.55),
     0 64px 96px -32px oklch(0 0 0 / 0.65);
-
   --shadow-key:
-    inset 0 1px 0 0 oklch(1 0 0 / 0.22), 0 1px 2px 0 oklch(0 0 0 / 0.50),
-    0 4px 12px -4px oklch(0 0 0 / 0.45);
-
-  /* Composes with the ladder. Driven by --glow-color at the call site so one class serves every
-   * tone; it resolves to transparent when nothing sets it, which makes it safe to apply blind. */
+    inset 0 1px 0 0 oklch(1 0.02 85 / 0.35), 0 1px 2px 0 oklch(0 0 0 / 0.4),
+    0 6px 16px -6px oklch(0.6 0.14 70 / 0.45);
   --shadow-glow: 0 0 0 1px var(--glow-line, transparent), 0 0 32px -4px var(--glow-color, transparent);
-
-  /* Back-compat: every existing shadow-panel and shadow-pop call site keeps working. */
   --shadow-panel: var(--shadow-e1);
   --shadow-pop: var(--shadow-e3);
 
@@ -377,17 +262,56 @@
   --animate-flash: flash var(--dur-7) var(--ease-exit) both;
   --animate-breathe: breathe 1.4s var(--ease-standard) infinite;
   --animate-draw: draw var(--dur-5) var(--ease-entrance) both;
-
   --animate-slam: slam var(--dur-6) var(--ease-slam) both;
   --animate-pop: pop var(--dur-3) var(--ease-spring) both;
-  --animate-flare: flare var(--dur-6) var(--ease-exit) both;
-  --animate-sweep: sweep var(--dur-7) var(--ease-standard) both;
   --animate-shimmer: shimmer 1.5s linear infinite;
-  --animate-sheen: sheen 3.2s var(--ease-standard) infinite;
-  --animate-pulse-glow: pulse-glow 2.6s var(--ease-standard) infinite;
-  --animate-grow: grow var(--dur-5) var(--ease-entrance) both;
-  --animate-rail: rail var(--dur-4) var(--ease-entrance) both;
   --animate-spin: spin 0.7s linear infinite;
+  --animate-sheet: sheet var(--dur-5) var(--ease-entrance) both;
+  --animate-stamp: stamp var(--dur-6) var(--ease-slam) both;
+  --animate-flip: flip var(--dur-7) var(--ease-entrance) both;
+  --animate-drift: drift 24s linear infinite;
+
+  @keyframes sheet {
+    from {
+      opacity: 0;
+      transform: translateY(24px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  /* The exit stamp: lands slightly large and rotated, like a rubber stamp, then settles. */
+  @keyframes stamp {
+    from {
+      opacity: 0;
+      transform: scale(1.18) rotate(-3deg);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  /* The "what it was" card turning over. */
+  @keyframes flip {
+    from {
+      opacity: 0;
+      transform: perspective(600px) rotateX(-78deg);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  /* The fog's hatch drifting, very slowly, so the future looks alive rather than printed. */
+  @keyframes drift {
+    from {
+      background-position: 0 0;
+    }
+    to {
+      background-position: 120px 0;
+    }
+  }
 
   /* 8px rather than the old 12px: at 12px over 260ms the motion reads as a slide, at 8px it reads
    * as settling, which is the register. */
@@ -462,27 +386,8 @@
       transform: none;
     }
   }
-  /* A radial flash behind a hero number as it lands. Always a sibling element, never a filter. */
-  @keyframes flare {
-    0% {
-      opacity: 0;
-    }
-    16% {
-      opacity: 1;
-    }
-    100% {
-      opacity: 0;
-    }
-  }
-  /* Travelling highlight. Needs .sheen-track for the gradient and background-size. */
-  @keyframes sweep {
-    from {
-      background-position: -120% 0;
-    }
-    to {
-      background-position: 240% 0;
-    }
-  }
+
+
   @keyframes shimmer {
     from {
       background-position: 200% 0;
@@ -491,37 +396,9 @@
       background-position: -100% 0;
     }
   }
-  /* Looping, with a long dwell so it reads as a glint rather than a strobe. */
-  @keyframes sheen {
-    0% {
-      background-position: -140% 0;
-    }
-    42%,
-    100% {
-      background-position: 260% 0;
-    }
-  }
-  /* An expanding ring on a call to action. box-shadow, so no stacking context and no layout cost. */
-  @keyframes pulse-glow {
-    0% {
-      box-shadow: 0 0 0 0 var(--glow-color, oklch(0.68 0.165 264 / 0.42));
-    }
-    70% {
-      box-shadow: 0 0 0 12px oklch(0 0 0 / 0);
-    }
-    100% {
-      box-shadow: 0 0 0 0 oklch(0 0 0 / 0);
-    }
-  }
-  /* Bars and fills growing from their own baseline. Set transform-origin at the call site. */
-  @keyframes grow {
-    from {
-      transform: scaleY(0);
-    }
-    to {
-      transform: none;
-    }
-  }
+
+
+
   /* The only rotation in the system, and it lives inside a button — never above the chart, where
    * a transform would drop the drag rails behind the canvas. */
   @keyframes spin {
@@ -529,17 +406,7 @@
       transform: rotate(360deg);
     }
   }
-  /* A price rail arriving: draws outward from the centre. */
-  @keyframes rail {
-    from {
-      opacity: 0;
-      transform: scaleX(0.2);
-    }
-    to {
-      opacity: 1;
-      transform: none;
-    }
-  }
+
 
   /* ----------------------------------------------------------- breakpoints
    * 375 is the iPhone floor and exists only to shed density. The app previously used exactly one
@@ -559,9 +426,201 @@
   --container-stage: 120rem;
 }
 
+
+/* ---------------------------------------------------------------- themes */
+
 :root {
   color-scheme: dark;
 }
+
+/*
+ * Daylight. Warm paper and ink, for every screen that is not the play stage. Text inks are
+ * darkened per hue so each carries AA on white; fills keep their saturation.
+ */
+[data-theme='light'] {
+  color-scheme: light;
+
+  --color-surface-0: oklch(0.965 0.010 80); /* #F7F3EC */
+  --color-surface-1: oklch(0.982 0.007 80);
+  --color-surface-2: oklch(1 0 0);
+  --color-surface-3: oklch(0.945 0.012 80);
+  --color-surface-inv: oklch(0.205 0.010 300);
+
+  --color-fill-1: oklch(0.3 0.02 60 / 0.04);
+  --color-fill-2: oklch(0.3 0.02 60 / 0.065);
+  --color-fill-3: oklch(0.3 0.02 60 / 0.10);
+  --color-scrim: oklch(0.965 0.010 80 / 0.86);
+
+  --color-line-faint: oklch(0.3 0.02 60 / 0.08);
+  --color-line: oklch(0.3 0.02 60 / 0.13);
+  --color-line-strong: oklch(0.3 0.02 60 / 0.22);
+
+  --color-ink-max: oklch(0.180 0.010 60);
+  --color-ink-hi: oklch(0.245 0.012 60);
+  --color-ink: oklch(0.335 0.012 60);
+  --color-ink-lo: oklch(0.430 0.012 60);
+  --color-ink-dim: oklch(0.515 0.012 60);
+  --color-ink-faint: oklch(0.680 0.010 60);
+  --color-ink-inv: oklch(0.975 0.008 80);
+
+  --color-long: #12a374;
+  --color-long-ink: oklch(0.500 0.110 162);
+  --color-long-line: oklch(0.620 0.130 162 / 0.42);
+  --color-long-bg: oklch(0.620 0.130 162 / 0.12);
+  --color-long-wash: oklch(0.620 0.130 162 / 0.07);
+  --color-long-glow: oklch(0.620 0.130 162 / 0.18);
+
+  --color-short: #e0493a;
+  --color-short-ink: oklch(0.520 0.170 30);
+  --color-short-line: oklch(0.620 0.190 30 / 0.42);
+  --color-short-bg: oklch(0.620 0.190 30 / 0.11);
+  --color-short-wash: oklch(0.620 0.190 30 / 0.06);
+  --color-short-glow: oklch(0.620 0.190 30 / 0.18);
+
+  --color-gold-hover: oklch(0.845 0.135 82);
+  --color-gold-ink: oklch(0.560 0.120 70);
+  --color-gold-line: oklch(0.700 0.140 74 / 0.5);
+  --color-gold-bg: oklch(0.815 0.140 78 / 0.2);
+  --color-gold-glow: oklch(0.815 0.140 78 / 0.3);
+
+  --color-info: oklch(0.560 0.140 252);
+  --color-info-ink: oklch(0.470 0.130 252);
+  --color-info-bg: oklch(0.560 0.140 252 / 0.10);
+  --color-info-line: oklch(0.560 0.140 252 / 0.32);
+  --color-info-glow: oklch(0.560 0.140 252 / 0.16);
+
+  --color-attention: oklch(0.680 0.160 55);
+  --color-attention-ink: oklch(0.520 0.140 52);
+  --color-attention-bg: oklch(0.680 0.160 55 / 0.12);
+  --color-attention-line: oklch(0.680 0.160 55 / 0.36);
+
+  --color-restraint: oklch(0.560 0.140 300);
+  --color-restraint-ink: oklch(0.470 0.130 300);
+  --color-restraint-bg: oklch(0.560 0.140 300 / 0.10);
+  --color-restraint-line: oklch(0.560 0.140 300 / 0.32);
+  --color-restraint-glow: oklch(0.560 0.140 300 / 0.16);
+
+  --color-focus: oklch(0.560 0.150 252);
+  --color-thumb: oklch(1 0 0);
+  --color-knob: oklch(1 0 0);
+
+  --shadow-well: inset 0 1px 2px 0 oklch(0.3 0.02 60 / 0.10), inset 0 0 0 1px oklch(0.3 0.02 60 / 0.06);
+  --shadow-e1: 0 1px 2px -0.5px oklch(0.3 0.03 60 / 0.10), 0 2px 6px -2px oklch(0.3 0.03 60 / 0.08);
+  --shadow-e2: 0 1px 2px -0.5px oklch(0.3 0.03 60 / 0.12), 0 6px 14px -6px oklch(0.3 0.03 60 / 0.14);
+  --shadow-e3: 0 2px 4px -1px oklch(0.3 0.03 60 / 0.12), 0 16px 32px -12px oklch(0.3 0.03 60 / 0.22);
+  --shadow-e4:
+    0 0 0 1px oklch(0.3 0.02 60 / 0.08), 0 4px 8px -2px oklch(0.3 0.03 60 / 0.12),
+    0 24px 48px -12px oklch(0.3 0.03 60 / 0.24);
+  --shadow-key: inset 0 1px 0 0 oklch(1 0.02 85 / 0.45), 0 1px 2px 0 oklch(0.4 0.08 60 / 0.25),
+    0 6px 16px -6px oklch(0.6 0.14 70 / 0.45);
+}
+
+/*
+ * The stage. The play route pins dark on its own root, so an element under a light <html> needs
+ * the dark values back. This repeats the @theme colours rather than inheriting them — an
+ * attribute cannot reach back up to :root.
+ */
+[data-theme='dark'] {
+  color-scheme: dark;
+
+  --color-surface-0: oklch(0.160 0.008 300);
+  --color-surface-1: oklch(0.190 0.009 300);
+  --color-surface-2: oklch(0.225 0.010 300);
+  --color-surface-3: oklch(0.270 0.011 300);
+  --color-surface-inv: oklch(0.965 0.009 80);
+  --color-fill-1: oklch(0.97 0.01 80 / 0.045);
+  --color-fill-2: oklch(0.97 0.01 80 / 0.075);
+  --color-fill-3: oklch(0.97 0.01 80 / 0.12);
+  --color-scrim: oklch(0.13 0.008 300 / 0.82);
+  --color-line-faint: oklch(0.97 0.01 80 / 0.065);
+  --color-line: oklch(0.97 0.01 80 / 0.11);
+  --color-line-strong: oklch(0.97 0.01 80 / 0.19);
+  --color-ink-max: oklch(0.975 0.008 80);
+  --color-ink-hi: oklch(0.925 0.010 80);
+  --color-ink: oklch(0.840 0.012 78);
+  --color-ink-lo: oklch(0.735 0.013 76);
+  --color-ink-dim: oklch(0.645 0.013 74);
+  --color-ink-faint: oklch(0.505 0.012 72);
+  --color-ink-inv: oklch(0.170 0.008 300);
+  --color-long: #3fd49b;
+  --color-long-ink: oklch(0.860 0.120 162);
+  --color-long-line: oklch(0.790 0.150 162 / 0.38);
+  --color-long-bg: oklch(0.790 0.150 162 / 0.14);
+  --color-long-wash: oklch(0.790 0.150 162 / 0.08);
+  --color-long-glow: oklch(0.790 0.150 162 / 0.20);
+  --color-short: #ff6b57;
+  --color-short-ink: oklch(0.805 0.130 32);
+  --color-short-line: oklch(0.700 0.185 32 / 0.40);
+  --color-short-bg: oklch(0.700 0.185 32 / 0.14);
+  --color-short-wash: oklch(0.700 0.185 32 / 0.08);
+  --color-short-glow: oklch(0.700 0.185 32 / 0.20);
+  --color-gold-hover: oklch(0.855 0.125 82);
+  --color-gold-ink: oklch(0.875 0.115 84);
+  --color-gold-line: oklch(0.815 0.140 78 / 0.42);
+  --color-gold-bg: oklch(0.815 0.140 78 / 0.14);
+  --color-gold-glow: oklch(0.815 0.140 78 / 0.22);
+  --color-info: oklch(0.740 0.110 250);
+  --color-info-ink: oklch(0.845 0.080 250);
+  --color-info-bg: oklch(0.740 0.110 250 / 0.14);
+  --color-info-line: oklch(0.740 0.110 250 / 0.36);
+  --color-info-glow: oklch(0.740 0.110 250 / 0.18);
+  --color-attention: oklch(0.760 0.150 55);
+  --color-attention-ink: oklch(0.850 0.110 60);
+  --color-attention-bg: oklch(0.760 0.150 55 / 0.13);
+  --color-attention-line: oklch(0.760 0.150 55 / 0.34);
+  --color-restraint: oklch(0.745 0.120 300);
+  --color-restraint-ink: oklch(0.840 0.090 300);
+  --color-restraint-bg: oklch(0.745 0.120 300 / 0.14);
+  --color-restraint-line: oklch(0.745 0.120 300 / 0.36);
+  --color-restraint-glow: oklch(0.745 0.120 300 / 0.18);
+  --color-focus: oklch(0.800 0.110 250);
+  --color-thumb: oklch(0.330 0.012 300);
+  --color-knob: oklch(0.975 0.008 80);
+  --shadow-well: inset 0 1px 2px 0 oklch(0 0 0 / 0.38), inset 0 0 0 1px oklch(1 0 0 / 0.025);
+  --shadow-e1:
+    inset 0 1px 0 0 oklch(1 0.01 80 / 0.05), 0 1px 1px -0.5px oklch(0 0 0 / 0.34),
+    0 2px 4px -1px oklch(0 0 0 / 0.26);
+  --shadow-e2:
+    inset 0 1px 0 0 oklch(1 0.01 80 / 0.07), 0 1px 1px -0.5px oklch(0 0 0 / 0.4),
+    0 4px 8px -2px oklch(0 0 0 / 0.32), 0 12px 24px -8px oklch(0 0 0 / 0.3);
+  --shadow-e3:
+    inset 0 1px 0 0 oklch(1 0.01 80 / 0.09), 0 2px 4px -1px oklch(0 0 0 / 0.42),
+    0 12px 24px -6px oklch(0 0 0 / 0.44), 0 32px 56px -18px oklch(0 0 0 / 0.55);
+  --shadow-e4:
+    0 0 0 1px oklch(1 0.01 80 / 0.07), inset 0 1px 0 0 oklch(1 0.01 80 / 0.1),
+    0 4px 8px -2px oklch(0 0 0 / 0.42), 0 24px 48px -12px oklch(0 0 0 / 0.55),
+    0 64px 96px -32px oklch(0 0 0 / 0.65);
+  --shadow-key:
+    inset 0 1px 0 0 oklch(1 0.02 85 / 0.35), 0 1px 2px 0 oklch(0 0 0 / 0.4),
+    0 6px 16px -6px oklch(0.6 0.14 70 / 0.45);
+}
+
+/*
+ * The colour-blind palette, a setting. Blue for long and orange for short separate on every
+ * common form of colour blindness, where green and red do not. palette.ts carries the same pair
+ * for the canvas.
+ */
+[data-palette='cb'] {
+  --color-long: #4c9aff;
+  --color-long-ink: oklch(0.800 0.100 255);
+  --color-long-line: oklch(0.680 0.150 255 / 0.40);
+  --color-long-bg: oklch(0.680 0.150 255 / 0.14);
+  --color-long-wash: oklch(0.680 0.150 255 / 0.08);
+  --color-long-glow: oklch(0.680 0.150 255 / 0.20);
+  --color-short: #ff9f1c;
+  --color-short-ink: oklch(0.850 0.130 65);
+  --color-short-line: oklch(0.780 0.160 65 / 0.40);
+  --color-short-bg: oklch(0.780 0.160 65 / 0.14);
+  --color-short-wash: oklch(0.780 0.160 65 / 0.08);
+  --color-short-glow: oklch(0.780 0.160 65 / 0.20);
+}
+[data-theme='light'][data-palette='cb'],
+[data-theme='light'] [data-palette='cb'] {
+  --color-long-ink: oklch(0.480 0.150 255);
+  --color-short-ink: oklch(0.540 0.140 55);
+}
+
+/* ------------------------------------------------------------------ base */
 
 html,
 body {
@@ -576,65 +635,54 @@ html {
 }
 
 /*
- * The room the product sits in.
- *
- * Three radial lights: a wide, shallow key overhead so it reads as a room rather than a spotlight,
- * and two corner temperatures so the field is never a flat wash. `background-attachment: fixed` is
- * what turns this from a page-top banner into depth — content scrolls through a static light field
- * instead of dragging it along.
- *
- * This is a background-image, which creates no stacking context, so it is legal on <body> even
- * though <body> is an ancestor of the chart. Take care that this rule never
- * grows a `filter` or an `opacity`.
+ * One low light from above, like the sky just after the sun has gone. A background-image creates
+ * no stacking context, so it is legal on <body> even though <body> is an ancestor of the chart.
+ * Not `background-attachment: fixed`: iOS ignores it and everyone else repaints on scroll.
  */
 body {
   background-color: var(--color-surface-0);
-  background-image:
-    radial-gradient(115rem 52rem at 50% -22rem, oklch(0.66 0.115 262 / 0.115), transparent 62%),
-    radial-gradient(64rem 40rem at 100% 4%, oklch(0.66 0.130 292 / 0.050), transparent 66%),
-    radial-gradient(58rem 44rem at -4% 96%, oklch(0.64 0.100 196 / 0.038), transparent 66%);
+  background-image: radial-gradient(
+    120rem 40rem at 50% -18rem,
+    oklch(0.815 0.140 78 / 0.07),
+    transparent 64%
+  );
   background-repeat: no-repeat;
-  background-attachment: fixed;
+}
+[data-theme='light'] body {
+  background-image: radial-gradient(
+    120rem 40rem at 50% -18rem,
+    oklch(0.815 0.140 78 / 0.16),
+    transparent 64%
+  );
 }
 
-/* The chart owns the wheel while the pointer is over it, so zooming never scrolls the page. */
 canvas {
   touch-action: none;
 }
 
 /*
- * Focus. There was none before this — the only visible focus anywhere in the app was whatever the
- * browser happened to draw on the native <select>. On a product with a documented keyboard map
- * (Enter, P, R, Space, S) that is a real gap, not a cosmetic one.
+ * Focus. The outline keeps the element's own corners — inheriting the parent's radius turned
+ * every rounded control square the moment it took focus.
  */
 :focus-visible {
   outline: 2px solid var(--color-focus);
   outline-offset: 3px;
-  border-radius: inherit;
-}
-
-/* Sticky rails and tab bars will otherwise scroll a focused item under themselves. */
-:focus-visible {
   scroll-margin: 4rem;
 }
 
-/*
- * Stagger, as one rule rather than a hand-written animationDelay at each call site.
- *
- * The cap matters: a sixty-card tape grid at 34ms would take two seconds to finish arriving. 34ms
- * is chosen because below about 25ms a stagger is invisible, and above about 60ms an eight-item
- * list outlasts the eye's patience — 34 x 8 = 272ms, which fits inside one --dur-5.
- */
+::selection {
+  background: var(--color-gold-bg);
+  color: var(--color-ink-max);
+}
+
+/* --------------------------------------------------------------- utilities */
+
 [data-stagger] > * {
   animation: rise var(--dur-4) var(--ease-entrance) both;
   animation-delay: calc(min(var(--i, 0), 12) * var(--stagger));
 }
 
-/*
- * The eyebrow: 11px, caps, wide-tracked, dim. It is the system's signature element. All-caps is
- * reserved for this and for immutable state badges (SYNTHETIC, MIRRORED) — never on buttons, never
- * on headings, never on nav.
- */
+/* The eyebrow: small caps label over a heading or a figure. Never a button, never nav. */
 .eyebrow {
   font-size: var(--text-micro);
   line-height: 1.25;
@@ -643,7 +691,14 @@ canvas {
   text-transform: uppercase;
 }
 
-/* The only press feedback in the product, so it is worth getting right. */
+/* Serif display. One weight; size and tracking come from the call site. */
+.font-display {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  font-feature-settings: normal;
+}
+
 .press {
   transition: transform var(--dur-1) var(--ease-press);
 }
@@ -651,14 +706,6 @@ canvas {
   transform: scale(0.985);
 }
 
-/*
- * Numerals.
- *
- * Mono stays, and the original jitter argument gets more correct at 92px, not less: the
- * R-multiple counts up over 620ms and a proportional face would visibly reflow every frame. But
- * Geist Mono's advance width is tuned for 13px of code, not for a scoreboard, so it needs
- * negative tracking to stop looking loose the moment it gets large.
- */
 .numeral {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
@@ -666,34 +713,36 @@ canvas {
 }
 
 /*
- * A gradient hairline, for hero panels. `background-clip` creates no stacking context, so this is
- * safe everywhere including inside the chart frame. Light falls from the top-left, matching the
- * key light on <body> and the inset rim in the shadow ladder.
+ * The fog. The future, wherever it appears: hairlines at 45°, 7% ink, on whatever surface is
+ * behind. `--fog-ink` tints it (gold on the mark, ink everywhere else).
  */
-.rim {
-  border: 1px solid transparent;
-  background-image:
-    linear-gradient(var(--rim-fill, var(--color-surface-2)), var(--rim-fill, var(--color-surface-2))),
-    linear-gradient(
-      155deg,
-      oklch(1 0 0 / 0.13) 0%,
-      oklch(1 0 0 / 0.035) 34%,
-      oklch(1 0 0 / 0) 58%,
-      oklch(1 0 0 / 0.02) 100%
-    );
-  background-origin: border-box;
-  background-clip: padding-box, border-box;
+.fog {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    color-mix(in oklch, var(--fog-ink, var(--color-ink-max)) var(--fog-strength, 9%), transparent) 0 1px,
+    transparent 1px 7px
+  );
+}
+.fog-drift {
+  background-size: 120px 120px;
+  animation: var(--animate-drift);
 }
 
-/* The substrate for animate-sweep / animate-sheen / animate-shimmer. */
+/* Keyboard hints are noise on a phone. */
+@media (hover: none) {
+  .kbd-hint {
+    display: none;
+  }
+}
+
 .sheen-track {
   background-image: linear-gradient(
     100deg,
     transparent 0%,
     transparent 38%,
-    oklch(1 0 0 / 0.09) 48%,
-    oklch(1 0 0 / 0.14) 52%,
-    oklch(1 0 0 / 0.09) 56%,
+    var(--color-fill-2) 48%,
+    var(--color-fill-3) 52%,
+    var(--color-fill-2) 56%,
     transparent 66%,
     transparent 100%
   );
@@ -701,13 +750,12 @@ canvas {
   background-repeat: no-repeat;
 }
 
-/* The flare behind a hero numeral. A sibling at z-0, with the number above it. */
-.flare {
-  background-image: radial-gradient(
-    18rem 12rem at 50% 50%,
-    var(--flare-color, var(--color-brand-glow)),
-    transparent 70%
-  );
+/* No scrollbar on horizontal chip rails; the content still scrolls. */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
 /*
@@ -772,20 +820,28 @@ html[data-motion='reduced'] *:not([data-motion-allow]):not([data-motion-allow] *
   }
 }
 
-/* The scrim exists to keep candles readable under an overlay. If the viewer has asked for less
- * transparency, legibility wins over the peek-through. */
+/* Less transparency asked for: the scrim goes nearly opaque so text over the chart stays legible. */
 @media (prefers-reduced-transparency: reduce) {
   :root {
-    --color-scrim: oklch(0.120 0.014 265 / 0.98);
+    --color-scrim: oklch(0.13 0.008 300 / 0.98);
+  }
+  [data-theme='light'] {
+    --color-scrim: oklch(0.965 0.010 80 / 0.98);
   }
 }
 
 @media (prefers-contrast: more) {
   :root {
-    --color-line: oklch(1 0 0 / 0.22);
-    --color-line-faint: oklch(1 0 0 / 0.14);
-    --color-ink-dim: oklch(0.700 0.011 265);
-    --color-ink-faint: oklch(0.590 0.011 265);
+    --color-line: oklch(0.97 0.01 80 / 0.24);
+    --color-line-faint: oklch(0.97 0.01 80 / 0.15);
+    --color-ink-dim: oklch(0.720 0.012 74);
+    --color-ink-faint: oklch(0.600 0.012 72);
+  }
+  [data-theme='light'] {
+    --color-line: oklch(0.3 0.02 60 / 0.3);
+    --color-line-faint: oklch(0.3 0.02 60 / 0.18);
+    --color-ink-dim: oklch(0.420 0.012 60);
+    --color-ink-faint: oklch(0.560 0.010 60);
   }
 }
 
@@ -808,6 +864,12 @@ html[data-motion='reduced'] *:not([data-motion-allow]):not([data-motion-allow] *
   letter-spacing: -0.012em;
   scroll-margin-top: 5rem;
 }
+.rules h1,
+.rules h2 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
 .rules h1 { font-size: var(--text-3xl); margin-block: 0 1.5rem; }
 .rules h2 {
   font-size: var(--text-2xl);
@@ -819,7 +881,8 @@ html[data-motion='reduced'] *:not([data-motion-allow]):not([data-motion-allow] *
 .rules p { margin-block: 1rem; }
 .rules strong { color: var(--color-ink-hi); font-weight: 600; }
 .rules em { color: var(--color-ink-hi); font-style: italic; }
-.rules a { color: var(--color-brand-ink); text-decoration: underline; text-underline-offset: 3px; }
+.rules a { color: var(--color-ink-hi); text-decoration: underline; text-decoration-color: var(--color-gold-line); text-underline-offset: 3px; }
+.rules a:hover { text-decoration-color: var(--color-gold); }
 .rules ul, .rules ol { margin-block: 1rem; padding-left: 1.25rem; }
 .rules li { margin-block: 0.4rem; }
 .rules ul { list-style: disc; }
