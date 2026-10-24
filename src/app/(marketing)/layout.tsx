@@ -1,16 +1,14 @@
 import Link from 'next/link';
 import { currentViewer } from '@/lib/viewer';
+import { routes } from '@/lib/routes';
 import { Button } from '@/components/ui';
 import { Wordmark } from '@/components/ui/icons';
 
 export const dynamic = 'force-dynamic';
 
 /**
- * The public shell.
- *
- * There was no layout here at all: the landing page hand-rolled its own header and footer, and
- * every other public route inherited neither. One shell means the front door looks the same
- * wherever somebody lands on it.
+ * The front door's frame: the mark, three links, and one call to action that changes with who is
+ * looking. A returning player goes straight back to Today; a visitor gets "Play today's daily".
  */
 export default async function MarketingLayout({ children }: { children: React.ReactNode }) {
   const viewer = await currentViewer();
@@ -18,28 +16,28 @@ export default async function MarketingLayout({ children }: { children: React.Re
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <header className="border-line-faint bg-surface-0/95 sticky top-0 z-40 border-b">
-        <div className="max-w-app mx-auto flex h-16 items-center justify-between px-5">
+      <header className="border-line-faint bg-surface-0/90 sticky top-0 z-40 border-b">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5">
           <Link href="/" aria-label="Hindsight home">
             <Wordmark size="md" />
           </Link>
-          <nav aria-label="Primary" className="flex items-center gap-1.5">
-            <Link
-              href="/learn"
-              className="text-ink-lo hover:text-ink-hi hidden h-10 items-center px-3 text-sm font-medium transition-colors sm:inline-flex"
-            >
-              Ruleset
+          <nav aria-label="Primary" className="flex items-center gap-1">
+            <Link href={routes.learn.index} className="text-ink-lo hover:text-ink-hi hidden h-10 items-center px-3 text-sm font-medium transition-colors sm:inline-flex">
+              How it works
+            </Link>
+            <Link href={routes.tapes.index()} className="text-ink-lo hover:text-ink-hi hidden h-10 items-center px-3 text-sm font-medium transition-colors md:inline-flex">
+              Tapes
             </Link>
             {signedIn ? (
-              <Button as="a" href="/today" variant="primary">
-                Your desk
+              <Button href={routes.today} variant="primary">
+                Open Hindsight
               </Button>
             ) : (
               <>
-                <Button as="a" href="/sign-in" variant="ghost">
+                <Button href={routes.signIn()} variant="ghost">
                   Sign in
                 </Button>
-                <Button as="a" href="/play/daily" variant="primary">
+                <Button href={routes.play.daily} variant="primary">
                   Play today
                 </Button>
               </>
@@ -51,25 +49,25 @@ export default async function MarketingLayout({ children }: { children: React.Re
       <main className="flex-1">{children}</main>
 
       <footer className="border-line-faint border-t">
-        <div className="max-w-app mx-auto flex flex-wrap items-center justify-between gap-4 px-5 py-8">
-          <Wordmark size="sm" className="opacity-70" />
-          <nav className="text-ink-dim flex flex-wrap items-center gap-5 text-sm" aria-label="Footer">
-            <Link href="/learn" className="hover:text-ink-hi transition-colors">
-              Ruleset
-            </Link>
-            <Link href="/tapes" className="hover:text-ink-hi transition-colors">
-              Tapes
-            </Link>
-            <Link href="/play/daily" className="hover:text-ink-hi transition-colors">
-              Play
-            </Link>
+        <div className="mx-auto grid max-w-6xl gap-8 px-5 py-12 md:grid-cols-[1fr_auto]">
+          <div>
+            <Wordmark size="md" />
+            <p className="text-ink-dim mt-3 max-w-sm text-sm leading-relaxed">
+              A game about reading charts, built on real historical prices with the names and dates hidden. Not
+              investment advice, and nothing here predicts anything.
+            </p>
+          </div>
+          <nav className="grid grid-cols-2 gap-x-12 gap-y-2 text-sm sm:grid-cols-3" aria-label="Footer">
+            <Link href={routes.play.daily} className="text-ink-lo hover:text-ink-hi">Daily</Link>
+            <Link href={routes.play.hub} className="text-ink-lo hover:text-ink-hi">Every mode</Link>
+            <Link href={routes.tapes.index()} className="text-ink-lo hover:text-ink-hi">Tapes</Link>
+            <Link href={routes.learn.index} className="text-ink-lo hover:text-ink-hi">How it works</Link>
+            <Link href={routes.learn.methods} className="text-ink-lo hover:text-ink-hi">Methods</Link>
+            <Link href={routes.learn.rulebook()} className="text-ink-lo hover:text-ink-hi">Rulebook</Link>
           </nav>
         </div>
-        <div className="border-line-faint border-t">
-          <div className="max-w-app text-ink-dim mx-auto flex flex-wrap items-center justify-between gap-3 px-5 py-5 text-sm">
-            <span>Historical price data from the public Binance archive.</span>
-            <span>Not investment advice. Nothing here predicts anything.</span>
-          </div>
+        <div className="border-line-faint text-ink-dim mx-auto max-w-6xl border-t px-5 py-5 text-xs">
+          Historical price data from the public Binance archive.
         </div>
       </footer>
     </div>

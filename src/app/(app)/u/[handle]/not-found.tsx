@@ -1,3 +1,4 @@
+import { routes } from '@/lib/routes';
 import { Button, EmptyState } from '@/components/ui';
 
 export default function ProfileNotFound() {
@@ -8,8 +9,8 @@ export default function ProfileNotFound() {
         title="No player with that handle"
         body="Handles can be changed, so a link that used to work may point at a name nobody holds now."
         action={
-          <Button as="a" href="/today" variant="primary" size="lg">
-            Back to today
+          <Button href={routes.today} variant="primary" size="lg">
+            Back to Today
           </Button>
         }
       />

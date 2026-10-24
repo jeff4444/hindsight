@@ -7,13 +7,32 @@ no-hit community uses, and for a reason that is easy to underrate:
 > ranked season, because the first tournament dispute will be about an edge case and there
 > will be no time to decide then.
 
-This is that document, at Phase 0 size. It covers only what Phase 0 actually implements. It
-grows with the ladder; it does not get rewritten.
+This is that document. It began at Phase 0 size and has grown with the ladder rather than being
+rewritten; it covers what the game actually implements, and §15 lists what it does not.
 
 Every rule here is enforced in code and pinned to a version constant in
 [`src/core/versions.ts`](../src/core/versions.ts). Every stored result records the versions it
 was produced under, so a result can always be re-derived from the rules that were in force
 when it was played.
+
+**The names on screen are plainer than the names here.** This document keeps its technical
+vocabulary, because the code and the stored results use it. The game says the same things in
+words a player already has:
+
+| here | on screen |
+| --- | --- |
+| percentile (§4.4) | **Score**, 0–100 |
+| the oracle (§10.2) | **Best in hindsight**, drawn in gold |
+| pass / stand aside | **Sit out** |
+| commit | **Lock in** |
+| bracket | stop and target |
+| MFE / MAE | peak gain / deepest dip |
+| efficiency | captured |
+| IMPs, compressed score | ranked points |
+| the engine council (§14) | **the Panel**, one persona per engine |
+| Streak, the run mode (§19) | **Survival** |
+| maps (§20) | **tapes** |
+| FD, NT, NTZ, BO | Full Desk, No Tools, Naked, Blackout |
 
 ---
 
@@ -718,6 +737,31 @@ should not be one mistyped command away. Every verdict it writes is stored with 
 achievable versions that produced it, because §12.4 makes population statistics incomparable across
 a change of rule — a retirement decided under one score map has to be re-derivable, and thrown away
 rather than inherited if the map moves.
+
+### 12.8 Divisions are a display, not a rating
+
+A division is the overall rating said in words: **Paper, Retail, Swing, Desk, Prop, Fund, Wizard**.
+Nothing is scored, served or matched on one. The Glicko rating does all of that, unchanged, and a
+division is shown only once the rating itself is: at least 30 rated charts and a rating deviation of
+100 or less (`RANK_MIN_ATTEMPTS` and `RANK_MAX_RD` in [`src/core/rating.ts`](../src/core/rating.ts)).
+
+The bands are cut in standard deviations of the population rather than in round numbers, because
+§12.2 puts the spread at about **42 points** — a ladder cut every hundred points would put nearly
+everyone in one band. Mean 1500, half-SD steps:
+
+| division | from | z |
+| --- | --- | --- |
+| Paper | — | below −1.5 |
+| Retail | 1437 | −1.5 |
+| Swing | 1469 | −0.75 |
+| Desk | 1500 | 0 |
+| Prop | 1532 | +0.75 |
+| Fund | 1563 | +1.5 |
+| Wizard | 1595 | +2.25 |
+
+**These thresholds are ours and provisional.** 42 is an estimate made before there was a
+population. When there is one, the bands are re-cut from its measured spread and the change is
+published here, not tuned quietly. The code is [`src/core/divisions.ts`](../src/core/divisions.ts).
 
 ## 13. Layer 2 geometry
 
@@ -1553,10 +1597,15 @@ then nobody can say what N was.
 
 Recorded so nothing here is mistaken for the finished product.
 
-**Not built:** the per-theme ratings; the News Blind tier; the Fog mod; ranked sessions, divisions and
-seasons; Storm, Duel and Racer; creator maps and cohort dashboards; news. §10.1's *box* variant of
+**Not built:** the per-theme ratings; the News Blind tier; seasons; news. §10.1's *box* variant of
 calibration is not built either, and §18.5 explains why it cannot be until a design question is
-settled.
+settled. **Mods are built and not offered**: §11.5's code is in `src/core` and nothing in the game
+exposes it, because several were never drawn and the XP they were priced in does not exist.
+
+**Built since this section was first written:** ranked sessions (§12), divisions (§12.8), Storm and
+Streak (§19), creator maps and cohort dashboards (§20), and Duel and Racer (§21). Leaderboards — the
+daily field, the ranked ladder and per-tape boards — are read-only views over stored results, gated
+on the same sample sizes §12 and §20 already use, and change no score.
 
 **Manage is built and unvalidated.** §17 has the ladder: its own 98-cell achievable set, its own par,
 its own rating, and a reveal metered by the server because the player is still deciding while it
@@ -2295,6 +2344,11 @@ wrong**, one unnecessary and one crediting the wrong mechanism.
 Play either at `/versus`. Neither is rated — §12's ladder is not fed by them, on the same argument
 §17 made for Manage: a format has to be shown to measure the same skill before it may move a rating
 that means something else.
+
+**For a while the code disagreed with that paragraph.** A match round was written as an ordinary
+Naked round, and the order route rated it like one, so duels and races moved the ladder while the
+screen said "unrated". The order route now skips the rating update for any round with a `match_id`.
+Ratings already moved by match rounds before the fix were not recomputed.
 
 ### 21.1 One primitive, two scorers
 

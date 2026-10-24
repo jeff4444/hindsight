@@ -2,7 +2,10 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { cache } from 'react';
 import { marked } from 'marked';
+import Link from 'next/link';
 import { Eyebrow } from '@/components/ui';
+import { Icon } from '@/components/ui/icons';
+import { routes } from '@/lib/routes';
 import { RulesNav, type RulesSection } from '@/components/rules/RulesNav';
 
 /**
@@ -70,7 +73,7 @@ const ruleset = cache(async () => {
 });
 
 export const metadata = {
-  title: 'Ruleset',
+  title: 'Rulebook',
   description:
     'The whole ruleset, published: the tiers, the scoring, the achievable set, and the parts that are uncomfortable to state.',
 };
@@ -81,8 +84,22 @@ export default async function RulesPage() {
   return (
     <div className="mx-auto max-w-6xl lg:grid lg:grid-cols-[minmax(0,1fr)_15rem] lg:items-start lg:gap-10">
       <div className="mx-auto w-full max-w-prose lg:mx-0">
-        <Eyebrow>Published in full</Eyebrow>
-        <article className="rules mt-4" dangerouslySetInnerHTML={{ __html: html }} />
+        <Link href={routes.learn.index} className="text-ink-dim hover:text-ink-hi inline-flex items-center gap-1.5 text-sm font-medium transition-colors">
+          <Icon name="arrow-left" size={14} />
+          Learn
+        </Link>
+        <div className="border-line bg-surface-2 mt-5 rounded-2xl border p-5">
+          <Eyebrow>The rulebook, in full</Eyebrow>
+          <p className="text-ink-lo mt-2 text-sm leading-relaxed">
+            Every rule the game enforces, written for whoever wants to check it — including the measurements and the
+            parts that do not flatter us. For the short version, read{' '}
+            <Link href={routes.learn.index} className="text-ink-hi underline decoration-gold-line underline-offset-4">
+              how it works
+            </Link>
+            .
+          </p>
+        </div>
+        <article className="rules mt-8" dangerouslySetInnerHTML={{ __html: html }} />
       </div>
 
       <RulesNav sections={sections} />

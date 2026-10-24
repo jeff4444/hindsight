@@ -117,7 +117,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
         <div className="mt-6">
           <EmptyState
             icon="candle"
-            title={isSelf ? 'You have not committed a round yet' : `${name} has not committed a round yet`}
+            title={isSelf ? 'You have not played a chart yet' : `${name} has not played a chart yet`}
             body={
               isSelf
                 ? 'Play a chart and your record starts here.'
@@ -125,7 +125,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
             }
             action={
               isSelf ? (
-                <Button as="a" href="/play/daily" variant="primary" size="lg">
+                <Button href={routes.play.daily} variant="primary" size="lg">
                   Play your first chart
                 </Button>
               ) : undefined

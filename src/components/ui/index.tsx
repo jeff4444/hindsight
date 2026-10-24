@@ -971,50 +971,6 @@ export function Divider({
   );
 }
 
-/* ------------------------------------------------------------------ Tier */
-
-/** The ruleset ladder. Rendered identically on the landing page and on a tape page. */
-export function Tier({
-  code,
-  name,
-  state,
-  className,
-}: {
-  code: string;
-  name: string;
-  state: "live" | "soon" | "locked";
-  className?: string;
-}) {
-  return (
-    <div
-      className={cx(
-        "rounded-lg px-4 py-3",
-        state === "live"
-          ? "border-info-line bg-info-bg border"
-          : "border-line-faint text-ink-dim border border-dashed",
-        className,
-      )}
-    >
-      <div
-        className={cx(
-          "numeral text-sm font-semibold",
-          state === "live" ? "text-info-ink" : "text-ink-dim",
-        )}
-      >
-        {code}
-      </div>
-      <div
-        className={cx(
-          "mt-0.5 text-xs",
-          state === "live" ? "text-ink" : "text-ink-dim",
-        )}
-      >
-        {name}
-      </div>
-    </div>
-  );
-}
-
 /* ----------------------------------------------------------------- Field */
 
 // The focus treatment is a 3px ring plus the border, not the border alone: a 1px colour change

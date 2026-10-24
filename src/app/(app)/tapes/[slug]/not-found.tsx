@@ -1,3 +1,4 @@
+import { routes } from '@/lib/routes';
 import { Button, EmptyState } from '@/components/ui';
 
 export default function TapeNotFound() {
@@ -6,9 +7,9 @@ export default function TapeNotFound() {
       <EmptyState
         icon="tape"
         title="No such tape"
-        body="This tape either never existed or is not open yet. The open ones are all unmetered."
+        body="This tape does not exist, or its maker has not made it public."
         action={
-          <Button as="a" href="/tapes" variant="primary" size="lg">
+          <Button href={routes.tapes.index()} variant="primary" size="lg">
             Browse tapes
           </Button>
         }

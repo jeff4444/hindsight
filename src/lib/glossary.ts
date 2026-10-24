@@ -49,7 +49,7 @@ export const GLOSSARY: Record<TermId, TermDefinition> = {
   score: {
     label: 'Score',
     body: 'How your trade ranks against every trade you could have placed on this exact chart — 98 of them. A score of 78 beats 78 out of 100.',
-    more: '/learn/rulebook#9-scoring-against-what-was-achievable',
+    more: '/learn/rulebook#10-scoring-against-what-was-achievable',
   },
   par: {
     label: 'Par',

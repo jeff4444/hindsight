@@ -69,13 +69,13 @@ export const metadata: Metadata = {
     default: 'Hindsight',
     template: '%s · Hindsight',
   },
-  description: 'Trade the past. Learn the future.',
+  description: 'A daily game about reading charts. Real markets with the names and dates hidden: call the trade, watch what came next, and see how it ranks against every trade you could have made.',
   applicationName: 'Hindsight',
   openGraph: {
     type: 'website',
     siteName: 'Hindsight',
     title: 'Hindsight',
-    description: 'Trade the past. Learn the future.',
+    description: 'A daily game about reading charts. Real markets with the names and dates hidden: call the trade, watch what came next, and see how it ranks against every trade you could have made.',
   },
   twitter: {
     card: 'summary_large_image',
