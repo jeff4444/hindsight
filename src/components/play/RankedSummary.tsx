@@ -38,10 +38,10 @@ export function RankedSummary({ ranked }: { ranked: RankedPayload }) {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button as="a" href="/home" variant="secondary" size="lg">
+          <Button as="a" href="/today" variant="secondary" size="lg">
             Done
           </Button>
-          <Button as="a" href="/play?mode=ranked&new=1" variant="primary" size="lg">
+          <Button as="a" href="/play/ranked?new=1" variant="primary" size="lg">
             Another session
           </Button>
         </div>

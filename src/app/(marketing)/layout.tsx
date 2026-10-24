@@ -25,13 +25,13 @@ export default async function MarketingLayout({ children }: { children: React.Re
           </Link>
           <nav aria-label="Primary" className="flex items-center gap-1.5">
             <Link
-              href="/rules"
+              href="/learn"
               className="text-ink-lo hover:text-ink-hi hidden h-10 items-center px-3 text-sm font-medium transition-colors sm:inline-flex"
             >
               Ruleset
             </Link>
             {signedIn ? (
-              <Button as="a" href="/home" variant="primary">
+              <Button as="a" href="/today" variant="primary">
                 Your desk
               </Button>
             ) : (
@@ -39,7 +39,7 @@ export default async function MarketingLayout({ children }: { children: React.Re
                 <Button as="a" href="/sign-in" variant="ghost">
                   Sign in
                 </Button>
-                <Button as="a" href="/play" variant="primary">
+                <Button as="a" href="/play/daily" variant="primary">
                   Play today
                 </Button>
               </>
@@ -54,13 +54,13 @@ export default async function MarketingLayout({ children }: { children: React.Re
         <div className="max-w-app mx-auto flex flex-wrap items-center justify-between gap-4 px-5 py-8">
           <Wordmark size="sm" className="opacity-70" />
           <nav className="text-ink-dim flex flex-wrap items-center gap-5 text-sm" aria-label="Footer">
-            <Link href="/rules" className="hover:text-ink-hi transition-colors">
+            <Link href="/learn" className="hover:text-ink-hi transition-colors">
               Ruleset
             </Link>
             <Link href="/tapes" className="hover:text-ink-hi transition-colors">
               Tapes
             </Link>
-            <Link href="/play" className="hover:text-ink-hi transition-colors">
+            <Link href="/play/daily" className="hover:text-ink-hi transition-colors">
               Play
             </Link>
           </nav>

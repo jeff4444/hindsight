@@ -29,7 +29,7 @@ export default function AppError({ error, reset }: { error: Error & { digest?: s
             <Button variant="primary" size="lg" onClick={reset}>
               Try again
             </Button>
-            <Button as="a" href="/home" variant="secondary" size="lg">
+            <Button as="a" href="/today" variant="secondary" size="lg">
               Back to today
             </Button>
           </div>

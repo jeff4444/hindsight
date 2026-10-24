@@ -43,7 +43,7 @@ export function TapeLaunch({
 
   const selected = TIERS.find((t) => t.code === effectiveTier)!;
   const multiplier = xpMultiplier(selected, effectiveMods);
-  const href = `/play?mode=tape&tape=${encodeURIComponent(slug)}&tier=${effectiveTier}${
+  const href = `/play/tape/${encodeURIComponent(slug)}?tier=${effectiveTier}${
     effectiveMods.length ? `&mods=${effectiveMods.join(',')}` : ''
   }`;
 
@@ -192,7 +192,7 @@ export function TapeLaunch({
       */}
       <div className="border-line-faint mt-1 border-t pt-4">
         <div className="flex flex-wrap items-center gap-3">
-          <Button as="a" href={`/manage?tape=${encodeURIComponent(slug)}`} variant="secondary" disabled={locked}>
+          <Button as="a" href={`/play/manage/${encodeURIComponent(slug)}`} variant="secondary" disabled={locked}>
             Manage this tape
           </Button>
           <span className="text-ink-dim font-mono text-xs">separate rating</span>

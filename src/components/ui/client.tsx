@@ -580,6 +580,11 @@ export function Popover({
             id={id}
             role="dialog"
             style={{ top: pos.top, left: pos.left }}
+            // A link inside navigates without unmounting the trigger (the shell persists), so close
+            // explicitly or the menu would float over the next page.
+            onClick={(event) => {
+              if ((event.target as HTMLElement).closest('a')) close();
+            }}
             className={cx(
               'bg-surface-3 text-ink shadow-e4 ring-line animate-fade fixed z-50 -translate-x-1/2 rounded-xl p-4 text-sm ring-1',
               placement === 'top' && '-translate-y-full',

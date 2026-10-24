@@ -107,7 +107,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
             }
             action={
               isSelf ? (
-                <Button as="a" href="/play" variant="primary" size="lg">
+                <Button as="a" href="/play/daily" variant="primary" size="lg">
                   Play your first chart
                 </Button>
               ) : undefined

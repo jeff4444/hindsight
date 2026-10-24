@@ -75,7 +75,7 @@ export function DailyCard({ daily }: { daily: DailyState }) {
         />
 
         <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2">
-          <Button as="a" href="/play" variant="primary" size="lg" glow={done ? undefined : 'brand'}>
+          <Button as="a" href="/play/daily" variant="primary" size="lg" glow={done ? undefined : 'brand'}>
             <Icon name="play" size={15} />
             {done ? 'See your card' : started ? 'Continue' : "Play today's daily"}
           </Button>

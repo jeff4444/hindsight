@@ -166,14 +166,14 @@ function RunsSection() {
   return (
     <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4" data-stagger>
       <RunCard
-        href="/play?mode=storm"
+        href="/play/storm"
         eyebrow="Storm"
         title="Three minutes"
         body="A point for every chart where you beat the median bracket, and combo bonuses at 5, 12, 20 and 30. Stopping out costs ten seconds. The clock only runs while you are deciding — watching the reveal is free."
         cta="Start a Storm"
       />
       <RunCard
-        href="/play?mode=streak"
+        href="/play/survival"
         eyebrow="Streak"
         title="Until you are wrong"
         body="Untimed, and it ends on the first result below the median. You get one skip, and it does not come back — which is what makes standing aside a decision rather than a strategy."
@@ -260,7 +260,7 @@ async function RecordSection() {
           title="You have not read a chart here yet"
           body="Place a bracket on one and this becomes your record. Ten rounds is where a percentile starts to mean anything."
           action={
-            <Button as="a" href="/play" variant="primary" size="lg">
+            <Button as="a" href="/play/daily" variant="primary" size="lg">
               Play your first chart
             </Button>
           }

@@ -164,14 +164,14 @@ export function RunSummary({ run, onAgain }: { run: RunState; onAgain: () => voi
         <Button onClick={onAgain} variant="primary" size="lg">
           Again
         </Button>
-        <Button as="a" href="/home" variant="secondary" size="lg">
+        <Button as="a" href="/today" variant="secondary" size="lg">
           Home
         </Button>
       </div>
 
       <p className="text-ink-faint mt-4 text-xs">
         Every chart here counts everywhere else —{' '}
-        <Link href="/stats" className="underline underline-offset-2">
+        <Link href="/you" className="underline underline-offset-2">
           your record
         </Link>{' '}
         does not care which mode it was played in.

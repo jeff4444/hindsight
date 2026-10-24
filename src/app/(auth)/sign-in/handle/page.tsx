@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 export default async function ClaimHandlePage() {
   const viewer = await currentViewer();
   if (!viewer.userId) redirect('/sign-in');
-  if (viewer.profile) redirect('/home');
+  if (viewer.profile) redirect('/today');
 
   // Seeded from the account id so the first signature offered is already personal — a reroll is
   // then a choice rather than an obligation.

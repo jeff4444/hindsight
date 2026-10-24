@@ -1620,3 +1620,35 @@ export function FogPanel({
     </div>
   );
 }
+
+/* ------------------------------------------------------------ PageHeader */
+
+/**
+ * The top of a destination: an eyebrow, a serif title, a lede, and room for actions. Every page in
+ * the shell opens with one, so the eye always lands in the same place and the serif always means
+ * "you are here".
+ */
+export function PageHeader({
+  eyebrow,
+  title,
+  lede,
+  actions,
+  className,
+}: {
+  eyebrow?: ReactNode;
+  title: ReactNode;
+  lede?: ReactNode;
+  actions?: ReactNode;
+  className?: string;
+}) {
+  return (
+    <header className={cx("flex flex-col gap-5 md:flex-row md:items-end md:justify-between", className)}>
+      <div className="max-w-2xl">
+        {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
+        <h1 className="font-display text-ink-max mt-2 text-[2.5rem] leading-[1.02] md:text-[3.25rem]">{title}</h1>
+        {lede && <p className="text-ink-lo mt-3 max-w-xl text-base leading-relaxed md:text-lg">{lede}</p>}
+      </div>
+      {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
+    </header>
+  );
+}

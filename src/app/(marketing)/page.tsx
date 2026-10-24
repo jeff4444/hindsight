@@ -52,7 +52,7 @@ export default function Landing() {
               className="mt-8 flex flex-wrap items-center gap-3"
               style={{ '--i': 2 } as React.CSSProperties}
             >
-              <Button as="a" href="/play" variant="primary" size="xl" glow="brand">
+              <Button as="a" href="/play/daily" variant="primary" size="xl" glow="brand">
                 Play today&rsquo;s daily
               </Button>
               <Button as="a" href="/tapes" variant="secondary" size="xl">
@@ -139,7 +139,7 @@ export default function Landing() {
               bracket beats it either; the best one measured across the corpus manages 57.7th.
             </p>
             <Link
-              href="/rules"
+              href="/learn/rulebook"
               className="text-brand-ink mt-5 inline-flex items-center gap-1.5 text-base font-medium underline underline-offset-4"
             >
               The whole ruleset, including the parts that do not flatter us
@@ -236,7 +236,7 @@ export default function Landing() {
             Today&rsquo;s daily is five charts. About six minutes.
           </h2>
           <div className="mt-8 flex justify-center">
-            <Button as="a" href="/play" variant="primary" size="xl" glow="brand">
+            <Button as="a" href="/play/daily" variant="primary" size="xl" glow="brand">
               Start
             </Button>
           </div>

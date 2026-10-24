@@ -62,7 +62,7 @@ export function JoinMatch({
     <div className="mt-6">
       {error && <p className="text-loss-ink mb-3 max-w-prose text-sm">{error}</p>}
       {joined ? (
-        <Button as="a" href={`/play?mode=${mode}&match=${id}`} variant="primary" size="lg">
+        <Button as="a" href={`/play/${mode}/${id}`} variant="primary" size="lg">
           Play your next chart
         </Button>
       ) : (

@@ -60,7 +60,7 @@ export function RankedCard({
 
         <div className="shrink-0">
           {signedIn ? (
-            <Button as="a" href="/play?mode=ranked" variant="primary" size="lg">
+            <Button as="a" href="/play/ranked" variant="primary" size="lg">
               <Icon name="play" size={15} />
               {attempts > 0 ? 'Play ranked' : 'Start placement'}
             </Button>

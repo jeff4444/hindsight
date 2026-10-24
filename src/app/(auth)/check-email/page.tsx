@@ -60,7 +60,7 @@ export default async function CheckEmail({
         <Button as="a" href={reset ? '/forgot-password' : '/sign-in'} variant="ghost" size="lg">
           Use a different address
         </Button>
-        <Button as="a" href="/play" variant="ghost" size="lg">
+        <Button as="a" href="/play/daily" variant="ghost" size="lg">
           Keep playing
         </Button>
       </div>

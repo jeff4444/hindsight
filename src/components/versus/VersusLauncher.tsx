@@ -63,7 +63,7 @@ export function VersusLauncher({ tapes }: { tapes: { slug: string; name: string;
             Copy the link
           </Button>
           {opened.mode === 'race' ? (
-            <Button as="a" href={`/play?mode=race&match=${opened.id}`} variant="primary">
+            <Button as="a" href={`/play/race/${opened.id}`} variant="primary">
               Start running
             </Button>
           ) : (

@@ -32,7 +32,7 @@ export default async function TapesPage() {
       </p>
       <p className="text-ink-lo mt-3 max-w-prose text-base leading-relaxed">
         Both rules are written out in the{' '}
-        <a className="text-ink underline underline-offset-2" href="/rules">
+        <a className="text-ink underline underline-offset-2" href="/learn/rulebook">
           ruleset
         </a>
         , thresholds and all. There is no canonical definition of a liquidity sweep or a failed
@@ -49,7 +49,7 @@ export default async function TapesPage() {
           Make your own
         </Link>
         <Link
-          href="/tapes/mine"
+          href="/tapes?tab=yours"
           className="press border-line bg-surface-1 text-ink-hi hover:border-line-strong rounded-md border px-3 py-1.5 text-sm transition-colors"
         >
           Your tapes

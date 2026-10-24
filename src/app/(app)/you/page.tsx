@@ -75,7 +75,7 @@ async function Record() {
           title="No rounds yet"
           body="Play a chart and this fills in. Ten rounds is where the percentile starts to mean something."
           action={
-            <Button as="a" href="/play" variant="primary" size="lg">
+            <Button as="a" href="/play/daily" variant="primary" size="lg">
               Play today&rsquo;s daily
             </Button>
           }

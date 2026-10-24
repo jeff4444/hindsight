@@ -21,7 +21,7 @@ export default function NotFound() {
           The link is wrong or the page has moved. Nothing you played has been lost.
         </p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-2.5">
-          <Button as="a" href="/play" variant="primary" size="lg">
+          <Button as="a" href="/play/daily" variant="primary" size="lg">
             Play today&rsquo;s daily
           </Button>
           <Button as="a" href="/" variant="secondary" size="lg">

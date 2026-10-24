@@ -880,11 +880,11 @@ export function PlaySurface({
           {/* The way out. During a round the chart owns the screen, so this is the only
               navigation on it — §3.1's clock is running and a nav rail is a distraction. */}
           <Link
-            href={mode === 'tape' ? '/tapes' : '/home'}
+            href={mode === 'tape' ? '/tapes' : '/today'}
             className="text-ink-dim hover:text-ink-hi press flex h-8 items-center gap-1.5 rounded-md px-2 text-xs font-medium transition-colors"
           >
             <Icon name="arrow-left" size={14} />
-            {mode === 'tape' ? 'Tapes' : 'Home'}
+            {mode === 'tape' ? 'Tapes' : 'Today'}
           </Link>
           {isMatch(mode) && matchState ? (
             <MatchHud match={matchState} />

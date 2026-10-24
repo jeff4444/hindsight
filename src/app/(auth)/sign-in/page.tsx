@@ -27,7 +27,7 @@ export default async function SignInPage({
 }: {
   searchParams: Promise<{ error?: string; next?: string }>;
 }) {
-  const { error, next = "/home" } = await searchParams;
+  const { error, next = "/today" } = await searchParams;
   const failure = authError(error);
 
   return (
@@ -168,7 +168,7 @@ export default async function SignInPage({
         style={{ "--i": 5 } as React.CSSProperties}
       >
         <TextLink
-          href={`/play${next && next !== "/home" ? `?next=${encodeURIComponent(next)}` : ""}`}
+          href={"/play/daily"}
         >
           Or just play
         </TextLink>{" "}

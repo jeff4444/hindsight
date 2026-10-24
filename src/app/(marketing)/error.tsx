@@ -25,7 +25,7 @@ export default function MarketingError({
             <Button variant="primary" size="lg" onClick={reset}>
               Try again
             </Button>
-            <Button as="a" href="/play" variant="secondary" size="lg">
+            <Button as="a" href="/play/daily" variant="secondary" size="lg">
               Play today
             </Button>
           </div>
