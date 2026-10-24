@@ -25,12 +25,10 @@ import { cx } from '../ui';
  * number is the content. §5's policy is that content keeps moving.
  */
 export function DecisionClock({
-  totalMs,
   remainingMs,
   onExpire,
   className,
 }: {
-  totalMs: number;
   /** As issued. The component tracks its own elapsed time from mount rather than trusting updates. */
   remainingMs: number;
   onExpire: () => void;
@@ -63,25 +61,24 @@ export function DecisionClock({
     return () => cancelAnimationFrame(frame);
   }, [remainingMs, onExpire]);
 
-  const fraction = totalMs > 0 ? Math.max(0, Math.min(1, left / totalMs)) : 0;
   const seconds = Math.ceil(left / 1000);
   // Urgency is stated in absolute seconds, not in a fraction of the limit: five seconds left feels
-  // the same whether the tier gave you ninety or twenty.
-  const urgent = left <= 10_000;
+  // the same whether the ruleset gave you ninety or twenty. Coral, never gold: running out of time
+  // is not the best outcome of anything.
   const critical = left <= 5_000;
-
-  const R = 9;
-  const circumference = 2 * Math.PI * R;
+  const urgent = left <= 10_000;
+  const m = Math.floor(seconds / 60);
+  const sec = seconds % 60;
 
   return (
     <span
       className={cx(
-        'inline-flex items-center gap-1.5 rounded px-2 py-1 font-mono text-mini tabular-nums ring-1 transition-colors',
+        'numeral inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-sm font-semibold tabular-nums ring-1 transition-colors',
         critical
           ? 'bg-short-bg text-short-ink ring-short-line'
           : urgent
-            ? 'bg-attention-bg text-attention-ink ring-attention-line'
-            : 'bg-fill-2 text-ink ring-line',
+            ? 'text-ink-max ring-line-strong bg-fill-2'
+            : 'text-ink-hi ring-line bg-fill-1',
         className,
       )}
       // A countdown that only exists visually is invisible to a screen reader until it has already
@@ -89,24 +86,49 @@ export function DecisionClock({
       role="timer"
       aria-live={urgent ? 'polite' : 'off'}
       aria-label={`${seconds} seconds left to decide`}
-      title="§3.2 puts a clock on deliberation at this tier: the player willing to spend four minutes should not win by spending four minutes."
+      title="This ruleset is timed, so a slow read cannot beat a good one."
     >
-      <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden className="-ml-0.5">
-        <circle cx="10" cy="10" r={R} fill="none" stroke="currentColor" strokeWidth="2" opacity={0.18} />
-        <circle
-          cx="10"
-          cy="10"
-          r={R}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeDasharray={circumference}
-          strokeDashoffset={circumference * (1 - fraction)}
-          transform="rotate(-90 10 10)"
-        />
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden>
+        <circle cx="12" cy="13" r="8" />
+        <path d="M12 9v4l2 1.5M10 2h4" />
       </svg>
-      {seconds}s
+      {m}:{String(sec).padStart(2, '0')}
     </span>
+  );
+}
+
+/**
+ * The same clock, as a line draining across the top edge of the chart.
+ *
+ * The pill in the top bar is the number; this is the feeling. It lives inside the frame, at z-20,
+ * as a sibling of the rail layer — width is the only thing that changes, and it is never a
+ * transform. It tracks its own elapsed time from mount, exactly as the pill does, so the two agree
+ * to the frame without sharing state; only the pill fires the expiry.
+ */
+export function ClockLine({ totalMs, remainingMs }: { totalMs: number; remainingMs: number }) {
+  const [left, setLeft] = useState(remainingMs);
+
+  useEffect(() => {
+    const start = performance.now();
+    let frame = 0;
+    const tick = () => {
+      const next = Math.max(0, remainingMs - (performance.now() - start));
+      setLeft(next);
+      if (next > 0) frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [remainingMs]);
+
+  const fraction = totalMs > 0 ? Math.max(0, Math.min(1, left / totalMs)) : 0;
+  const critical = left <= 5_000;
+
+  return (
+    <div aria-hidden className="bg-fill-1 pointer-events-none absolute inset-x-0 top-0 z-20 h-[3px]">
+      <div
+        className={cx('h-full transition-colors', critical ? 'bg-short' : left <= 10_000 ? 'bg-ink-max' : 'bg-ink-lo')}
+        style={{ width: `${fraction * 100}%` }}
+      />
+    </div>
   );
 }

@@ -10,6 +10,7 @@ import { SubmitButton } from "@/components/auth/SubmitButton";
 import { authError } from "@/lib/auth-errors";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Sign in" };
 
 /**
  * Sign in and sign up on one screen.
@@ -27,20 +28,20 @@ export default async function SignInPage({
 }: {
   searchParams: Promise<{ error?: string; next?: string }>;
 }) {
-  const { error, next = "/home" } = await searchParams;
+  const { error, next = "/today" } = await searchParams;
   const failure = authError(error);
 
   return (
     <div data-stagger>
       <div style={{ "--i": 0 } as React.CSSProperties}>
-        <Eyebrow>Play first, claim later</Eyebrow>
-        <h1 className="text-ink-max mt-2 text-2xl font-semibold">
-          Keep your record
+        <Eyebrow>Play first, sign in later</Eyebrow>
+        <h1 className="font-display text-ink-max mt-2 text-4xl">
+          Keep your record.
         </h1>
         <p className="text-ink-lo mt-3 text-base leading-relaxed">
-          Anything you have already played on this browser is bound to your
-          account when you sign in — rounds, percentiles and today&rsquo;s daily
-          included. Nothing is lost and nothing is replayed.
+          Everything you have played on this browser comes with you — scores,
+          today&rsquo;s daily, all of it. Signing in adds a streak, a rating and
+          tapes of your own.
         </p>
       </div>
 
@@ -168,7 +169,7 @@ export default async function SignInPage({
         style={{ "--i": 5 } as React.CSSProperties}
       >
         <TextLink
-          href={`/play${next && next !== "/home" ? `?next=${encodeURIComponent(next)}` : ""}`}
+          href={"/play/daily"}
         >
           Or just play
         </TextLink>{" "}

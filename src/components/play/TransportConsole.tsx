@@ -37,7 +37,7 @@ export function TransportConsole({
   onSkip: () => void;
 }) {
   return (
-    <Panel pad="none" className="animate-rise p-3 sm:p-4">
+    <Panel tone="inset" pad="none" className="animate-rise rounded-2xl p-3 sm:p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
         <div className="flex items-center gap-3 sm:flex-1">
           <Button
@@ -58,21 +58,24 @@ export function TransportConsole({
             pace="live"
             className="flex-1"
             label="Candles revealed"
-            tone={outcome === 'target' ? 'long' : outcome === 'stop' ? 'short' : 'info'}
+            tone={outcome === 'target' ? 'long' : outcome === 'stop' ? 'short' : 'neutral'}
           />
 
           <span className="numeral text-ink-dim shrink-0 text-sm">
-            {revealed}/{total}
+            {revealed}
+            <span className="text-ink-faint">/{total}h</span>
           </span>
         </div>
 
         <div className="flex items-center justify-between gap-2 sm:justify-end">
           <Segmented
+            label="Reveal speed"
             options={SPEEDS.map((option, index) => ({ value: index, label: option.label }))}
             value={speed}
             onChange={onSpeed}
           />
           <Button variant="secondary" size="lg" onClick={onSkip} kbd="S">
+            <Icon name="skip-forward" size={15} />
             Skip
           </Button>
         </div>

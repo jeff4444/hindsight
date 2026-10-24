@@ -2,14 +2,16 @@ import { redirect } from 'next/navigation';
 import { currentViewer } from '@/lib/viewer';
 import { SignaturePicker } from '@/components/profile/SignaturePicker';
 import { saveProfile } from '@/app/actions/profile';
+import { safeNext } from '@/lib/auth-redirect';
 import { Eyebrow } from '@/components/ui';
 
 export const dynamic = 'force-dynamic';
 
-export default async function ClaimHandlePage() {
+export default async function ClaimHandlePage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
   const viewer = await currentViewer();
+  const next = safeNext((await searchParams).next);
   if (!viewer.userId) redirect('/sign-in');
-  if (viewer.profile) redirect('/home');
+  if (viewer.profile) redirect(next);
 
   // Seeded from the account id so the first signature offered is already personal — a reroll is
   // then a choice rather than an obligation.
@@ -18,13 +20,13 @@ export default async function ClaimHandlePage() {
   return (
     <div className="animate-rise">
       <Eyebrow>One last thing</Eyebrow>
-      <h1 className="text-ink-max mt-2 text-2xl font-semibold">Your signature</h1>
+      <h1 className="font-display text-ink-max mt-2 text-4xl">Pick your signature.</h1>
       <p className="text-ink-lo mt-3 text-base leading-relaxed">
-        Generated from a seed, not uploaded. Reroll until one looks like you — it gilds when your
-        streak is perfect.
+        A little chart that is yours, generated rather than uploaded. Reroll until one feels right — it turns gold
+        while your streak is perfect.
       </p>
       <div className="mt-8">
-        <SignaturePicker initialSeed={seed} action={saveProfile} submitLabel="Claim it" />
+        <SignaturePicker initialSeed={seed} action={saveProfile} submitLabel="Claim it" next={next} />
       </div>
     </div>
   );

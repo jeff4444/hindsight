@@ -2,10 +2,15 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { serviceClient } from '@/lib/supabase/server';
 import { MarketSignature } from '@/components/ui/MarketSignature';
-import { Button, EmptyState, Eyebrow, Gated, Panel, cx } from '@/components/ui';
+import { Button, DivisionBadge, EmptyState, Eyebrow, Gated, Panel, cx } from '@/components/ui';
 import { Icon } from '@/components/ui/icons';
 import { isAccent } from '@/lib/avatar';
-import { currentViewer, getCompletedDays } from '@/lib/viewer';
+import { currentViewer, getCompletedDays, getStyleRounds } from '@/lib/viewer';
+import { divisionFor, isPlaced } from '@/core/divisions';
+import { describe as describeStyle, fingerprint } from '@/core/style';
+import { ENGINES } from '@/core/engines';
+import { personaFor } from '@/lib/panel';
+import { routes } from '@/lib/routes';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,7 +35,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
 
   if (!profile) notFound();
 
-  const [{ data: rounds }, { data: streak }, { count: dailies }, activity] = await Promise.all([
+  const [{ data: rounds }, { data: streak }, { count: dailies }, activity, { data: rating }, styleRounds] = await Promise.all([
     supabase
       .from('rounds')
       .select('passed, percentile')
@@ -47,7 +52,16 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
       .select('day', { count: 'exact', head: true })
       .eq('user_id', profile.user_id),
     getCompletedDays(profile.user_id as string, STRIP_DAYS),
+    supabase.from('player_ratings').select('rating, rd, attempts').eq('user_id', profile.user_id).eq('tier', 'ALL').maybeSingle(),
+    getStyleRounds({ userId: profile.user_id as string, sessionId: profile.user_id as string, email: null, profile: null }),
   ]);
+  const placed = rating ? isPlaced(rating.attempts as number, rating.rd as number) : false;
+  const division = placed && rating ? divisionFor(rating.rating as number) : null;
+  // The style badge: earned from which school's trades theirs resemble, never chosen.
+  const style = describeStyle(
+    fingerprint(styleRounds, ENGINES.map((engine) => engine.code)),
+    (engine) => personaFor(engine)?.name ?? engine,
+  );
 
   const { today, days: completed } = activity;
   const rows = rounds ?? [];
@@ -62,7 +76,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
     <div className="mx-auto max-w-3xl">
       {/* Identity band. The signature is the largest thing on the page, because it is the only
           thing here that is actually this player's rather than a number about them. */}
-      <Panel tone="hero" pad="lg" glow={perfect ? 'gold' : undefined}>
+      <Panel tone="hero" pad="lg" className="rounded-3xl">
         <div className="flex flex-wrap items-center gap-6">
           <MarketSignature
             seed={profile.avatar_seed}
@@ -71,10 +85,14 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
             ring={perfect ? 'gold' : 'accent'}
           />
           <div className="min-w-0">
-            <h1 className="text-ink-max text-2xl font-semibold">{name}</h1>
-            <div className="numeral text-ink-dim mt-1 text-base">@{profile.handle}</div>
+            <h1 className="font-display text-ink-max text-4xl leading-none md:text-5xl">{name}</h1>
+            <div className="text-ink-dim mt-1.5 text-base">@{profile.handle}</div>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              {division ? <DivisionBadge division={division} /> : <DivisionBadge division={null} />}
+              {style && <span className="text-ink-lo text-sm">{style}</span>}
+            </div>
             <div className="mt-3 flex flex-wrap items-center gap-3">
-              <span className="text-ink-faint text-sm">
+              <span className="text-ink-dim text-sm">
                 Reading charts since{' '}
                 {new Date(profile.created_at as string).toLocaleDateString('en-GB', {
                   month: 'long',
@@ -83,7 +101,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
               </span>
               {isSelf && (
                 <Link
-                  href="/settings"
+                  href={routes.settings}
                   className="text-ink-lo hover:text-ink-hi inline-flex items-center gap-1 text-sm font-medium transition-colors"
                 >
                   <Icon name="settings" size={14} />
@@ -99,7 +117,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
         <div className="mt-6">
           <EmptyState
             icon="candle"
-            title={isSelf ? 'You have not committed a round yet' : `${name} has not committed a round yet`}
+            title={isSelf ? 'You have not played a chart yet' : `${name} has not played a chart yet`}
             body={
               isSelf
                 ? 'Play a chart and your record starts here.'
@@ -107,7 +125,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
             }
             action={
               isSelf ? (
-                <Button as="a" href="/play" variant="primary" size="lg">
+                <Button href={routes.play.daily} variant="primary" size="lg">
                   Play your first chart
                 </Button>
               ) : undefined
@@ -121,7 +139,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
             <Tile label="Dailies" value={dailies ?? 0} index={1} />
             <Tile label="Longest streak" value={streak?.longest_length ?? 0} index={2} />
             <Tile
-              label="Mean percentile"
+              label="Average score"
               index={3}
               gate={{ sample: rows.length, min: 10 }}
               value={mean === null ? '—' : Math.round(mean * 100)}
@@ -159,11 +177,6 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
         </>
       )}
 
-      <p className="text-ink-dim mt-8 max-w-prose text-sm leading-relaxed">
-        A style badge — the school this player actually trades as, derived from which engine their
-        entries match — needs scoring engines that do not exist yet. It will be earned, never
-        chosen, which is why there is a space for it here and nothing in it.
-      </p>
     </div>
   );
 }

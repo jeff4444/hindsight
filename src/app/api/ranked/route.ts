@@ -90,7 +90,7 @@ export async function POST(request: Request) {
           },
           tier,
         ),
-    result: complete ? await summarise(supabase, row.session_id as string) : null,
+    result: complete ? await summarise(supabase, row.session_id as string, userId) : null,
   };
 
   const response = NextResponse.json(payload);
@@ -109,13 +109,17 @@ export async function POST(request: Request) {
 async function summarise(
   supabase: ReturnType<typeof serviceClient>,
   session: string,
+  userId: string,
 ): Promise<RankedPayload['result']> {
-  const { data } = await supabase
-    .from('rounds')
-    .select('percentile, passed, ambiguous, forfeited, ranked_index')
-    .eq('ranked_session', session)
-    .eq('superseded', false)
-    .order('ranked_index');
+  const [{ data }, { data: rating }] = await Promise.all([
+    supabase
+      .from('rounds')
+      .select('percentile, passed, ambiguous, forfeited, ranked_index, player_rating_at_attempt')
+      .eq('ranked_session', session)
+      .eq('superseded', false)
+      .order('ranked_index'),
+    supabase.from('player_ratings').select('rating, rd, attempts').eq('user_id', userId).eq('tier', 'ALL').maybeSingle(),
+  ]);
 
   const rows = data ?? [];
   const scored = scoreSession(
@@ -127,6 +131,10 @@ async function summarise(
     })),
   );
 
+  // The session's rating change: what the player carried into its first chart (stored on the
+  // round at issuance, so it is the rating before, not a reconstruction) against where it stands
+  // now. The summary used to show a points total and never the rating it was all for.
+  const before = (rows[0]?.player_rating_at_attempt as number | null | undefined) ?? null;
   return {
     imps: scored.imps,
     total: scored.total,
@@ -134,6 +142,12 @@ async function summarise(
     passes: scored.passes,
     forfeits: scored.forfeits,
     quotaMet: scored.quotaMet,
+    rating: {
+      before,
+      after: (rating?.rating as number | undefined) ?? null,
+      rd: (rating?.rd as number | undefined) ?? null,
+      attempts: (rating?.attempts as number | undefined) ?? 0,
+    },
   };
 }
 

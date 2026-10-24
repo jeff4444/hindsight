@@ -40,15 +40,14 @@ export function CalibrationCurve({ forecasts }: { forecasts: Forecast[] }) {
   const reference = CALIBRATION_SPEC.baseRate * (1 - CALIBRATION_SPEC.baseRate);
 
   return (
-    <Panel pad="md" className="mt-3">
-      <Eyebrow>How well you know what you know</Eyebrow>
+    <Panel pad="md" className="rounded-3xl md:p-6">
+      <Eyebrow>How sure, and how right</Eyebrow>
 
       {forecasts.length === 0 ? (
         <p className="text-ink-lo mt-2 max-w-prose text-sm leading-relaxed">
-          You have not staked a probability on a trade yet. The control sits beside Commit — say how
-          likely you think the trade is to finish green, and this becomes a curve. It is optional on
-          every round, and a round you skip it on is simply absent here rather than counted as a
-          shrug.
+          Next time you call a trade, tap &ldquo;How sure?&rdquo; — 10% to 90% that it finishes green. Over enough
+          calls this shows whether your 70% really comes true 70% of the time. It is optional, and a call you skip
+          it on is simply left out.
         </p>
       ) : (
         <>
@@ -68,7 +67,7 @@ export function CalibrationCurve({ forecasts }: { forecasts: Forecast[] }) {
               <Meter
                 value={forecasts.length}
                 max={CALIBRATION_SPEC.minForecasts}
-                tone="info"
+                tone="gold"
                 size="lg"
                 className="w-40"
                 label={`${forecasts.length} of ${CALIBRATION_SPEC.minForecasts} forecasts`}
@@ -96,7 +95,7 @@ export function CalibrationCurve({ forecasts }: { forecasts: Forecast[] }) {
                     </span>
                     <span className="bg-fill-2 relative h-2.5 flex-1 overflow-hidden rounded-full">
                       <span
-                        className="bg-info absolute inset-y-0 left-0"
+                        className="bg-gold absolute inset-y-0 left-0"
                         style={{ width: `${bucket.observed * 100}%` }}
                       />
                       {/* Where they said it would land, as a mark on the same scale. */}
@@ -113,7 +112,7 @@ export function CalibrationCurve({ forecasts }: { forecasts: Forecast[] }) {
                       <span
                         className={cx(
                           'numeral w-16 shrink-0 text-right text-xs',
-                          Math.abs(gap) < 0.05 ? 'text-ink-faint' : 'text-attention-ink',
+                          Math.abs(gap) < 0.05 ? 'text-ink-dim' : 'text-attention-ink',
                         )}
                       >
                         {gap >= 0 ? '+' : ''}
@@ -140,7 +139,7 @@ export function CalibrationCurve({ forecasts }: { forecasts: Forecast[] }) {
         </>
       )}
 
-      <p className="text-ink-faint mt-3 max-w-prose text-xs leading-relaxed">
+      <p className="text-ink-dim mt-3 max-w-prose text-xs leading-relaxed">
         Scored with the Brier score, which is <em>proper</em>: the way to score best is to state what
         you actually believe, so there is no shading that helps. Read it against{' '}
         <span className="numeral">{reference.toFixed(3)}</span> — what saying the corpus base rate of{' '}
@@ -157,7 +156,7 @@ function Stat({ label, value, hint }: { label: string; value: string; hint: stri
     <div>
       <dt className="text-ink-dim text-[0.6875rem] font-medium tracking-wide uppercase">{label}</dt>
       <dd className="numeral text-ink-max mt-0.5 text-lg font-semibold">{value}</dd>
-      <dd className="text-ink-faint text-xs">{hint}</dd>
+      <dd className="text-ink-dim text-xs">{hint}</dd>
     </div>
   );
 }

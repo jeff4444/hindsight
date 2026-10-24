@@ -48,7 +48,7 @@ describe('a sign-in cannot be redirected off-origin', () => {
       'https://hindsight.app/auth/callback?next=%2Fversus%2F9',
     );
     expect(callbackUrl('https://hindsight.app', 'https://evil.example')).toBe(
-      'https://hindsight.app/auth/callback?next=%2Fhome',
+      'https://hindsight.app/auth/callback?next=%2Ftoday',
     );
   });
 });

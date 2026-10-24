@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { routes } from '@/lib/routes';
 import { Button, EmptyState } from '@/components/ui';
 
 /**
@@ -23,21 +24,19 @@ export default function AppError({ error, reset }: { error: Error & { digest?: s
       <EmptyState
         icon="alert"
         title="That did not load"
-        body="Something went wrong fetching this page. It is usually temporary."
+        body="Something went wrong fetching this page. It is usually temporary, and nothing you played has been lost."
         action={
           <div className="flex flex-wrap items-center justify-center gap-2">
             <Button variant="primary" size="lg" onClick={reset}>
               Try again
             </Button>
-            <Button as="a" href="/home" variant="secondary" size="lg">
-              Back to today
+            <Button href={routes.today} variant="secondary" size="lg">
+              Back to Today
             </Button>
           </div>
         }
       />
-      {error.digest && (
-        <p className="text-ink-faint mt-4 text-center font-mono text-xs">reference {error.digest}</p>
-      )}
+      {error.digest && <p className="numeral text-ink-dim mt-4 text-center text-xs">reference {error.digest}</p>}
     </div>
   );
 }

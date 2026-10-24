@@ -1,4 +1,5 @@
-import type { ReactElement } from 'react';
+import { useId, type ReactElement } from 'react';
+import { MARK } from './brand';
 
 /**
  * The icon set.
@@ -61,7 +62,29 @@ export type IconName =
   | 'magnet'
   | 'activity'
   | 'log-scale'
-  | 'trash';
+  | 'trash'
+  // modes and navigation (Lucide)
+  | 'bolt'
+  | 'heart'
+  | 'swords'
+  | 'flag'
+  | 'sliders'
+  | 'trophy'
+  | 'sun'
+  | 'book'
+  | 'user'
+  | 'log-out'
+  | 'shield'
+  | 'shuffle'
+  | 'clock'
+  | 'plus'
+  | 'volume'
+  | 'arrow-up'
+  | 'arrow-down'
+  | 'minus'
+  | 'eye'
+  | 'users'
+  | 'grid';
 
 /** `s` is the stroke width, so a caller can thin the set down without redrawing it. */
 const GLYPHS: Record<IconName, (s: number) => ReactElement> = {
@@ -253,6 +276,98 @@ const GLYPHS: Record<IconName, (s: number) => ReactElement> = {
       <path d="M10.25 10.5v6M13.75 10.5v6" strokeWidth={s} />
     </>
   ),
+
+  /* ------------------------------------------------ modes and navigation */
+
+  bolt: (s) => (
+    <path
+      d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"
+      strokeWidth={s}
+    />
+  ),
+  heart: (s) => (
+    <path
+      d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"
+      strokeWidth={s}
+    />
+  ),
+  swords: (s) => (
+    <path
+      d="M14.5 17.5 3 6V3h3l11.5 11.5M13 19l6-6M16 16l4 4M19 21l2-2M14.5 6.5 18 3h3v3l-3.5 3.5M5 14l4 4M7 17l-3 3M3 19l2 2"
+      strokeWidth={s}
+    />
+  ),
+  flag: (s) => <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7" strokeWidth={s} />,
+  sliders: (s) => (
+    <path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4" strokeWidth={s} />
+  ),
+  trophy: (s) => (
+    <path
+      d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M4 22h16M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22M18 2H6v7a6 6 0 0 0 12 0V2Z"
+      strokeWidth={s}
+    />
+  ),
+  sun: (s) => (
+    <>
+      <circle cx="12" cy="12" r="4" strokeWidth={s} />
+      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" strokeWidth={s} />
+    </>
+  ),
+  book: (s) => (
+    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2zM22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" strokeWidth={s} />
+  ),
+  user: (s) => (
+    <>
+      <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" strokeWidth={s} />
+      <circle cx="12" cy="7" r="4" strokeWidth={s} />
+    </>
+  ),
+  'log-out': (s) => <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" strokeWidth={s} />,
+  shield: (s) => (
+    <path
+      d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"
+      strokeWidth={s}
+    />
+  ),
+  shuffle: (s) => (
+    <path
+      d="m18 14 4 4-4 4M18 2l4 4-4 4M2 18h1.973a4 4 0 0 0 3.3-1.7l5.454-7.6a4 4 0 0 1 3.3-1.7H22M2 6h1.972a4 4 0 0 1 3.6 2.2M22 18h-6.041a4 4 0 0 1-3.3-1.8l-.359-.45"
+      strokeWidth={s}
+    />
+  ),
+  clock: (s) => (
+    <>
+      <circle cx="12" cy="12" r="9.25" strokeWidth={s} />
+      <path d="M12 7v5l3 2" strokeWidth={s} />
+    </>
+  ),
+  plus: (s) => <path d="M12 5v14M5 12h14" strokeWidth={s} />,
+  minus: (s) => <path d="M5 12h14" strokeWidth={s} />,
+  volume: (s) => (
+    <path d="M11 4.7a.7.7 0 0 0-1.2-.5L6.4 7.6A1.4 1.4 0 0 1 5.4 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.4a1.4 1.4 0 0 1 1 .4l3.4 3.4a.7.7 0 0 0 1.2-.5zM16 9a5 5 0 0 1 0 6M19.4 18.4a9 9 0 0 0 0-12.8" strokeWidth={s} />
+  ),
+  'arrow-up': (s) => <path d="M12 19V5M5 12l7-7 7 7" strokeWidth={s} />,
+  'arrow-down': (s) => <path d="M12 5v14M19 12l-7 7-7-7" strokeWidth={s} />,
+  eye: (s) => (
+    <>
+      <path d="M2.06 12.35a1 1 0 0 1 0-.7 10.75 10.75 0 0 1 19.88 0 1 1 0 0 1 0 .7 10.75 10.75 0 0 1-19.88 0" strokeWidth={s} />
+      <circle cx="12" cy="12" r="3" strokeWidth={s} />
+    </>
+  ),
+  users: (s) => (
+    <>
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" strokeWidth={s} />
+      <circle cx="9" cy="7" r="4" strokeWidth={s} />
+    </>
+  ),
+  grid: (s) => (
+    <>
+      <rect x="3" y="3" width="7" height="7" rx="1.5" strokeWidth={s} />
+      <rect x="14" y="3" width="7" height="7" rx="1.5" strokeWidth={s} />
+      <rect x="3" y="14" width="7" height="7" rx="1.5" strokeWidth={s} />
+      <rect x="14" y="14" width="7" height="7" rx="1.5" strokeWidth={s} />
+    </>
+  ),
 };
 
 export function Icon({
@@ -289,30 +404,11 @@ export function Icon({
 }
 
 /**
- * The mark.
+ * The mark: two candle bodies form an H, and the bar between them is the entry line. Solid on the
+ * left — the past, revealed. Hatched on the right — the future, still fog. Geometry lives in
+ * `brand.ts`, which also feeds the favicon, the OG image and the error page.
  *
- * Two candle bodies form the stems of an H and the bar between them is the entry line. The left
- * body is filled — the past, revealed. The right body is an outline — the next sixty bars, not yet
- * shown. The bar is the price level the player commits at.
- *
- * At 16px it resolves as a letter. At 96px it resolves as two candles with a level between them.
- * It encodes the mechanic: one side is known, the other is not, and you commit at the line
- * between them.
- *
- * Two things were tried first and are worth recording, because both look right in the abstract
- * and neither survives contact with a favicon:
- *
- *   The bar used to run the full width and knock a channel through both bodies, so that it read
- *   as "a level extending across the chart". It severs the stems exactly where an H needs them
- *   continuous, so the mark became four floating blobs and a line, and below 32px it was mush.
- *   Running the bar only through the counter costs the extension and buys the entire letterform.
- *
- *   The candles had wicks. They add a tick of noise at 16-24px in exchange for candle-ness at
- *   sizes where the mark is already sitting next to an actual chart and does not need to argue
- *   the point. Solid-versus-outline carries "revealed versus not" on its own, at every size.
- *
- * `tone="mono"` inherits `currentColor` and is the default — nav, footers, favicons. `tone="duo"`
- * spends the brand hue and is allowed at 32px and up only, per the colour rule in globals.css.
+ * `tone="mono"` inherits `currentColor` — nav, footers. `tone="duo"` paints the future candle gold.
  */
 export function Mark({
   size = 24,
@@ -323,47 +419,51 @@ export function Mark({
   size?: number;
   tone?: 'mono' | 'duo';
   className?: string;
-  /** Draws the unrevealed body in, using the shared `draw` keyframe. The mark reveals itself. */
+  /** Draws the future body in, using the shared `draw` keyframe. The mark reveals itself. */
   drawing?: boolean;
 }) {
-  const past = tone === 'duo' ? 'var(--color-long)' : 'currentColor';
-  const future = tone === 'duo' ? 'var(--color-brand)' : 'currentColor';
-  const bar = tone === 'duo' ? 'var(--color-ink-max)' : 'currentColor';
+  // Sanitised: React's ids carry characters that are not legal inside `url(#…)`.
+  const id = `hs-mark-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
+  const { past, future, bar, hatch } = MARK;
+  const ink = 'currentColor';
+  const gold = tone === 'duo' ? 'var(--color-gold)' : 'currentColor';
 
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" className={className} aria-hidden>
-      {/* the revealed candle */}
-      <rect x="5.5" y="4" width="6" height="24" rx="2" fill={past} />
-
-      {/* the unrevealed candle. Perimeter is 2*(6+24) minus the corner easing, near enough 58. */}
+      <rect {...past} fill={ink} />
+      <clipPath id={id}>
+        <rect x={future.x} y={future.y} width={future.width} height={future.height} rx={future.rx} />
+      </clipPath>
+      <g clipPath={`url(#${id})`} stroke={gold} strokeWidth="1.1" strokeLinecap="round" opacity="0.8">
+        {hatch.map(([x1, y1, x2, y2]) => (
+          <line key={y1} x1={x1} y1={y1} x2={x2} y2={y2} />
+        ))}
+      </g>
       <rect
-        x="20.5"
-        y="4"
-        width="6"
-        height="24"
-        rx="2"
+        x={future.x}
+        y={future.y}
+        width={future.width}
+        height={future.height}
+        rx={future.rx}
         fill="none"
-        stroke={future}
-        strokeWidth="2.2"
-        opacity={tone === 'duo' ? 1 : 0.75}
+        stroke={gold}
+        strokeWidth={future.stroke}
         className={drawing ? 'animate-draw' : undefined}
         style={drawing ? ({ strokeDasharray: 58, '--len': 58 } as React.CSSProperties) : undefined}
       />
-
-      {/* the entry line. Sits half a unit above centre, where an H's bar optically belongs. */}
-      <rect x="10.5" y="13.9" width="11" height="3.2" rx="1.6" fill={bar} />
+      <rect {...bar} fill={ink} />
     </svg>
   );
 }
 
 /**
- * Mark plus wordmark. All-caps is otherwise reserved for eyebrows and immutable state badges; a
- * logotype is the third and last exception.
+ * Mark plus logotype. The name is set in the serif, mixed case: the product's voice, at the one
+ * size it appears on every screen.
  */
 export function Wordmark({
   size = 'md',
   showMark = true,
-  tone = 'mono',
+  tone = 'duo',
   className,
 }: {
   size?: 'sm' | 'md' | 'lg';
@@ -372,11 +472,11 @@ export function Wordmark({
   className?: string;
 }) {
   const mark = size === 'sm' ? 18 : size === 'lg' ? 30 : 22;
-  const text = size === 'sm' ? 'text-sm' : size === 'lg' ? 'text-lg' : 'text-base';
+  const text = size === 'sm' ? 'text-lg' : size === 'lg' ? 'text-[1.75rem]' : 'text-[1.375rem]';
   return (
-    <span className={['inline-flex items-center gap-2', className].filter(Boolean).join(' ')}>
+    <span className={['text-ink-max inline-flex items-center gap-2', className].filter(Boolean).join(' ')}>
       {showMark && <Mark size={mark} tone={tone} />}
-      <span className={`text-ink-hi tracking-wordmark font-hero ${text}`}>HINDSIGHT</span>
+      <span className={`font-display leading-none ${text}`}>Hindsight</span>
     </span>
   );
 }

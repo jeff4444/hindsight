@@ -35,7 +35,7 @@ export function DailyPips({
       aria-valuemax={total}
       aria-label={`${label ?? `Daily number ${day}`}, ${played} of ${total} charts played`}
     >
-      <span className="numeral text-ink-dim text-xs">{label ?? `#${day}`}</span>
+      {(label || day !== undefined) && <span className="numeral text-ink-dim text-xs">{label ?? `#${day}`}</span>}
       <div className="flex gap-1">
         {Array.from({ length: total }, (_, i) => (
           <span
@@ -43,7 +43,7 @@ export function DailyPips({
             aria-hidden
             className={cx(
               'h-1.5 rounded-full transition-all duration-(--dur-3) ease-(--ease-entrance)',
-              i < played ? 'bg-ink-hi w-4' : i === played ? 'bg-info w-6' : 'bg-fill-3 w-4',
+              i < played ? 'bg-ink-lo w-4' : i === played ? 'bg-gold w-6' : 'bg-fill-3 w-4',
             )}
           />
         ))}

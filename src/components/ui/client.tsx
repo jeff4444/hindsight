@@ -22,6 +22,16 @@ import {
   subscribeMotion,
   type MotionPref,
 } from '@/lib/motion';
+import {
+  getThemeSnapshot,
+  SERVER_THEME,
+  setPalette,
+  setThemePref,
+  subscribeTheme,
+  type ThemeSnapshot,
+} from '@/lib/theme';
+import { GLOSSARY, type TermId } from '@/lib/glossary';
+import { candlesFor } from '@/lib/palette';
 
 /**
  * The stateful primitives.
@@ -177,8 +187,12 @@ export function Dialog({
   onClose: () => void;
   title: string;
   description?: string;
-  /** `bottom` is a sheet on a phone and still a sheet on desktop — use it for stacked choices. */
-  placement?: 'center' | 'bottom';
+  /**
+   * `bottom` is a sheet on a phone and still a sheet on desktop — use it for stacked choices.
+   * `side` is a bottom sheet on a phone and a full-height panel from the right on desktop — use it
+   * for a dossier or a detail view that sits beside what it explains.
+   */
+  placement?: 'center' | 'bottom' | 'side';
   /**
    * How much room the content needs.
    *
@@ -217,7 +231,9 @@ export function Dialog({
       }}
       className={cx(
         'bg-surface-2 text-ink shadow-e4 border-line m-0 border p-0 backdrop:bg-scrim',
-        placement === 'bottom'
+        placement === 'side'
+          ? 'fixed inset-x-0 bottom-0 top-auto max-h-[88dvh] w-full max-w-none overflow-y-auto rounded-t-2xl md:inset-y-0 md:left-auto md:right-0 md:max-h-none md:h-dvh md:w-[28rem] md:rounded-none md:rounded-l-2xl'
+          : placement === 'bottom'
           ? cx(
               'fixed inset-x-0 bottom-0 top-auto w-full max-w-none rounded-t-2xl sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl',
               size === 'lg' ? 'sm:w-[40rem]' : 'sm:w-[26rem]',
@@ -230,7 +246,7 @@ export function Dialog({
     >
       <div className="flex items-start justify-between gap-4 px-5 pt-5">
         <div>
-          <h2 id={titleId} className="text-ink-max text-lg font-semibold">
+          <h2 id={titleId} className="text-ink-max text-lg font-semibold tracking-tight">
             {title}
           </h2>
           {description && (
@@ -366,7 +382,6 @@ export function Tooltip({
     <>
       <span
         ref={anchor}
-        title={label}
         aria-describedby={pos ? id : undefined}
         onPointerEnter={show}
         onPointerLeave={hide}
@@ -452,18 +467,17 @@ export function MotionPreference({ className }: { className?: string }) {
 
   return (
     <div className={className}>
-      <div className="bg-fill-1 ring-line inline-flex rounded-md p-0.5 ring-1" role="radiogroup" aria-label="Motion">
+      <div className="bg-fill-2 ring-line-faint inline-flex rounded-full p-1 ring-1" role="radiogroup" aria-label="Motion">
         {options.map((option) => (
           <button
             key={option.value}
             type="button"
             role="radio"
             aria-checked={pref === option.value}
-            title={option.hint}
             onClick={() => setMotionPref(option.value)}
             className={cx(
-              'press h-9 rounded-sm px-3.5 text-sm font-medium transition-colors',
-              pref === option.value ? 'bg-surface-inv text-ink-inv' : 'text-ink-lo hover:text-ink-hi hover:bg-fill-2',
+              'press h-9 rounded-full px-4 text-sm font-medium transition-colors',
+              pref === option.value ? 'bg-thumb text-ink-max shadow-e1' : 'text-ink-lo hover:text-ink-hi',
             )}
           >
             {option.label}
@@ -473,4 +487,275 @@ export function MotionPreference({ className }: { className?: string }) {
       <p className="text-ink-dim mt-2 text-xs">{options.find((o) => o.value === pref)?.hint}</p>
     </div>
   );
+}
+
+/* ---------------------------------------------------------------- Popover */
+
+/**
+ * A tap-or-click panel anchored to its trigger.
+ *
+ * The difference from `Tooltip` is the whole point: a tooltip is hover, and hover does not exist on
+ * a phone. Anything a player needs to *read* — a definition, a ruleset, an explanation of a figure —
+ * opens on tap, stays open until dismissed, and is reachable by keyboard. Portalled, so no stacking
+ * context between here and the root can clip it.
+ */
+export function Popover({
+  trigger,
+  label,
+  children,
+  placement = 'bottom',
+  width = 'w-72',
+  className,
+}: {
+  /** The visible trigger content. Rendered inside a button. */
+  trigger: ReactNode;
+  /** The trigger's accessible name when its content is not text. */
+  label?: string;
+  children: ReactNode;
+  placement?: 'top' | 'bottom';
+  width?: string;
+  className?: string;
+}) {
+  const id = useId();
+  const anchor = useRef<HTMLButtonElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+
+  const close = useCallback(() => setPos(null), []);
+  const toggle = useCallback(() => {
+    setPos((current) => {
+      if (current) return null;
+      const box = anchor.current?.getBoundingClientRect();
+      if (!box) return null;
+      const half = 144;
+      const left = Math.min(Math.max(box.left + box.width / 2, half + 12), window.innerWidth - half - 12);
+      return { top: placement === 'top' ? box.top - 8 : box.bottom + 8, left };
+    });
+  }, [placement]);
+
+  useEffect(() => {
+    if (!pos) return;
+    const onDown = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (panel.current?.contains(target) || anchor.current?.contains(target)) return;
+      close();
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        close();
+        anchor.current?.focus();
+      }
+    };
+    window.addEventListener('pointerdown', onDown, true);
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('resize', close);
+    window.addEventListener('scroll', close, true);
+    return () => {
+      window.removeEventListener('pointerdown', onDown, true);
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('resize', close);
+      window.removeEventListener('scroll', close, true);
+    };
+  }, [pos, close]);
+
+  return (
+    <>
+      <button
+        ref={anchor}
+        type="button"
+        aria-label={label}
+        aria-expanded={pos !== null}
+        aria-controls={pos ? id : undefined}
+        onClick={toggle}
+        className={className}
+      >
+        {trigger}
+      </button>
+      {pos &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            ref={panel}
+            id={id}
+            role="dialog"
+            style={{ top: pos.top, left: pos.left }}
+            // A link inside navigates without unmounting the trigger (the shell persists), so close
+            // explicitly or the menu would float over the next page.
+            onClick={(event) => {
+              if ((event.target as HTMLElement).closest('a')) close();
+            }}
+            className={cx(
+              'bg-surface-3 text-ink shadow-e4 ring-line animate-fade fixed z-50 -translate-x-1/2 rounded-xl p-4 text-sm ring-1',
+              placement === 'top' && '-translate-y-full',
+              width,
+            )}
+          >
+            {children}
+          </div>,
+          document.body,
+        )}
+    </>
+  );
+}
+
+/* ------------------------------------------------------------------- Term */
+
+/**
+ * A term of art, with its definition one tap away. The word keeps its place in the sentence; the
+ * dotted underline is the only signal that there is more.
+ */
+export function Term({ id, children }: { id: TermId; children?: ReactNode }) {
+  const term = GLOSSARY[id];
+  return (
+    <Popover
+      trigger={children ?? term.label}
+      label={`What is ${term.label}?`}
+      className="decoration-ink-dim hover:decoration-ink-hi cursor-help rounded-xs underline decoration-dotted decoration-1 underline-offset-4 transition-colors"
+    >
+      <p className="text-ink-max font-semibold">{term.label}</p>
+      <p className="text-ink-lo mt-1.5 leading-relaxed">{term.body}</p>
+      {term.more && (
+        <a href={term.more} className="text-ink-hi decoration-gold-line mt-2.5 inline-block text-xs underline underline-offset-4">
+          Read the full rule
+        </a>
+      )}
+    </Popover>
+  );
+}
+
+/* ------------------------------------------------------------------- Tabs */
+
+/**
+ * Tabs with arrow-key roving, per the ARIA tabs pattern. Controlled: the parent owns which panel is
+ * showing, so a tab can be driven by a URL param as easily as by state.
+ */
+export function Tabs<T extends string>({
+  tabs,
+  value,
+  onChange,
+  label,
+  className,
+}: {
+  tabs: { value: T; label: ReactNode; count?: number }[];
+  value: T;
+  onChange: (value: T) => void;
+  label: string;
+  className?: string;
+}) {
+  const refs = useRef<(HTMLButtonElement | null)[]>([]);
+  const onKey = (event: React.KeyboardEvent, index: number) => {
+    const step = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0;
+    if (!step) return;
+    event.preventDefault();
+    const next = (index + step + tabs.length) % tabs.length;
+    refs.current[next]?.focus();
+    onChange(tabs[next].value);
+  };
+  return (
+    <div
+      role="tablist"
+      aria-label={label}
+      className={cx('border-line-faint no-scrollbar flex gap-1 overflow-x-auto border-b', className)}
+    >
+      {tabs.map((tab, index) => {
+        const active = tab.value === value;
+        return (
+          <button
+            key={tab.value}
+            ref={(node) => {
+              refs.current[index] = node;
+            }}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            tabIndex={active ? 0 : -1}
+            onClick={() => onChange(tab.value)}
+            onKeyDown={(event) => onKey(event, index)}
+            className={cx(
+              'relative -mb-px flex h-11 shrink-0 items-center gap-2 border-b-2 px-3 text-sm font-medium transition-colors',
+              active ? 'border-gold text-ink-max' : 'text-ink-lo hover:text-ink-hi border-transparent',
+            )}
+          >
+            {tab.label}
+            {tab.count !== undefined && (
+              <span className="numeral bg-fill-2 text-ink-dim rounded-full px-1.5 text-mini">{tab.count}</span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/* --------------------------------------------------------- ThemePreference */
+
+const THEME_OPTIONS: { value: ThemeSnapshot['pref']; label: string; hint: string }[] = [
+  { value: 'system', label: 'System', hint: 'Follow your device' },
+  { value: 'light', label: 'Daylight', hint: 'Warm paper. The play screen stays dark.' },
+  { value: 'dark', label: 'Afterglow', hint: 'Ink and gold, everywhere' },
+];
+
+export function ThemePreference({ className }: { className?: string }) {
+  const snap = useSyncExternalStore(subscribeTheme, getThemeSnapshot, () => SERVER_THEME);
+  return (
+    <div className={className}>
+      <div className="bg-fill-2 ring-line-faint inline-flex rounded-full p-1 ring-1" role="radiogroup" aria-label="Theme">
+        {THEME_OPTIONS.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            role="radio"
+            aria-checked={snap.pref === option.value}
+            onClick={() => setThemePref(option.value)}
+            className={cx(
+              'press h-9 rounded-full px-4 text-sm font-medium transition-colors',
+              snap.pref === option.value ? 'bg-thumb text-ink-max shadow-e1' : 'text-ink-lo hover:text-ink-hi',
+            )}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+      <p className="text-ink-dim mt-2 text-xs">{THEME_OPTIONS.find((o) => o.value === snap.pref)?.hint}</p>
+    </div>
+  );
+}
+
+export function PalettePreference({ className }: { className?: string }) {
+  const snap = useSyncExternalStore(subscribeTheme, getThemeSnapshot, () => SERVER_THEME);
+  const options = [
+    { value: 'standard' as const, label: 'Green and red' },
+    { value: 'cb' as const, label: 'Blue and orange' },
+  ];
+  return (
+    <div className={className}>
+      <div className="bg-fill-2 ring-line-faint inline-flex rounded-full p-1 ring-1" role="radiogroup" aria-label="Direction colours">
+        {options.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            role="radio"
+            aria-checked={snap.palette === option.value}
+            onClick={() => setPalette(option.value)}
+            className={cx(
+              'press flex h-9 items-center gap-2 rounded-full px-4 text-sm font-medium transition-colors',
+              snap.palette === option.value ? 'bg-thumb text-ink-max shadow-e1' : 'text-ink-lo hover:text-ink-hi',
+            )}
+          >
+            <span aria-hidden className="flex gap-0.5">
+              <span className="h-2.5 w-2.5 rounded-full" style={{ background: candlesFor(option.value).up }} />
+              <span className="h-2.5 w-2.5 rounded-full" style={{ background: candlesFor(option.value).down }} />
+            </span>
+            {option.label}
+          </button>
+        ))}
+      </div>
+      <p className="text-ink-dim mt-2 text-xs">Blue and orange separate under every common form of colour blindness.</p>
+    </div>
+  );
+}
+
+/** The current theme snapshot, for components that draw on canvas. */
+export function useThemeSnapshot(): ThemeSnapshot {
+  return useSyncExternalStore(subscribeTheme, getThemeSnapshot, () => SERVER_THEME);
 }

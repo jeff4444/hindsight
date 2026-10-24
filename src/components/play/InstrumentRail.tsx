@@ -120,7 +120,9 @@ export function InstrumentRail({
 }) {
   const buttons = useRef<(HTMLButtonElement | null)[]>([]);
   // Every instrument, always — the locked ones are the point. See the note above.
-  const available = INSTRUMENTS;
+  // Only what this ruleset grants. Four locked icons and a lock badge on every chart at Naked was
+  // a toolbar advertising a different game; the rules chip says what is off and why.
+  const available = INSTRUMENTS.filter((i) => i.needs === null || granted.includes(i.needs));
 
   /**
    * Arrow keys move within the group; the group itself is one tab stop.
@@ -168,7 +170,7 @@ export function InstrumentRail({
       // a reader is told to expect works either way — which is the promise the attribute exists to
       // make, kept without claiming an orientation that is only true at one width.
       className={cx(
-        'bg-surface-1 border-line flex shrink-0 items-center gap-1 rounded-xl border p-1 lg:flex-col',
+        'bg-surface-1 border-line-faint flex shrink-0 items-center gap-1 rounded-2xl border p-1 lg:flex-col',
         className,
       )}
     >
@@ -176,7 +178,8 @@ export function InstrumentRail({
         const locked = instrument.needs !== null && !granted.includes(instrument.needs);
         const active = tool === instrument.tool;
         const rung = locked && instrument.needs ? grantingTier(instrument.needs) : null;
-        const shortcut = String(index + 1);
+        // The digit stays the instrument's place in the full set, so 3 is always the level.
+        const shortcut = String(INSTRUMENTS.indexOf(instrument) + 1);
 
         return (
           <Tooltip
@@ -207,7 +210,7 @@ export function InstrumentRail({
                 locked
                   ? 'text-ink-faint opacity-60'
                   : active
-                    ? 'bg-surface-inv text-ink-inv'
+                    ? 'bg-fill-3 text-ink-max ring-line-strong ring-1'
                     : 'text-ink-lo enabled:hover:bg-fill-2 enabled:hover:text-ink-hi',
                 disabled && !locked && 'opacity-45',
               )}

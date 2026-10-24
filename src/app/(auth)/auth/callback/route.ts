@@ -79,7 +79,12 @@ export async function GET(request: Request) {
   //
   // Otherwise: a player without a handle has not finished signing up, whatever the provider thinks.
   const recovering = next === RECOVERY_NEXT || type === 'recovery';
-  const destination = recovering ? RECOVERY_NEXT : profile ? next : '/sign-in/handle';
+  // The handle page carries `next` on, so finishing sign-up lands where the player was heading.
+  const destination = recovering
+    ? RECOVERY_NEXT
+    : profile
+      ? next
+      : `/sign-in/handle?next=${encodeURIComponent(next)}`;
   const response = NextResponse.redirect(new URL(destination, url.origin));
 
   if (row && row.refused_to) {

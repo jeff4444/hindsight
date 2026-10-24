@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { currentViewer, getTape } from '@/lib/viewer';
 import { getCohort } from '@/lib/cohort';
-import { Chip, EmptyState, Eyebrow, Gated, Panel, Stat } from '@/components/ui';
+import { Chip, EmptyState, Eyebrow, Gated, PageHeader, Panel, Stat } from '@/components/ui';
 import { Icon } from '@/components/ui/icons';
 
 export const dynamic = 'force-dynamic';
@@ -47,16 +47,12 @@ export default async function CohortPage({ params }: { params: Promise<{ slug: s
         {tape.name}
       </Link>
 
-      <div className="mt-5">
-        <Eyebrow>Cohort</Eyebrow>
-        <h1 className="text-ink-max mt-1.5 text-2xl font-semibold">{tape.name}</h1>
-        <p className="text-ink-lo mt-3 max-w-prose text-sm leading-relaxed">
-          Everyone who has committed a round on this tape.{' '}
-          {tape.visibility === 'public'
-            ? 'It is public, so this is the public rather than a class — there is no invitation in this product, and a link is a link.'
-            : 'It is not listed, so this is whoever you gave the link to.'}
-        </p>
-      </div>
+      <PageHeader
+        className="mt-5"
+        eyebrow="Your cohort"
+        title={tape.name}
+        lede={`Everyone who has played this tape — ${tape.visibility === 'public' ? 'it is public, so that may be anyone' : 'whoever you gave the link to'}. Weakest areas first.`}
+      />
 
       {cohort.rounds === 0 ? (
         <div className="mt-8">
@@ -73,9 +69,9 @@ export default async function CohortPage({ params }: { params: Promise<{ slug: s
               <Stat label="Players" value={cohort.players.length} />
               <Stat label="Rounds" value={cohort.rounds} />
               <Stat label="Traded" value={cohort.traded} />
-              <Stat label="Passed" value={cohort.passed} tone="restraint" />
+              <Stat label="Sat out" value={cohort.passed} tone="restraint" />
               <div>
-                <Eyebrow>Mean percentile</Eyebrow>
+                <Eyebrow>Average score</Eyebrow>
                 <div className="mt-1">
                   <Gated sample={cohort.rounds} min={10}>
                     <span className="numeral text-ink-hi text-xl font-semibold">
@@ -106,7 +102,7 @@ export default async function CohortPage({ params }: { params: Promise<{ slug: s
             </p>
 
             {cohort.axes.length === 0 ? (
-              <p className="text-ink-faint mt-4 text-sm">
+              <p className="text-ink-dim mt-4 text-sm">
                 No axis has {cohort.axisFloor} rounds behind it yet.
               </p>
             ) : (
@@ -127,7 +123,7 @@ export default async function CohortPage({ params }: { params: Promise<{ slug: s
                     <span className="numeral text-ink-lo w-10 shrink-0 text-right">
                       {Math.round(axis.meanPercentile * 100)}
                     </span>
-                    <span className="text-ink-faint w-16 shrink-0 text-right text-xs">
+                    <span className="text-ink-dim w-16 shrink-0 text-right text-xs">
                       {axis.rounds} rounds
                     </span>
                   </li>

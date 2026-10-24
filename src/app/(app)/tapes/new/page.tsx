@@ -1,51 +1,35 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { currentViewer } from '@/lib/viewer';
-import { Eyebrow } from '@/components/ui';
+import { routes } from '@/lib/routes';
+import { PageHeader } from '@/components/ui';
 import { Icon } from '@/components/ui/icons';
 import { TapeBuilder } from '@/components/tapes/TapeBuilder';
 
 export const dynamic = 'force-dynamic';
-
-export const metadata = { title: 'New tape' };
+export const metadata = { title: 'Make a tape' };
 
 /**
- * §11.2's builder.
- *
- * Sign-in is required and enforced here as well as in `/api/tapes`. A tape is a thing an operator
- * comes back to, shares by link and reads a cohort off — none of which survives an anonymous session
- * whose only identity is a cookie the player may clear.
+ * Make a tape: a rule over the library, a ruleset, a name. The library does the picking — a set
+ * assembled chart by chart has no reproducible difficulty, so nothing computed on it would mean
+ * what it seems to. That argument lives in Methods now; the page just builds.
  */
 export default async function NewTapePage() {
   const viewer = await currentViewer();
-  if (!viewer.userId) redirect('/sign-in?next=/tapes/new');
+  if (!viewer.userId) redirect(routes.signIn(routes.tapes.create));
 
   return (
-    <div className="mx-auto max-w-5xl">
-      <Link
-        href="/tapes"
-        className="text-ink-dim hover:text-ink-hi inline-flex items-center gap-1.5 text-sm font-medium transition-colors"
-      >
+    <div className="mx-auto max-w-6xl space-y-8">
+      <Link href={routes.tapes.index()} className="text-ink-dim hover:text-ink-hi inline-flex items-center gap-1.5 text-sm font-medium transition-colors">
         <Icon name="arrow-left" size={14} />
         Tapes
       </Link>
-
-      <div className="mt-5">
-        <Eyebrow>Make a tape</Eyebrow>
-        <h1 className="text-ink-max mt-1.5 text-3xl font-semibold text-balance">
-          A slice of the library, defined by a rule
-        </h1>
-        <p className="text-ink-lo mt-4 max-w-prose text-base leading-relaxed">
-          Pick the conditions and the library does the picking. Hand-choosing charts is deliberately
-          not offered: a set someone assembled chart by chart has no reproducible difficulty
-          distribution, so nothing computed on it — a percentile, a leaderboard, a cohort average —
-          means what it appears to mean.
-        </p>
-      </div>
-
-      <div className="mt-8">
-        <TapeBuilder />
-      </div>
+      <PageHeader
+        eyebrow="Make a tape"
+        title="Build a playlist of charts"
+        lede="Pick a rule and the library finds every chart that fits. Share it with a class, a group chat, or just yourself."
+      />
+      <TapeBuilder />
     </div>
   );
 }

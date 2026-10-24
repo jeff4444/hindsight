@@ -90,37 +90,9 @@ export function TapeBuilder() {
     router.push(`/tapes/${body.slug}`);
   }
 
-  return (
-    <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
-      <div className="space-y-8">
-        <div className="space-y-3">
-          <Field label="Name">
-            <input
-              className={INPUT_CLASS}
-              value={name}
-              maxLength={60}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Week 1 — reading a falling chart"
-            />
-          </Field>
-          <Field label="Description" hint="What this trains, and what it does not. Optional.">
-            <textarea
-              className={cx(INPUT_CLASS, 'min-h-24 resize-y')}
-              value={blurb}
-              maxLength={600}
-              onChange={(e) => setBlurb(e.target.value)}
-            />
-          </Field>
-        </div>
 
-        <section>
-          <Eyebrow>Conditions</Eyebrow>
-          <p className="text-ink-lo mt-2 max-w-prose text-sm leading-relaxed">
-            Every condition reads a tag computed from the lead-in alone. That is what makes the
-            tape&rsquo;s difficulty distribution reproducible, and it is why nothing here can filter on
-            what happened next — a tape that could would announce part of the answer in its own
-            definition.
-          </p>
+  const conditionsBody = (
+    <>
 
           <Group label="Regime">
             {TAPE_VOCABULARY.er.map((value) => (
@@ -191,26 +163,21 @@ export function TapeBuilder() {
             </label>
           </Group>
 
-          <Group label="The council">
+          <Group label="The Panel">
             <Toggle
               active={filter.councilSplit}
               onClick={() => setFilter((f) => ({ ...f, councilSplit: !f.councilSplit }))}
             >
-              the schools disagree
+              the Panel takes opposite sides
             </Toggle>
-            <span className="text-ink-faint self-center text-xs">
-              7.1% of the library, and measurably no harder than the rest.
-            </span>
           </Group>
-        </section>
+        
+    </>
+  );
 
-        <section>
-          <Eyebrow>Ruleset</Eyebrow>
-          <p className="text-ink-lo mt-2 max-w-prose text-sm leading-relaxed">
-            Lock one and everybody plays this tape under it, which is what makes a cohort&rsquo;s
-            results comparable. Mods are off on a locked tape for the same reason.
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
+  const rulesBody = (
+    <>
+          <div className="flex flex-wrap gap-2">
             <Toggle active={lockedTier === null} onClick={() => setLockedTier(null)}>
               player chooses
             </Toggle>
@@ -220,15 +187,49 @@ export function TapeBuilder() {
                 active={lockedTier === tier.code}
                 onClick={() => setLockedTier(tier.code)}
               >
-                {tier.code}
+                {tier.name}
               </Toggle>
             ))}
           </div>
-        </section>
+        
+    </>
+  );
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
+      <div className="space-y-5">
+        <Step n={1} title="Pick the rule" hint="Which charts belong on this tape. Every condition reads only the history before the decision, so the tape never gives away how its charts end.">
+          {conditionsBody}
+        </Step>
+
+        <Step n={2} title="Choose the rules" hint="Lock a ruleset and everyone plays this tape under it — what makes a cohort's results comparable. Or let each player choose.">
+          {rulesBody}
+        </Step>
+
+        <Step n={3} title="Name it and share it">
+        <div className="space-y-3">
+          <Field label="Name">
+            <input
+              className={INPUT_CLASS}
+              value={name}
+              maxLength={60}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Week 1 — reading a falling chart"
+            />
+          </Field>
+          <Field label="Description" hint="What this trains, and what it does not. Optional.">
+            <textarea
+              className={cx(INPUT_CLASS, 'min-h-24 resize-y')}
+              value={blurb}
+              maxLength={600}
+              onChange={(e) => setBlurb(e.target.value)}
+            />
+          </Field>
+        </div>
 
         <section>
-          <Eyebrow>Who can see it</Eyebrow>
-          <div className="mt-3 flex flex-wrap gap-2">
+          <div className="eyebrow text-ink-dim mt-5">Who can see it</div>
+          <div className="mt-2 flex flex-wrap gap-2">
             {(
               [
                 ['private', 'only me'],
@@ -241,15 +242,15 @@ export function TapeBuilder() {
               </Toggle>
             ))}
           </div>
-          <p className="text-ink-faint mt-2 max-w-prose text-xs leading-relaxed">
-            Unlisted means the link is the secret — it is not listed anywhere, and anyone holding the
-            URL can play it. Private is checked on the server, so the play URL will not work for
-            anyone else either.
+          <p className="text-ink-dim mt-2 max-w-prose text-xs leading-relaxed">
+            Unlisted: anyone with the link can play it, and it is listed nowhere. Public: it also appears under
+            Community.
           </p>
         </section>
+        </Step>
       </div>
 
-      <Panel tone="hero" pad="md" className="lg:sticky lg:top-6">
+      <Panel tone="hero" pad="md" className="rounded-3xl lg:sticky lg:top-8">
         <Eyebrow>In this tape</Eyebrow>
         <div className="mt-1.5 flex items-baseline gap-2">
           <span
@@ -320,9 +321,9 @@ function Group({
   children: React.ReactNode;
 }) {
   return (
-    <div className="mt-5">
-      <div className="text-ink-dim text-[0.6875rem] font-medium tracking-wide uppercase">{label}</div>
-      {hint && <p className="text-ink-faint mt-1 text-xs">{hint}</p>}
+    <div className="mt-5 first:mt-0">
+      <div className="eyebrow text-ink-dim">{label}</div>
+      {hint && <p className="text-ink-dim mt-1 text-xs">{hint}</p>}
       <div className="mt-2 flex flex-wrap gap-2">{children}</div>
     </div>
   );
@@ -343,13 +344,30 @@ function Toggle({
       aria-pressed={active}
       onClick={onClick}
       className={cx(
-        'press rounded-md border px-3 py-1.5 text-sm transition-colors',
+        'press rounded-full px-3.5 py-1.5 text-sm font-medium ring-1 transition-colors',
         active
-          ? 'border-info-line bg-info-bg text-info-ink'
-          : 'border-line bg-surface-1 text-ink-hi hover:border-line-strong',
+          ? 'bg-thumb text-ink-max ring-line-strong shadow-e1'
+          : 'bg-fill-1 text-ink-lo ring-line-faint hover:text-ink-hi',
       )}
     >
       {children}
     </button>
+  );
+}
+
+function Step({ n, title, hint, children }: { n: number; title: string; hint?: string; children: React.ReactNode }) {
+  return (
+    <section className="border-line bg-surface-2 rounded-2xl border p-5 md:p-6">
+      <div className="flex items-start gap-3">
+        <span className="numeral bg-gold-bg text-gold-ink ring-gold-line grid h-7 w-7 shrink-0 place-items-center rounded-full text-sm font-semibold ring-1">
+          {n}
+        </span>
+        <div className="min-w-0">
+          <h2 className="text-ink-max text-lg font-semibold">{title}</h2>
+          {hint && <p className="text-ink-lo mt-1 max-w-prose text-sm leading-relaxed">{hint}</p>}
+        </div>
+      </div>
+      <div className="mt-5">{children}</div>
+    </section>
   );
 }

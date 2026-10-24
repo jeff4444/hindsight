@@ -1,14 +1,1 @@
-<svg viewBox="0 0 32 32" width="32" height="32" xmlns="http://www.w3.org/2000/svg">
-  <!--
-    The Hindsight mark. Two candle bodies form the stems of an H; the bar between them is the entry
-    line. Left body filled — the past, revealed. Right body outlined — the sixty bars you have not
-    been shown. Colours are literal hex because custom properties do not resolve in a favicon:
-    #080b11 is surface-0, #26a69a is the up candle, #6393fd is the brand hue, #f7f8fa is ink-max.
-  -->
-  <rect width="32" height="32" rx="7.5" fill="#080b11"/>
-  <g transform="translate(16 16) scale(0.82) translate(-16 -16)">
-    <rect x="5.5" y="4" width="6" height="24" rx="2" fill="#26a69a"/>
-    <rect x="20.5" y="4" width="6" height="24" rx="2" fill="none" stroke="#6393fd" stroke-width="2.2"/>
-    <rect x="10.5" y="13.9" width="11" height="3.2" rx="1.6" fill="#f7f8fa"/>
-  </g>
-</svg>
+<svg viewBox="0 0 32 32" width="32" height="32" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="7.5" fill="#0e0d11"/><g transform="translate(16 16) scale(0.82) translate(-16 -16)"><rect x="5.5" y="4" width="6" height="24" rx="2" fill="#f7f3ec"/><clipPath id="hs-future"><rect x="20.5" y="4" width="6" height="24" rx="2"/></clipPath><g clip-path="url(#hs-future)" stroke="#f2b544" stroke-width="1.1" stroke-linecap="round" opacity="0.8"><line x1="20.5" y1="9.5" x2="26.5" y2="3.5"/><line x1="20.5" y1="14.5" x2="26.5" y2="8.5"/><line x1="20.5" y1="19.5" x2="26.5" y2="13.5"/><line x1="20.5" y1="24.5" x2="26.5" y2="18.5"/><line x1="20.5" y1="29.5" x2="26.5" y2="23.5"/></g><rect x="20.5" y="4" width="6" height="24" rx="2" fill="none" stroke="#f2b544" stroke-width="2"/><rect x="10.5" y="13.9" width="11" height="3.2" rx="1.6" fill="#f7f3ec"/></g></svg>
