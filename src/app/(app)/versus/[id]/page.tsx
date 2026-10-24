@@ -19,6 +19,10 @@ export async function generateMetadata() {
  * Taking the seat is what *creates* a duel's charts, so this page is not decoration — it is the step
  * that draws a sequence neither player has seen. Until someone lands here, the duel has no charts at
  * all, which is why it says so rather than showing an empty board.
+ *
+ * Rows are keyed by seat, never by owner. This is a server component, React serialises element keys
+ * into the payload it sends the browser, and an anonymous player's owner is their session id — the
+ * `hs_session` cookie itself. Keying by owner handed every visitor the cookies of everyone seated.
  */
 export default async function MatchPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -64,7 +68,7 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
         <Eyebrow>Players</Eyebrow>
         <ul className="mt-3 space-y-2">
           {players.map((p) => (
-            <li key={p.owner} className="flex items-center justify-between gap-3 text-sm">
+            <li key={`seat-${p.seat as number}`} className="flex items-center justify-between gap-3 text-sm">
               <span className="text-ink">
                 {p.owner === owner ? 'You' : `Seat ${(p.seat as number) + 1}`}
                 {p.clean === false && (
