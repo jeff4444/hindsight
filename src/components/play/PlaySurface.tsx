@@ -32,6 +32,7 @@ import { Chip, cx } from '../ui';
 import { Dialog, Live, useThemeSnapshot, useToast } from '../ui/client';
 import { Icon } from '../ui/icons';
 import { CallDock } from './CallDock';
+import { CoachScoreNote, CoachStrip, useCoach } from './Coach';
 import { ChartFrame } from './ChartFrame';
 import { DailyCeremony } from './DailyCeremony';
 import { TransportConsole } from './TransportConsole';
@@ -853,6 +854,19 @@ export function PlaySurface({
 
   const beats = useBeats(COMMIT_BEATS, [phase === 'committing' || phase === 'revealing']);
 
+  // First-run tips. Not in Storm, Survival or a match: a clock against other people is no place to
+  // read instructions, and the first daily or practice chart will carry them instead.
+  const coach = useCoach({
+    phase,
+    direction,
+    roundId: round?.roundId ?? null,
+    enabled: !isRun(mode) && !isMatch(mode),
+  });
+  const { finish: finishCoach } = coach;
+  useEffect(() => {
+    if (coach.step === 'score' && round) finishCoach(round.roundId);
+  }, [coach.step, round, finishCoach]);
+
   const announcement = describe(
     phase,
     result,
@@ -1171,6 +1185,10 @@ export function PlaySurface({
                 )}
               </ChartFrame>
 
+              {(coach.step === 'read' || coach.step === 'call' || coach.step === 'lock') && (
+                <CoachStrip step={coach.step} revealHours={revealHours} onNext={coach.next} onSkip={coach.skip} />
+              )}
+
               {(phase === 'placing' || phase === 'committing') && round && (
                 <CallDock
                   direction={direction}
@@ -1234,6 +1252,11 @@ export function PlaySurface({
                 onNext={() => void load()}
                 onReplay={replay}
                 onShare={share}
+                coach={
+                  coach.step === 'score' ? (
+                    <CoachScoreNote percentile={score?.percentile ?? null} passed={passed} onDismiss={coach.skip} />
+                  ) : null
+                }
                 className="w-full lg:h-(--stage-h) lg:w-[25rem] lg:shrink-0"
               />
             )}

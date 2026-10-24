@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import type { Verdict } from '@/core/engines';
 import type { ChartProvenance, RevealPayload, RoundResult, ScorePayload } from '@/lib/api-types';
 import { sentences } from '@/lib/debrief';
@@ -48,6 +49,7 @@ export function ReviewPanel({
   onNext,
   onReplay,
   onShare,
+  coach,
   className,
 }: {
   result: RoundResult;
@@ -67,6 +69,8 @@ export function ReviewPanel({
   onNext: () => void;
   onReplay: () => void;
   onShare?: () => void;
+  /** A first-run note, placed under the score it explains. */
+  coach?: ReactNode;
   className?: string;
 }) {
   const passed = result.outcome === 'pass';
@@ -127,6 +131,8 @@ export function ReviewPanel({
             </p>
           )}
         </section>
+
+        {coach}
 
         {/* 3: every possible trade */}
         {score && score.distribution.length > 1 && (

@@ -27,7 +27,7 @@ export default async function TapesPage({ searchParams }: { searchParams: Promis
       <PageHeader
         eyebrow="Practice"
         title="Tapes"
-        lede="Playlists of charts that share one rule — a regime, a pattern, a kind of move. Unlimited and never metered."
+        lede="Playlists of charts that share one rule — a regime, a pattern, a kind of move. Play as many as you like."
         actions={
           <Button href={routes.tapes.create} variant="secondary">
             <Icon name="plus" size={15} />
@@ -46,6 +46,8 @@ export default async function TapesPage({ searchParams }: { searchParams: Promis
         ]}
       />
 
+      {/* The cards are h3s, so each shelf needs an h2 above them for the outline to hold. */}
+      <h2 className="sr-only">{tab === 'official' ? 'Official tapes' : tab === 'community' ? 'Community tapes' : 'Your tapes'}</h2>
       {tab === 'official' && <Official />}
       {tab === 'community' && <Community />}
       {tab === 'yours' &&

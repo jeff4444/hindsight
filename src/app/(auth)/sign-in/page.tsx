@@ -10,6 +10,7 @@ import { SubmitButton } from "@/components/auth/SubmitButton";
 import { authError } from "@/lib/auth-errors";
 
 export const dynamic = "force-dynamic";
+export const metadata = { title: "Sign in" };
 
 /**
  * Sign in and sign up on one screen.

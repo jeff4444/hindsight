@@ -37,7 +37,7 @@ export default function LandingPage() {
               <Icon name="play" size={16} />
               Play today&rsquo;s daily
             </Button>
-            <Button href={routes.learn.index} variant="ghost" size="xl">
+            <Button href={routes.learn.index} variant="secondary" size="xl">
               How it works
             </Button>
           </div>

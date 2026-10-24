@@ -893,6 +893,8 @@ html[data-motion='reduced'] *:not([data-motion-allow]):not([data-motion-allow] *
   background: var(--color-fill-2);
   border-radius: var(--radius-xs);
   padding: 0.1em 0.35em;
+  /* Long file paths break rather than push a phone's page sideways. */
+  overflow-wrap: anywhere;
 }
 .rules pre {
   background: var(--color-surface-1);
@@ -902,7 +904,7 @@ html[data-motion='reduced'] *:not([data-motion-allow]):not([data-motion-allow] *
   overflow-x: auto;
   margin-block: 1.25rem;
 }
-.rules pre code { background: none; padding: 0; }
+.rules pre code { background: none; padding: 0; overflow-wrap: normal; }
 .rules blockquote {
   border-left: 2px solid var(--color-line-strong);
   padding-left: 1rem;

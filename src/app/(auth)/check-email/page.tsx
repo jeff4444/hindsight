@@ -2,6 +2,8 @@ import { Button, Eyebrow, IconBadge } from '@/components/ui';
 import { routes } from '@/lib/routes';
 import { SubmitButton } from '@/components/auth/SubmitButton';
 
+export const metadata = { title: 'Check your email' };
+
 /**
  * The link has been sent.
  *
