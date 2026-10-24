@@ -7,6 +7,8 @@ import { Button, Chip, Panel } from '@/components/ui';
 import { ChartArt, seedOf } from '@/components/ui/ChartArt';
 import { Icon } from '@/components/ui/icons';
 import { TapeLaunch } from '@/components/tapes/TapeLaunch';
+import { Leaderboard } from '@/components/ranks/Leaderboard';
+import { TAPE_BOARD_MIN_ROUNDS, getTapeBoard } from '@/lib/leaderboards';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,6 +36,7 @@ export default async function TapePage({ params }: { params: Promise<{ slug: str
 
   const locked = Boolean(tape.lockedReason);
   const conditions = describeFilter(tape.filter);
+  const board = locked ? null : await getTapeBoard(tape.slug, 10);
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -87,6 +90,30 @@ export default async function TapePage({ params }: { params: Promise<{ slug: str
               </p>
             </div>
           </div>
+
+          {board !== null && (
+            <section aria-labelledby="board-heading" className="space-y-3">
+              <div className="flex items-baseline justify-between gap-3">
+                <h2 id="board-heading" className="text-ink-max text-lg font-semibold">
+                  Best on this tape
+                </h2>
+                <Link href={`${routes.ranks('tapes')}&tape=${encodeURIComponent(tape.slug)}`} className="text-ink-dim hover:text-ink-hi text-xs">
+                  Full board
+                </Link>
+              </div>
+              <Leaderboard
+                rows={board}
+                viewerId={viewer.userId}
+                format={(value) => String(Math.round(value * 100))}
+                detail={(row) => (row.detail === null ? null : `${row.detail} rounds`)}
+                empty={
+                  <p className="text-ink-dim text-sm">
+                    Nobody yet. Players appear after {TAPE_BOARD_MIN_ROUNDS} rounds here, ranked by average score.
+                  </p>
+                }
+              />
+            </section>
+          )}
 
           {tape.isOwner && (
             <div className="border-line bg-surface-2 flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-5">

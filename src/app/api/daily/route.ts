@@ -6,6 +6,7 @@ import { authClient } from '@/lib/supabase/auth-server';
 import { RANKED_TIER, affordances, tierByCode } from '@/core/tiers';
 import { roundPayload } from '@/lib/round-payload';
 import { DAILY_CHARTS, dailyNumber, isDailyOpen } from '@/lib/daily';
+import { getDailyField } from '@/lib/leaderboards';
 import { shareCard } from '@/lib/share';
 import { getStreak } from '@/lib/viewer';
 import type { DailyPayload } from '@/lib/api-types';
@@ -82,6 +83,7 @@ export async function POST(request: Request) {
     const mean = scored.length > 0 ? scored.reduce((a, b) => a + b, 0) / scored.length : null;
     const traded = results.filter((r) => !r.passed).length;
 
+    const field = await getDailyField(day, userId ?? sessionId);
     const payload: DailyPayload = {
       day,
       complete: true,
@@ -99,7 +101,9 @@ export async function POST(request: Request) {
             longest: after.longest,
           }
         : null,
+      field,
       card: shareCard({
+        beat: field?.you && field.players > 1 ? field.you.beaten / (field.players - 1) : null,
         day,
         percentile: mean,
         traded,

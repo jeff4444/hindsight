@@ -44,6 +44,8 @@ export interface ShareCardInput {
    * squares are score buckets and nothing else, so they spoil nothing about any chart.
    */
   charts?: (number | 'pass' | null)[];
+  /** Share of today's field this player finished ahead of, 0–1. Printed as "top N%". */
+  beat?: number | null;
 }
 
 const SQUARE = { gold: '🟨', good: '🟩', fair: '⬜', poor: '🟥', pass: '🟪', none: '▫️' } as const;
@@ -92,11 +94,12 @@ export function percentileBar(percentile: number): string {
  * price, and whether any individual chart won or lost. Everything on it is either about the
  * player's standing or about which puzzle it was.
  */
-export function shareCard({ day, percentile, traded, total, charts }: ShareCardInput): string {
+export function shareCard({ day, percentile, traded, total, charts, beat }: ShareCardInput): string {
+  const top = beat !== null && beat !== undefined ? Math.max(1, Math.round((1 - beat) * 100)) : null;
   const headline =
     percentile === null
       ? `Hindsight #${day} · ${TIER_NAME}`
-      : `Hindsight #${day} · ${TIER_NAME} · ${Math.round(percentile * 100)}`;
+      : `Hindsight #${day} · ${TIER_NAME} · ${Math.round(percentile * 100)}${top !== null ? ` · top ${top}%` : ''}`;
 
   const lines = [headline];
   if (charts && charts.length > 0) lines.push(charts.map(chartSquare).join(''));

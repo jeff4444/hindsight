@@ -1,13 +1,16 @@
 'use client';
 
 import { useSyncExternalStore } from 'react';
+import Link from 'next/link';
 import type { DailyPayload, DailyResult } from '@/lib/api-types';
 import { useBeats } from '@/lib/useBeats';
+import { nextResetAt } from '@/lib/daily';
 import { useCountUp } from '@/lib/useTween';
 import { Button, Eyebrow, ProgressArc, cx, scoreTone, toneInk } from '../ui';
 import { Countdown, useToast } from '../ui/client';
 import { Icon } from '../ui/icons';
 import { Beat } from '../ui/motion';
+import { FieldHistogram } from '../ranks/FieldHistogram';
 
 /**
  * The end of a daily.
@@ -69,7 +72,6 @@ export function DailyCeremony({ daily }: { daily: DailyPayload }) {
   const mean = daily.percentile;
   const title =
     mean === null ? 'Daily done.' : mean >= 0.75 ? 'A sharp day.' : mean >= 0.55 ? 'A solid day.' : mean >= 0.35 ? 'A mixed day.' : 'A rough day.';
-  const tomorrow = nextUtcMidnight();
 
   return (
     <div className="animate-rise mx-auto flex w-full max-w-xl flex-col items-center text-center">
@@ -93,8 +95,20 @@ export function DailyCeremony({ daily }: { daily: DailyPayload }) {
         ))}
       </div>
 
+      {daily.field && daily.field.players > 0 && (
+        <Beat on={STREAK_BEAT} beats={beats} className="border-line bg-surface-2 mt-8 w-full rounded-2xl border p-5 text-left">
+          <div className="mb-3 flex items-center justify-between">
+            <span className="eyebrow text-ink-dim">Today&rsquo;s field</span>
+            <Link href="/ranks?board=daily" className="text-ink-dim hover:text-ink-hi text-xs">
+              See the board
+            </Link>
+          </div>
+          <FieldHistogram histogram={daily.field.histogram} players={daily.field.players} you={daily.field.you} compact />
+        </Beat>
+      )}
+
       {daily.streak && (
-        <Beat on={STREAK_BEAT} beats={beats} className="mt-8 w-full">
+        <Beat on={STREAK_BEAT} beats={beats} className="mt-4 w-full">
           <StreakBump streak={daily.streak} />
         </Beat>
       )}
@@ -116,18 +130,13 @@ export function DailyCeremony({ daily }: { daily: DailyPayload }) {
         </div>
         <p className="text-ink-dim mt-4 text-xs leading-relaxed">
           The card says how you scored and nothing about the charts, so it spoils nothing. Next daily in{' '}
-          <Countdown to={tomorrow} className="text-ink-lo" />.
+          <Countdown to={nextResetAt()} className="text-ink-lo" />.
         </p>
       </Beat>
     </div>
   );
 }
 
-/** The daily resets at midnight UTC. */
-function nextUtcMidnight(): number {
-  const now = new Date();
-  return Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1);
-}
 
 function RoundTile({ result, ordinal }: { result: DailyResult; ordinal: number }) {
   const pct = result.percentile === null ? null : Math.round(result.percentile * 100);

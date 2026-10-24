@@ -48,6 +48,12 @@ describe('the card', () => {
     );
   });
 
+  it('adds the field rank when there is one', () => {
+    expect(shareCard({ day: 412, percentile: 0.78, traded: 3, total: 5, charts: [0.95, 0.7, 'pass', 0.2, 'pass'], beat: 0.82 }).split('\n')[0]).toBe(
+      'Hindsight #412 · Naked · 78 · top 18%',
+    );
+  });
+
   it('falls back to the bar when the charts are not given', () => {
     expect(shareCard({ day: 412, percentile: 0.78, traded: 3, total: 5 })).toBe(
       ['Hindsight #412 · Naked · 78', '████████░░', 'traded 3 of 5'].join('\n'),

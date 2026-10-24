@@ -351,6 +351,12 @@ export interface DailyPayload {
   streak: StreakDelta | null;
   card: string | null;
   round: RoundPayload | null;
+  /**
+   * Today's field, once complete: every player who finished, bucketed by score, and where this one
+   * stands. Null until the leaderboard functions exist, or if reading them failed — the summary
+   * never waits on, or breaks over, the field.
+   */
+  field?: { players: number; histogram: number[]; you: { beaten: number; mean: number } | null } | null;
 }
 
 /**
