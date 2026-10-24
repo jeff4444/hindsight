@@ -1,15 +1,11 @@
 'use client';
 
 import { useEffect } from 'react';
+import { routes } from '@/lib/routes';
 import { Button, EmptyState } from '@/components/ui';
 
-export default function MarketingError({
-  error,
-  reset,
-}: {
-  error: Error & { digest?: string };
-  reset: () => void;
-}) {
+/** The front door's error boundary. The game is a separate route, so it offers that as the way on. */
+export default function MarketingError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   useEffect(() => {
     console.error(error);
   }, [error]);
@@ -19,18 +15,19 @@ export default function MarketingError({
       <EmptyState
         icon="alert"
         title="That did not load"
-        body="Something went wrong. The game itself is fine — you can go straight to it."
+        body="Something went wrong with this page. The game itself is fine — you can go straight to it."
         action={
           <div className="flex flex-wrap items-center justify-center gap-2">
-            <Button variant="primary" size="lg" onClick={reset}>
+            <Button variant="secondary" size="lg" onClick={reset}>
               Try again
             </Button>
-            <Button as="a" href="/play" variant="secondary" size="lg">
-              Play today
+            <Button href={routes.play.daily} variant="primary" size="lg">
+              Play today&rsquo;s daily
             </Button>
           </div>
         }
       />
+      {error.digest && <p className="numeral text-ink-dim mt-4 text-center text-xs">reference {error.digest}</p>}
     </div>
   );
 }

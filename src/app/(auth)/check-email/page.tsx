@@ -1,5 +1,8 @@
 import { Button, Eyebrow, IconBadge } from '@/components/ui';
+import { routes } from '@/lib/routes';
 import { SubmitButton } from '@/components/auth/SubmitButton';
+
+export const metadata = { title: 'Check your email' };
 
 /**
  * The link has been sent.
@@ -57,10 +60,10 @@ export default async function CheckEmail({
             </SubmitButton>
           </form>
         )}
-        <Button as="a" href={reset ? '/forgot-password' : '/sign-in'} variant="ghost" size="lg">
+        <Button href={reset ? '/forgot-password' : routes.signIn()} variant="ghost" size="lg">
           Use a different address
         </Button>
-        <Button as="a" href="/play" variant="ghost" size="lg">
+        <Button href={routes.play.daily} variant="ghost" size="lg">
           Keep playing
         </Button>
       </div>

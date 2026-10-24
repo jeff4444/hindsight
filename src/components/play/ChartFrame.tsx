@@ -49,6 +49,10 @@ export function ChartFrame({
   error,
   onRetry,
   armed,
+  bracket = true,
+  stopLabel,
+  targetLabel,
+  entryLabel,
   className,
   children,
 }: {
@@ -78,6 +82,11 @@ export function ChartFrame({
    * inside a property that cannot.
    */
   armed?: boolean;
+  /** False until the player has picked a side: only the entry line is drawn. */
+  bracket?: boolean;
+  stopLabel?: string;
+  targetLabel?: string;
+  entryLabel?: string;
   className?: string;
   /** In-frame layers. Rendered above the rails; see the note above about pointer events. */
   children?: React.ReactNode;
@@ -85,8 +94,8 @@ export function ChartFrame({
   return (
     <div
       className={cx(
-        'bg-surface-1 shadow-well relative overflow-hidden rounded-xl border transition-colors',
-        armed ? 'border-brand-line' : 'border-line',
+        'bg-surface-1 relative overflow-hidden rounded-2xl border transition-colors',
+        armed ? 'border-info-line' : 'border-line-faint',
         className,
       )}
     >
@@ -111,6 +120,10 @@ export function ChartFrame({
           target={target}
           locked={locked}
           hidden={railsHidden}
+          bracket={bracket}
+          stopLabel={stopLabel}
+          targetLabel={targetLabel}
+          entryLabel={entryLabel}
           onDrag={onDrag}
         />
       )}
@@ -142,17 +155,18 @@ export function ChartFrame({
           <div className="flex flex-col items-center gap-3">
             {/* The mark draws its own unrevealed candle in. It is the one loading state in the
                 product and it says what the product is about. */}
-            <Mark size={40} tone="duo" drawing />
-            <span className="text-ink-dim animate-breathe text-sm">dealing a chart…</span>
+            <Mark size={40} tone="duo" drawing className="text-ink-max" />
+            <span className="text-ink-lo animate-breathe text-sm">Dealing a chart…</span>
           </div>
         </div>
       )}
 
       {error && (
         <div className="bg-scrim absolute inset-0 z-40 grid place-items-center p-6 text-center">
-          <div>
-            <p className="text-short-ink text-sm">{error}</p>
-            <Button variant="secondary" onClick={onRetry} className="mt-3">
+          <div className="max-w-sm">
+            <p className="font-display text-ink-max text-2xl">That chart did not arrive.</p>
+            <p className="text-ink-lo mt-2 text-sm">{error}</p>
+            <Button variant="secondary" onClick={onRetry} className="mt-4">
               Try again
             </Button>
           </div>

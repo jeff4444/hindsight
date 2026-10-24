@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { serviceClient } from '@/lib/supabase/server';
 import { currentViewer } from '@/lib/viewer';
 import { isAccent } from '@/lib/avatar';
+import { safeNext } from '@/lib/auth-redirect';
 
 /**
  * Claim or change a handle and signature.
@@ -52,5 +53,8 @@ export async function saveProfile(formData: FormData): Promise<{ error?: string 
     return { error: error.message };
   }
 
-  redirect(`/u/${handle}`);
+  // Back to where the player was heading — the game after claiming a handle, settings after an
+  // edit. The old ending sent everyone to their own profile, which was right for neither.
+  const next = formData.get('next');
+  redirect(typeof next === 'string' && next ? safeNext(next, `/u/${handle}`) : `/u/${handle}`);
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import type { StreakView } from '@/core/streak';
+import type { StreakSnapshot } from '@/lib/viewer';
 import { cx, Chip } from '../ui';
 
 /**
@@ -20,14 +20,14 @@ import { cx, Chip } from '../ui';
  * **yesterday's** daily, not today's. Telling a player to "play today" then is simply wrong: it
  * starts a new run of one and lets the old one lapse tomorrow.
  */
-export function StreakMeter({ streak, today }: { streak: StreakView; today: number }) {
+export function StreakMeter({ streak, today }: { streak: StreakSnapshot; today: number }) {
   const cells = buildCells(streak, today);
   const rescueIsBacklog = streak.requiredDay !== null && streak.requiredDay < today;
 
   return (
     <div
       className={cx(
-        'bg-surface-2 shadow-e1 relative overflow-hidden rounded-xl border p-4 md:p-5',
+        'bg-surface-2 relative h-full overflow-hidden rounded-3xl border p-5 md:p-6',
         streak.perfect ? 'border-gold-line' : 'border-line',
       )}
     >
@@ -39,8 +39,8 @@ export function StreakMeter({ streak, today }: { streak: StreakView; today: numb
           <div className="mt-1 flex items-baseline gap-2">
             <span
               className={cx(
-                'numeral text-3xl font-semibold',
-                streak.length === 0 ? 'text-ink-faint' : streak.perfect ? 'text-gold-ink' : 'text-ink-max',
+                'numeral text-4xl font-semibold',
+                streak.length === 0 ? 'text-ink-dim' : streak.perfect ? 'text-gold-ink' : 'text-ink-max',
               )}
             >
               {streak.length}
@@ -136,7 +136,7 @@ function Freezes({ remaining }: { remaining: number }) {
         <svg key={i} width="14" height="14" viewBox="0 0 14 14" aria-hidden>
           <path
             d="M7 1v12M2 4l10 6M12 4L2 10"
-            stroke={i < remaining ? 'var(--color-info)' : 'var(--color-ink-faint)'}
+            stroke={i < remaining ? 'var(--color-info)' : 'var(--color-ink-dim)'}
             strokeWidth="1.4"
             strokeLinecap="round"
             opacity={i < remaining ? 1 : 0.4}
@@ -149,8 +149,17 @@ function Freezes({ remaining }: { remaining: number }) {
 
 type Cell = { day: number; kind: 'done' | 'frozen' | 'repaired' | 'today' | 'missed' | 'future' };
 
-/** The last fourteen days, which is long enough to show a habit forming and short enough to read. */
-function buildCells(streak: StreakView, today: number): Cell[] {
+/**
+ * One cell per day for the last fortnight.
+ *
+ * Inside the current run a day is done if its daily was completed, frozen if a freeze covered it,
+ * and earned back otherwise (only a redeemed repair bridges a gap any other way). This used to
+ * draw every day in the run as done, so the dashed freeze style — "a freeze is drawn, never
+ * celebrated" — was dead code.
+ */
+function buildCells(streak: StreakSnapshot, today: number): Cell[] {
+  const completed = new Set(streak.completedDays);
+  const frozen = new Set(streak.frozenDays);
   const cells: Cell[] = [];
   const start = today - 13;
   for (let day = start; day <= today; day++) {
@@ -160,7 +169,8 @@ function buildCells(streak: StreakView, today: number): Cell[] {
     }
     const inRun =
       streak.runStart !== null && streak.frontier !== null && day >= streak.runStart && day <= streak.frontier;
-    cells.push({ day, kind: inRun ? 'done' : 'missed' });
+    if (!inRun) cells.push({ day, kind: completed.has(day) ? 'done' : 'missed' });
+    else cells.push({ day, kind: completed.has(day) ? 'done' : frozen.has(day) ? 'frozen' : 'repaired' });
   }
   return cells;
 }

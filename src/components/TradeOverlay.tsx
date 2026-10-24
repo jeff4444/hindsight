@@ -43,10 +43,32 @@ interface Props {
   locked: boolean;
   /** A pass has no bracket, so there is nothing to draw. */
   hidden?: boolean;
+  /**
+   * Whether the stop and target exist yet. Before the player picks a side there is only the entry
+   * line: a bracket on screen before any choice is a default long, and a default is a choice made
+   * for them.
+   */
+  bracket?: boolean;
+  /** What each rail says, in the units the trade is measured in — ATR and R, never index price. */
+  stopLabel?: string;
+  targetLabel?: string;
+  entryLabel?: string;
   onDrag: (rail: Rail, price: number) => void;
 }
 
-export function TradeOverlay({ chart, entry, stop, target, locked, hidden, onDrag }: Props) {
+export function TradeOverlay({
+  chart,
+  entry,
+  stop,
+  target,
+  locked,
+  hidden,
+  bracket = true,
+  stopLabel = 'Stop',
+  targetLabel = 'Target',
+  entryLabel = 'Entry',
+  onDrag,
+}: Props) {
   const layer = useRef<HTMLDivElement>(null);
   const entryEl = useRef<HTMLDivElement>(null);
   const stopEl = useRef<HTMLDivElement>(null);
@@ -201,12 +223,12 @@ export function TradeOverlay({ chart, entry, stop, target, locked, hidden, onDra
     >
       <div
         ref={riskEl}
-        className="bg-short-wash absolute inset-x-0"
+        className={`bg-short-wash absolute inset-x-0 ${bracket ? '' : 'hidden'}`}
         style={{ visibility: 'hidden' }}
       />
       <div
         ref={rewardEl}
-        className="bg-long-wash absolute inset-x-0"
+        className={`bg-long-wash absolute inset-x-0 ${bracket ? '' : 'hidden'}`}
         style={{ visibility: 'hidden' }}
       />
 
@@ -215,28 +237,31 @@ export function TradeOverlay({ chart, entry, stop, target, locked, hidden, onDra
         className="absolute inset-x-0 top-0 -translate-y-1/2"
         style={{ visibility: 'hidden' }}
       >
-        <div className="border-ink-faint border-t border-dashed" />
-        <span className="bg-scrim text-ink-lo text-micro absolute -top-2.5 left-2 px-1.5 font-medium tracking-wider">
-          ENTRY {entry.toFixed(2)}
+        <div className="border-ink-dim border-t border-dashed" />
+        <span className="bg-scrim text-ink-hi ring-line text-mini absolute -top-3 left-2 flex items-center gap-1.5 rounded-full px-2 py-0.5 font-medium ring-1">
+          {!bracket && <span aria-hidden className="bg-gold h-1.5 w-1.5 animate-breathe rounded-full" />}
+          {entryLabel}
         </span>
       </div>
 
-      <RailControl
-        innerRef={stopEl}
-        label="STOP"
-        price={stop}
-        side="short"
-        locked={locked}
-        onPointerDown={startDrag('stop')}
-      />
-      <RailControl
-        innerRef={targetEl}
-        label="TARGET"
-        price={target}
-        side="long"
-        locked={locked}
-        onPointerDown={startDrag('target')}
-      />
+      {bracket && (
+        <>
+          <RailControl
+            innerRef={stopEl}
+            label={stopLabel}
+            side="short"
+            locked={locked}
+            onPointerDown={startDrag('stop')}
+          />
+          <RailControl
+            innerRef={targetEl}
+            label={targetLabel}
+            side="long"
+            locked={locked}
+            onPointerDown={startDrag('target')}
+          />
+        </>
+      )}
     </div>
   );
 }
@@ -244,14 +269,12 @@ export function TradeOverlay({ chart, entry, stop, target, locked, hidden, onDra
 function RailControl({
   innerRef,
   label,
-  price,
   side,
   locked,
   onPointerDown,
 }: {
   innerRef: React.RefObject<HTMLDivElement | null>;
   label: string;
-  price: number;
   side: 'short' | 'long';
   locked: boolean;
   onPointerDown: (event: React.PointerEvent<HTMLDivElement>) => void;
@@ -279,19 +302,19 @@ function RailControl({
         }`}
       />
       <span
-        className={`text-micro relative ml-2 rounded px-1.5 py-0.5 font-semibold tracking-wider transition-transform duration-(--dur-2) ${chip} ${
+        className={`numeral text-mini relative ml-2 flex items-center gap-1.5 rounded-full px-2.5 py-1 font-semibold transition-transform duration-(--dur-2) ${chip} ${
           // The order is committed and the bracket is now immutable — the heavier ring is the
           // only tell the player gets that the rails have stopped being controls.
           locked ? 'ring-2' : 'ring-1 group-hover:scale-105'
         }`}
       >
-        {label} {price.toFixed(2)}
+        {!locked && (
+          <svg width="8" height="10" viewBox="0 0 8 10" aria-hidden fill="currentColor" className="opacity-70">
+            <path d="M4 0 7.5 3.5h-7zM4 10 .5 6.5h7z" />
+          </svg>
+        )}
+        {label}
       </span>
-      {!locked && (
-        <span className="text-micro text-ink-dim relative ml-1.5 hidden opacity-0 transition-opacity duration-(--dur-2) group-hover:opacity-100 sm:inline">
-          drag
-        </span>
-      )}
     </div>
   );
 }

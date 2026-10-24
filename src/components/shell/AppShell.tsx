@@ -5,36 +5,28 @@ import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { MarketSignature } from '../ui/MarketSignature';
 import { cx } from '../ui';
-import { Icon, Mark, type IconName } from '../ui/icons';
+import { Popover } from '../ui/client';
+import { Icon, Mark, Wordmark, type IconName } from '../ui/icons';
 import type { Accent } from '@/lib/avatar';
+import { routes } from '@/lib/routes';
 
 /**
  * The chrome.
  *
- * A rail at desktop widths and a tab bar on a phone, because a bottom bar is where a thumb already
- * is and a side rail is where a cursor already is. Both are fixed-width by construction: the chart
- * re-applies its logical range from a ResizeObserver, so an animating nav width would fire that
- * every frame next to a canvas redraw. The widths below change *at* a breakpoint and are never
- * transitioned — `transition-colors` only, never `transition-[width]` or `transition-all`.
+ * Four destinations, the same four everywhere: Today, Play, Tapes, Ranks. Everything else that used
+ * to be scattered — Versus behind a home card, Storm and Streak behind two more, Manage behind a
+ * tape page, Settings behind "Edit" on a profile — is now one tap from one of the four. The
+ * identity block at the foot of the rail opens a menu with You, your profile, Settings, Learn and
+ * Sign out.
  *
- * The play route opts out entirely, because during a round the chart should own the screen and the
- * only navigation that matters is the way out.
+ * A rail at desktop widths and a bottom tab bar on a phone, with a slim top bar on a phone so the
+ * brand and the account are never missing. Widths change *at* a breakpoint and are never
+ * transitioned: the chart re-applies its range from a ResizeObserver, and an animating nav width
+ * would fire that every frame.
  *
- * Three things were wrong with the previous version and are fixed here:
- *
- *   Labels appeared only at `xl` (1440), so every laptop between 768 and 1440 got a 72px column of
- *   unlabelled icons. Now the rail stacks icon-over-label in the same 72px from `md`, and widens
- *   to a real labelled rail at `lg` — 1024 is a laptop, and there was never a reason to withhold
- *   the words until 1440.
- *
- *   There was no way to reach `/play` from the chrome at all. The core screen was reachable only
- *   by finding the daily card on `/home` or opening a tape. Play is a launcher rather than a
- *   destination — the route opts out of this shell, so it is not somewhere you navigate "to" and
- *   back from — which is why it is a filled pill above the destinations rather than a fourth item
- *   in the list.
- *
- *   The rail knew who you were but never said so. The identity block now carries the streak, which
- *   is the one number that makes coming back tomorrow mean something.
+ * The play stage (`/play/…`) opts out entirely. During a round the chart owns the screen and the
+ * only navigation that matters is the way out. The hub at `/play` is a destination like any other
+ * and keeps the shell.
  */
 
 export interface ViewerChip {
@@ -46,15 +38,16 @@ export interface ViewerChip {
   streakLength: number;
 }
 
-const DESTINATIONS: { href: string; label: string; icon: IconName }[] = [
-  { href: '/home', label: 'Today', icon: 'candle' },
-  { href: '/tapes', label: 'Tapes', icon: 'tape' },
-  { href: '/stats', label: 'Stats', icon: 'distribution' },
-  { href: '/rules', label: 'Rules', icon: 'rules' },
+const DESTINATIONS: { href: string; label: string; icon: IconName; match: string[] }[] = [
+  { href: routes.today, label: 'Today', icon: 'sun', match: ['/today'] },
+  { href: routes.play.hub, label: 'Play', icon: 'play', match: ['/play', '/versus'] },
+  { href: routes.tapes.index(), label: 'Tapes', icon: 'tape', match: ['/tapes'] },
+  { href: routes.ranks(), label: 'Ranks', icon: 'trophy', match: ['/ranks'] },
 ];
 
-/** Phone tabs. Play sits in the middle, where a thumb rests. */
-const TABS = DESTINATIONS.filter((d) => d.href !== '/rules');
+export function isStage(pathname: string): boolean {
+  return pathname.startsWith('/play/');
+}
 
 export function AppShell({
   viewer,
@@ -67,51 +60,81 @@ export function AppShell({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  if (pathname.startsWith('/play')) return <>{children}</>;
+  if (isStage(pathname)) return <>{children}</>;
 
-  const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
+  const isActive = (match: string[]) =>
+    match.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+  const youActive =
+    isActive(['/you', '/settings']) || (viewer !== null && pathname === routes.profile(viewer.handle));
 
   return (
     <div className="flex min-h-dvh flex-col md:flex-row">
       <a
         href="#main"
-        className="bg-surface-inv text-ink-inv sr-only rounded-md px-4 py-2 text-sm font-medium focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50"
+        className="bg-gold text-on-gold sr-only rounded-md px-4 py-2 text-sm font-medium focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50"
       >
         Skip to content
       </a>
 
+      {/* Phone top bar */}
+      <header className="border-line-faint bg-surface-0/95 sticky top-0 z-30 flex h-14 items-center justify-between border-b px-4 md:hidden">
+        <Link href={routes.today} aria-label="Hindsight, today">
+          <Wordmark size="sm" />
+        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href={routes.learn.index}
+            className="text-ink-lo hover:text-ink-hi grid h-10 w-10 place-items-center rounded-full"
+            aria-label="Learn how it works"
+          >
+            <Icon name="book" size={19} />
+          </Link>
+          {viewer ? (
+            <AccountMenu viewer={viewer} compact />
+          ) : (
+            <Link
+              href={routes.signIn()}
+              className="press text-ink-hi ring-line hover:bg-fill-2 rounded-full px-3.5 py-1.5 text-sm font-medium ring-1"
+            >
+              Sign in
+            </Link>
+          )}
+        </div>
+      </header>
+
       {/* Desktop rail */}
       <nav
         aria-label="Primary"
-        className="border-line bg-surface-1 sticky top-0 hidden h-dvh w-[4.5rem] shrink-0 flex-col gap-1 border-r px-2 py-4 md:flex lg:w-54 lg:px-3"
+        className="border-line-faint bg-surface-1 sticky top-0 hidden h-dvh w-[4.75rem] shrink-0 flex-col border-r px-2 py-5 md:flex lg:w-60 lg:px-4"
       >
         <Link
-          href="/"
-          aria-label="Hindsight home"
-          className="mb-4 flex h-9 items-center justify-center gap-2 lg:justify-start lg:px-1"
+          href={routes.today}
+          aria-label="Hindsight, today"
+          className="mb-6 flex h-9 items-center justify-center lg:justify-start lg:px-2"
         >
-          <Mark size={22} className="text-ink-hi" />
-          <span className="text-ink-hi tracking-wordmark font-hero hidden text-base lg:inline">
-            HINDSIGHT
-          </span>
+          <Mark size={24} tone="duo" className="text-ink-max lg:hidden" />
+          <Wordmark className="hidden lg:inline-flex" />
         </Link>
 
         {launcher}
 
-        <div className="mt-3 flex flex-col gap-1">
-          {DESTINATIONS.map(({ href, label, icon }) => {
-            const active = isActive(href);
+        <div className="mt-5 flex flex-col gap-1">
+          {DESTINATIONS.map(({ href, label, icon, match }) => {
+            const active = isActive(match);
             return (
               <Link
                 key={href}
                 href={href}
                 aria-current={active ? 'page' : undefined}
                 className={cx(
-                  'press flex flex-col items-center justify-center gap-1 rounded-md py-2 transition-colors',
+                  'press relative flex flex-col items-center justify-center gap-1 rounded-lg py-2 transition-colors',
                   'lg:h-11 lg:flex-row lg:justify-start lg:gap-3 lg:px-3 lg:py-0',
-                  active ? 'bg-fill-3 text-ink-max' : 'text-ink-dim hover:bg-fill-1 hover:text-ink-hi',
+                  active ? 'bg-fill-2 text-ink-max' : 'text-ink-lo hover:bg-fill-1 hover:text-ink-hi',
                 )}
               >
+                {active && (
+                  <span aria-hidden className="bg-gold absolute top-2 bottom-2 -left-2 hidden w-0.5 rounded-full lg:-left-4 lg:block" />
+                )}
                 <Icon name={icon} size={19} />
                 <span className="text-micro font-medium lg:text-sm">{label}</span>
               </Link>
@@ -119,85 +142,56 @@ export function AppShell({
           })}
         </div>
 
-        <div className="mt-auto">
+        <div className="mt-auto flex flex-col gap-2">
+          <Link
+            href={routes.learn.index}
+            aria-current={isActive(['/learn']) ? 'page' : undefined}
+            className={cx(
+              'press flex flex-col items-center gap-1 rounded-lg py-2 transition-colors lg:flex-row lg:gap-3 lg:px-3',
+              isActive(['/learn']) ? 'text-ink-max bg-fill-2' : 'text-ink-dim hover:text-ink-hi hover:bg-fill-1',
+            )}
+          >
+            <Icon name="book" size={18} />
+            <span className="text-micro font-medium lg:text-sm">Learn</span>
+          </Link>
+
           {viewer ? (
-            <Link
-              href={`/u/${viewer.handle}`}
-              className="press hover:bg-fill-1 flex flex-col items-center gap-1.5 rounded-md p-2 transition-colors lg:flex-row lg:gap-2.5"
-            >
-              <MarketSignature
-                seed={viewer.avatarSeed}
-                accent={viewer.avatarAccent}
-                size={30}
-                ring={viewer.perfectStreak ? 'gold' : 'accent'}
-              />
-              <span className="hidden min-w-0 flex-1 lg:block">
-                <span className="text-ink-hi block truncate text-sm font-medium">
-                  {viewer.displayName ?? viewer.handle}
-                </span>
-                <span className="text-ink-dim block text-xs">
-                  {viewer.streakLength > 0 ? `${viewer.streakLength}-day streak` : 'No streak yet'}
-                </span>
-              </span>
-              {viewer.streakLength > 0 && (
-                <span
-                  className={cx(
-                    'numeral text-micro font-semibold lg:hidden',
-                    viewer.perfectStreak ? 'text-gold-ink' : 'text-ink-dim',
-                  )}
-                >
-                  {viewer.streakLength}d
-                </span>
-              )}
-            </Link>
+            <AccountMenu viewer={viewer} active={youActive} />
           ) : (
             <Link
-              href="/sign-in"
-              className="press text-ink-dim hover:text-ink-hi hover:bg-fill-1 flex flex-col items-center gap-1 rounded-md py-2 text-center transition-colors lg:flex-row lg:gap-2.5 lg:px-3 lg:py-2.5 lg:text-left"
+              href={routes.signIn()}
+              className="press border-line hover:bg-fill-1 flex flex-col items-center gap-1 rounded-xl py-2.5 text-center transition-colors lg:items-start lg:border lg:p-3.5 lg:text-left"
             >
-              <Icon name="signature" size={19} />
-              <span className="text-micro font-medium lg:text-sm">
-                <span className="lg:hidden">Sign in</span>
-                <span className="hidden lg:inline">Save your progress</span>
+              <Icon name="user" size={18} className="text-ink-lo lg:hidden" />
+              <span className="text-micro text-ink-lo font-medium lg:hidden">Sign in</span>
+              <span className="text-ink-hi hidden text-sm font-semibold lg:block">Save your progress</span>
+              <span className="text-ink-dim hidden text-xs leading-relaxed lg:block">
+                Keep your streak, get rated, make tapes. Everything you have played comes with you.
               </span>
             </Link>
           )}
         </div>
       </nav>
 
-      <main id="main" className="max-w-app mx-auto w-full flex-1 px-4 pt-5 pb-24 md:px-8 md:pb-10">
+      <main id="main" className="max-w-app mx-auto w-full min-w-0 flex-1 px-4 pt-6 pb-28 md:px-8 md:pt-10 md:pb-14 lg:px-12">
         {children}
       </main>
 
       {/* Phone tab bar. 44px targets, clear of the home indicator. */}
       <nav
         aria-label="Primary"
-        className="border-line bg-surface-1 fixed inset-x-0 bottom-0 z-30 flex border-t pb-[env(safe-area-inset-bottom)] md:hidden"
+        className="border-line-faint bg-surface-1/95 fixed inset-x-0 bottom-0 z-30 flex border-t pb-[env(safe-area-inset-bottom)] md:hidden"
       >
-        {TABS.slice(0, 2).map((tab) => (
-          <Tab key={tab.href} {...tab} active={isActive(tab.href)} />
+        {DESTINATIONS.map((tab) => (
+          <Tab key={tab.href} {...tab} active={isActive(tab.match)} />
         ))}
-
-        {/* The only filled tab, raised into the bar. It is an action, not a destination. */}
         <Link
-          href="/play"
-          className="press flex h-14 flex-1 flex-col items-center justify-center gap-1"
-          aria-label="Play"
-        >
-          <span className="bg-surface-inv text-ink-inv shadow-key -mt-5 grid h-12 w-12 place-items-center rounded-full">
-            <Icon name="play" size={20} />
-          </span>
-          <span className="text-ink-hi text-micro -mt-0.5 font-medium">Play</span>
-        </Link>
-
-        {TABS.slice(2).map((tab) => (
-          <Tab key={tab.href} {...tab} active={isActive(tab.href)} />
-        ))}
-
-        <Link
-          href={viewer ? `/u/${viewer.handle}` : '/sign-in'}
-          aria-current={isActive('/u') ? 'page' : undefined}
-          className="text-ink-dim flex h-14 flex-1 flex-col items-center justify-center gap-1"
+          href={viewer ? routes.you : routes.signIn()}
+          aria-current={youActive ? 'page' : undefined}
+          className={cx(
+            'flex h-14 flex-1 flex-col items-center justify-center gap-1 transition-colors',
+            youActive ? 'text-ink-max' : 'text-ink-dim',
+          )}
         >
           {viewer ? (
             <MarketSignature
@@ -207,9 +201,9 @@ export function AppShell({
               ring={viewer.perfectStreak ? 'gold' : 'accent'}
             />
           ) : (
-            <Icon name="signature" size={19} />
+            <Icon name="user" size={19} />
           )}
-          <span className="text-micro font-medium">{viewer ? 'You' : 'Sign in'}</span>
+          <span className="text-micro font-medium">You</span>
         </Link>
       </nav>
     </div>
@@ -222,12 +216,103 @@ function Tab({ href, label, icon, active }: { href: string; label: string; icon:
       href={href}
       aria-current={active ? 'page' : undefined}
       className={cx(
-        'flex h-14 flex-1 flex-col items-center justify-center gap-1 transition-colors',
+        'relative flex h-14 flex-1 flex-col items-center justify-center gap-1 transition-colors',
         active ? 'text-ink-max' : 'text-ink-dim',
       )}
     >
+      {active && <span aria-hidden className="bg-gold absolute top-0 h-0.5 w-8 rounded-full" />}
       <Icon name={icon} size={19} />
       <span className="text-micro font-medium">{label}</span>
+    </Link>
+  );
+}
+
+function AccountMenu({ viewer, compact, active }: { viewer: ViewerChip; compact?: boolean; active?: boolean }) {
+  const avatar = (
+    <MarketSignature
+      seed={viewer.avatarSeed}
+      accent={viewer.avatarAccent}
+      size={compact ? 30 : 32}
+      ring={viewer.perfectStreak ? 'gold' : 'accent'}
+    />
+  );
+  const streak = viewer.streakLength > 0 ? `${viewer.streakLength}-day streak` : 'No streak yet';
+
+  return (
+    <Popover
+      label="Your account"
+      placement={compact ? 'bottom' : 'top'}
+      width="w-64"
+      className={cx(
+        'press flex items-center rounded-xl transition-colors',
+        compact ? 'h-10 w-10 justify-center' : 'w-full flex-col gap-1.5 p-2 lg:flex-row lg:gap-3 lg:p-2.5',
+        !compact && (active ? 'bg-fill-2' : 'hover:bg-fill-1'),
+      )}
+      trigger={
+        compact ? (
+          avatar
+        ) : (
+          <>
+            {avatar}
+            <span className="hidden min-w-0 flex-1 text-left lg:block">
+              <span className="text-ink-hi block truncate text-sm font-medium">
+                {viewer.displayName ?? `@${viewer.handle}`}
+              </span>
+              <span className={cx('block text-xs', viewer.perfectStreak ? 'text-gold-ink' : 'text-ink-dim')}>
+                {streak}
+              </span>
+            </span>
+            {viewer.streakLength > 0 && (
+              <span
+                className={cx(
+                  'numeral text-micro font-semibold lg:hidden',
+                  viewer.perfectStreak ? 'text-gold-ink' : 'text-ink-dim',
+                )}
+              >
+                {viewer.streakLength}d
+              </span>
+            )}
+            <Icon name="chevron-down" size={14} className="text-ink-dim hidden lg:block" />
+          </>
+        )
+      }
+    >
+      <div className="border-line-faint -mx-4 -mt-4 mb-2 flex items-center gap-3 border-b px-4 py-3.5">
+        {avatar}
+        <div className="min-w-0">
+          <div className="text-ink-max truncate text-sm font-semibold">{viewer.displayName ?? `@${viewer.handle}`}</div>
+          <div className="text-ink-dim truncate text-xs">@{viewer.handle}</div>
+        </div>
+      </div>
+      <nav className="-mx-2 flex flex-col" aria-label="Account">
+        <MenuLink href={routes.you} icon="grid">Your progress</MenuLink>
+        <MenuLink href={routes.profile(viewer.handle)} icon="user">Public profile</MenuLink>
+        <MenuLink href={routes.versus.index} icon="swords">Your matches</MenuLink>
+        <MenuLink href={routes.tapes.index('yours')} icon="tape">Your tapes</MenuLink>
+        <MenuLink href={routes.settings} icon="settings">Settings</MenuLink>
+        <MenuLink href={routes.learn.index} icon="book">Learn</MenuLink>
+        <form action="/auth/sign-out" method="post" className="border-line-faint mt-1.5 border-t pt-1.5">
+          <button
+            type="submit"
+            className="press text-ink-lo hover:text-ink-hi hover:bg-fill-2 flex h-10 w-full items-center gap-3 rounded-lg px-2 text-sm transition-colors"
+          >
+            <Icon name="log-out" size={17} />
+            Sign out
+          </button>
+        </form>
+      </nav>
+    </Popover>
+  );
+}
+
+function MenuLink({ href, icon, children }: { href: string; icon: IconName; children: ReactNode }) {
+  return (
+    <Link
+      href={href}
+      className="press text-ink-hi hover:bg-fill-2 flex h-10 items-center gap-3 rounded-lg px-2 text-sm transition-colors"
+    >
+      <Icon name={icon} size={17} className="text-ink-dim" />
+      {children}
     </Link>
   );
 }

@@ -17,9 +17,9 @@ import {
   type UTCTimestamp,
 } from 'lightweight-charts';
 import { aggregateByCount, type Bar } from '@/core/bars';
-import { LEAD_IN_BARS, WINDOW_BARS } from '@/core/config';
+import { LEAD_IN_BARS, REVEAL_BARS, WINDOW_BARS } from '@/core/config';
 import { formatClock, formatTick, timeOrigin } from '@/lib/clock';
-import { CANDLE, CHART_CHROME } from '@/lib/palette';
+import { CANDLE, CHART_CHROME, type CandleColours } from '@/lib/palette';
 import { DECISION_TF, timeframePhase, timeframePlan } from '@/lib/timeframe';
 
 /**
@@ -91,6 +91,14 @@ export interface ChartHandle {
    */
   indexToX(index: number): number | null;
   xToIndex(x: number): number | null;
+  /**
+   * The x of a moment in display hours, whatever resolution is on screen. The fog's edge is a
+   * time — "now", the decision bar's close — not a candle, so it is converted here, where the
+   * hours-to-logical arithmetic already lives.
+   */
+  hourToX(hour: number): number | null;
+  /** Width of the plotting pane, without the price scale — where an overlay should stop. */
+  paneWidth(): number | null;
 
   /** Switch the price axis between linear and logarithmic. A Full Desk tool (§3.2). */
   setLogScale(enabled: boolean): void;
@@ -159,10 +167,16 @@ export interface ChartHandle {
   priceToY(price: number): number | null;
   yToPrice(y: number): number | null;
   markExit(index: number, text: string, color: string): void;
+
+  /** Candle and volume colours: the standard palette or the colour-blind one. */
+  setPalette(colours: CandleColours): void;
+  /** Blackout removes volume; every other ruleset shows it. */
+  setVolumeVisible(visible: boolean): void;
+  /** The Blind Scale mod removes the price axis; the ATR badge stays. */
+  setPriceAxisVisible(visible: boolean): void;
   clearMarks(): void;
 }
 
-const { up: UP, down: DOWN, upVolume: UP_VOLUME, downVolume: DOWN_VOLUME } = CANDLE;
 
 /**
  * The mono stack, read from the resolved custom property rather than hardcoded.
@@ -203,6 +217,13 @@ export const Chart = forwardRef<ChartHandle, { className?: string }>(function Ch
   const origin = useRef(0);
 
   const displayBars = useRef<Bar[]>([]);
+  /**
+   * How many candles of history this round issued. Rulesets grant 60, 80 or 300, so the exit
+   * marker and the zoom bound read it from the bars rather than assuming the ranked window — the
+   * marker used to land 220 candles early on a Full Desk chart.
+   */
+  const leadIn = useRef(LEAD_IN_BARS);
+  const colours = useRef<CandleColours>(CANDLE);
   const minutes = useRef<Bar[]>([]);
   const visibleHours = useRef(0);
   const tier = useRef<number>(DECISION_TF);
@@ -263,7 +284,7 @@ export const Chart = forwardRef<ChartHandle, { className?: string }>(function Ch
       bars.map((bar, i) => ({
         time: timeframeBarTime(i),
         value: bar.v,
-        color: bar.c >= bar.o ? UP_VOLUME : DOWN_VOLUME,
+        color: bar.c >= bar.o ? colours.current.upVolume : colours.current.downVolume,
       })),
     );
     drawn.current = bars.length;
@@ -331,12 +352,12 @@ export const Chart = forwardRef<ChartHandle, { className?: string }>(function Ch
     });
 
     const candleSeries = api.addSeries(CandlestickSeries, {
-      upColor: UP,
-      downColor: DOWN,
-      borderUpColor: UP,
-      borderDownColor: DOWN,
-      wickUpColor: UP,
-      wickDownColor: DOWN,
+      upColor: colours.current.up,
+      downColor: colours.current.down,
+      borderUpColor: colours.current.up,
+      borderDownColor: colours.current.down,
+      wickUpColor: colours.current.up,
+      wickDownColor: colours.current.down,
       priceLineVisible: false,
       lastValueVisible: false,
       // Three-way vertical control, resolved in priority order:
@@ -458,6 +479,7 @@ export const Chart = forwardRef<ChartHandle, { className?: string }>(function Ch
 
     setBars(bars) {
       displayBars.current = [...bars];
+      leadIn.current = bars.length;
       visibleHours.current = bars.length;
       draw();
     },
@@ -521,6 +543,24 @@ export const Chart = forwardRef<ChartHandle, { className?: string }>(function Ch
       return scale.logicalToCoordinate(index as never) ?? null;
     },
 
+    hourToX(hour) {
+      const scale = chart.current?.timeScale();
+      if (!scale) return null;
+      const range = scale.getVisibleLogicalRange();
+      const width = scale.width();
+      if (!range || !(width > 0) || range.to === range.from) return null;
+      // Interpolated across the visible range rather than asked of `logicalToCoordinate`, which
+      // has no answer for the empty hours right of the last candle — and those are exactly where
+      // the fog lives.
+      const logical = hour * (60 / tier.current) - 0.5;
+      return ((logical - range.from) / (range.to - range.from)) * width;
+    },
+
+    paneWidth() {
+      const width = chart.current?.timeScale().width();
+      return width && width > 0 ? width : null;
+    },
+
     xToIndex(x) {
       const scale = chart.current?.timeScale();
       if (!scale) return null;
@@ -554,7 +594,7 @@ export const Chart = forwardRef<ChartHandle, { className?: string }>(function Ch
         volume.current?.update({
           time: timeframeBarTime(i),
           value: bars[i].v,
-          color: bars[i].c >= bars[i].o ? UP_VOLUME : DOWN_VOLUME,
+          color: bars[i].c >= bars[i].o ? colours.current.upVolume : colours.current.downVolume,
         });
       }
       drawn.current = bars.length;
@@ -631,7 +671,7 @@ export const Chart = forwardRef<ChartHandle, { className?: string }>(function Ch
       // coarser than the hour, so zooming further out only thins the candles below the width
       // they need to be readable, in exchange for showing more empty space.
       const span = next.to - next.from;
-      if (span < 0.17 || span > WINDOW_BARS * 1.3) return;
+      if (span < 0.17 || span > Math.max(WINDOW_BARS, leadIn.current + REVEAL_BARS) * 1.3) return;
       applyHours(next);
     },
 
@@ -649,7 +689,7 @@ export const Chart = forwardRef<ChartHandle, { className?: string }>(function Ch
       // where the exit hour is partway through one.
       markers.current?.setMarkers([
         {
-          time: timeframeBarTime(timeframeIndexForHour(LEAD_IN_BARS + index)),
+          time: timeframeBarTime(timeframeIndexForHour(leadIn.current + index)),
           position: 'aboveBar',
           color,
           shape: 'arrowDown',
@@ -660,6 +700,28 @@ export const Chart = forwardRef<ChartHandle, { className?: string }>(function Ch
 
     clearMarks() {
       markers.current?.setMarkers([]);
+    },
+
+    setPalette(next) {
+      if (colours.current === next) return;
+      colours.current = next;
+      candles.current?.applyOptions({
+        upColor: next.up,
+        downColor: next.down,
+        borderUpColor: next.up,
+        borderDownColor: next.down,
+        wickUpColor: next.up,
+        wickDownColor: next.down,
+      });
+      draw();
+    },
+
+    setVolumeVisible(visible) {
+      volume.current?.applyOptions({ visible });
+    },
+
+    setPriceAxisVisible(visible) {
+      chart.current?.applyOptions({ rightPriceScale: { visible } });
     },
   }));
 

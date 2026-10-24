@@ -1,9 +1,80 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import type { Bar } from '@/core/bars';
 import type { RoundResult } from '@/lib/api-types';
+import type { ChartHandle } from '../Chart';
 import { cx, Kbd } from '../ui';
 import { Icon } from '../ui/icons';
+
+/* --------------------------------------------------------------------- fog */
+
+/**
+ * The future, drawn as fog.
+ *
+ * Everything right of "now" is hatched until it is revealed, and the hatch recedes one candle at a
+ * time as the reveal plays. It is the product's signature, and it makes the most important fact on
+ * the screen visible before a word is read: there are sixty more candles, and you cannot see them.
+ *
+ * Positioned from the chart every frame, the same way the rails are, so it tracks pan, zoom and
+ * the reveal camera without owning any of them. `known` is a ref, not a prop, because the reveal
+ * loop advances it every 78ms and a re-render per candle would be pure waste.
+ */
+export function FogLayer({
+  chart,
+  known,
+  label,
+  visible,
+}: {
+  chart: React.RefObject<ChartHandle | null>;
+  /** Hours already on screen: the lead-in, plus whatever the reveal has shown. */
+  known: React.RefObject<number>;
+  label: string;
+  visible: boolean;
+}) {
+  const el = useRef<HTMLDivElement>(null);
+  const edge = useRef<HTMLDivElement>(null);
+  const tag = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    let frame = 0;
+    const tick = () => {
+      const x = chart.current?.hourToX(known.current ?? 0);
+      const node = el.current;
+      if (node) {
+        const pane = chart.current?.paneWidth() ?? null;
+        if (x === null || x === undefined || pane === null || !visible || x >= pane) {
+          node.style.visibility = 'hidden';
+        } else {
+          node.style.visibility = 'visible';
+          node.style.left = `${Math.max(0, x)}px`;
+          // Stop at the price scale: the axis labels stay legible over the future.
+          const width = pane - Math.max(0, x);
+          node.style.width = `${width}px`;
+          // The label leaves before the fog does, rather than spilling out of a sliver.
+          if (tag.current) tag.current.style.visibility = width < 96 ? 'hidden' : 'visible';
+        }
+      }
+      frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [chart, known, visible]);
+
+  return (
+    <div
+      ref={el}
+      aria-hidden
+      className="fog fog-drift pointer-events-none absolute inset-y-0 z-5"
+      style={{ visibility: 'hidden', ['--fog-strength' as string]: '7%' }}
+    >
+      <div ref={edge} className="border-ink-dim/60 absolute inset-y-0 left-0 border-l border-dashed" />
+      <span ref={tag} className="numeral text-ink-dim bg-surface-1/80 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full px-2.5 py-1 text-mini whitespace-nowrap">
+        {label}
+      </span>
+    </div>
+  );
+}
 
 /**
  * The layers painted over the chart.
@@ -50,7 +121,7 @@ export function InstrumentWatermark({
         </span>
         {weekend && <span className="eyebrow text-attention-ink">thin books</span>}
       </div>
-      <div className="numeral text-ink-faint hidden text-xs sm:block">tick {tickSize}</div>
+      <div className="numeral text-ink-dim hidden text-xs sm:block">tick {tickSize}</div>
     </div>
   );
 }
@@ -85,9 +156,9 @@ export function LiveR({
 }) {
   if (passed) {
     return (
-      <div className="pointer-events-none absolute right-16 top-3 z-20 text-right sm:right-20 sm:top-3.5">
-        <div className="eyebrow text-restraint-ink">Stood aside</div>
-        <div className="numeral text-restraint-ink text-2xl font-semibold">0.00R</div>
+      <div className="pointer-events-none absolute right-16 top-4 z-20 text-right sm:right-20">
+        <div className="eyebrow text-restraint-ink">Sat out</div>
+        <div className="numeral text-restraint-ink text-3xl font-semibold sm:text-4xl">0.00R</div>
       </div>
     );
   }
@@ -96,21 +167,15 @@ export function LiveR({
   const tone = r > 0.005 ? 'text-gain-ink' : r < -0.005 ? 'text-loss-ink' : 'text-ink-hi';
 
   return (
-    <div className="pointer-events-none absolute right-16 top-3 z-20 text-right sm:right-20 sm:top-3.5">
-      <div className="eyebrow text-ink-dim">{frozen ? (frozen === 'target' ? 'Target hit' : 'Stopped out') : 'Open'}</div>
-      <div
-        className={cx(
-          'numeral text-2xl font-semibold transition-colors sm:text-3xl',
-          tone,
-          frozen && 'ring-line-strong rounded-md px-1.5 ring-1',
-        )}
-      >
+    <div className="pointer-events-none absolute right-16 top-4 z-20 text-right sm:right-20">
+      <div className="eyebrow text-ink-dim">{frozen ? (frozen === 'target' ? 'Target hit' : 'Stopped out') : 'Live'}</div>
+      <div className={cx('numeral text-3xl font-semibold transition-colors sm:text-4xl', tone)}>
         {r >= 0 ? '+' : ''}
         {r.toFixed(2)}R
       </div>
-      <div className="numeral text-ink-faint mt-0.5 text-micro">
-        MFE {mfe >= 0 ? '+' : ''}
-        {mfe.toFixed(2)} · MAE {mae.toFixed(2)}
+      <div className="numeral text-ink-dim mt-1 text-mini">
+        peak {mfe >= 0 ? '+' : ''}
+        {mfe.toFixed(2)} · dip {mae.toFixed(2)}
       </div>
     </div>
   );
@@ -153,23 +218,19 @@ export function ScoreStage({
     <div
       aria-hidden
       className={cx(
-        'pointer-events-none absolute inset-x-0 bottom-0 z-30 flex flex-col items-center pb-10 pt-24',
-        'bg-linear-to-t from-surface-0/95 via-surface-0/70 to-transparent',
+        'pointer-events-none absolute inset-0 z-30 grid place-items-center',
+        'bg-[radial-gradient(60%_55%_at_50%_50%,var(--color-scrim),transparent)]',
         'transition-opacity duration-(--dur-6) ease-(--ease-standard)',
         show ? 'opacity-100' : 'opacity-0',
       )}
     >
-      <div className={cx('eyebrow', show ? 'animate-fade' : '')}>{label}</div>
-      <div
-        className={cx(
-          'numeral font-semibold text-display-sm sm:text-display lg:text-display-lg',
-          ink,
-          show && 'animate-slam',
-        )}
-      >
-        {value}
+      <div className={cx('flex flex-col items-center', show && 'animate-stamp')}>
+        <div className={cx('eyebrow', ink)}>{label}</div>
+        <div className={cx('numeral font-semibold text-display-sm sm:text-display lg:text-display-lg', ink)}>
+          {value}
+        </div>
+        {detail && <div className="numeral text-ink-lo mt-2 text-xs sm:text-sm">{detail}</div>}
       </div>
-      {detail && <div className="numeral text-ink-dim mt-2 text-xs sm:text-sm">{detail}</div>}
     </div>
   );
 }
@@ -233,7 +294,7 @@ export function FrameControls({
           aria-pressed={magnet}
           aria-label="Snap drawings to the nearest wick"
           title="Snap drawings to the nearest wick"
-          className={cx(CORNER_BUTTON, magnet ? 'bg-surface-inv text-ink-inv' : 'text-ink-dim hover:text-ink-hi')}
+          className={cx(CORNER_BUTTON, magnet ? 'bg-fill-3 text-ink-max ring-line-strong' : 'text-ink-dim hover:text-ink-hi')}
         >
           <Icon name="magnet" size={15} />
         </button>
@@ -245,7 +306,7 @@ export function FrameControls({
           aria-pressed={logScale}
           aria-label="Logarithmic price axis"
           title="Logarithmic price axis"
-          className={cx(CORNER_BUTTON, logScale ? 'bg-surface-inv text-ink-inv' : 'text-ink-dim hover:text-ink-hi')}
+          className={cx(CORNER_BUTTON, logScale ? 'bg-fill-3 text-ink-max ring-line-strong' : 'text-ink-dim hover:text-ink-hi')}
         >
           <Icon name="log-scale" size={15} />
         </button>
@@ -277,21 +338,31 @@ export function FrameControls({
 export function HotkeyLegend() {
   const groups: { title: string; rows: [string, string][] }[] = [
     {
-      title: 'The round',
+      title: 'Calling the trade',
       rows: [
-        ['⏎', 'Commit the bracket, then move to the next chart'],
-        ['P', 'Pass — a scored decision, not a skip'],
-        ['R', 'Reset the view while placing, replay the reveal after'],
-        ['Space', 'Pause and resume the reveal'],
-        ['S', 'Skip to the end of the reveal'],
+        ['L', 'Go long'],
+        ['S', 'Go short'],
+        ['X', 'Sit out — scored, not skipped'],
+        ['↑ ↓', 'Move the stop'],
+        ['⇧ ↑ ↓', 'Move the target'],
+        ['⏎', 'Lock it in'],
+      ],
+    },
+    {
+      title: 'The reveal',
+      rows: [
+        ['Space', 'Pause and resume'],
+        ['S', 'Skip to the end'],
+        ['R', 'Replay it'],
+        ['⏎', 'Next chart'],
       ],
     },
     {
       // Undiscoverable otherwise: the rail carries icons, and the numbers are only in a tooltip.
       title: 'The toolbox',
       rows: [
-        ['1–5', 'Pick an instrument — ruler, line, level, channel, fib'],
-        ['Esc', 'Put the instrument down and hand the rails back'],
+        ['1–5', 'Pick a tool — ruler, line, level, channel, fib'],
+        ['Esc', 'Put the tool down'],
         ['⌘Z', 'Undo the last drawing'],
       ],
     },

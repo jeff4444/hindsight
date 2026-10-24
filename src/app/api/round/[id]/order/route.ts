@@ -381,8 +381,12 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   // §8.1's rated game between the player and the chart. Only where it is honest to: the Sandbox is
   // unrated by §3.2, a round that ran out of clock was not really played, and an ambiguous fill is
   // unfairness rather than inaccuracy (§12.3.2) so neither side is rated on it.
+  //
+  // Match rounds are excluded too. Migration 0027 and the Versus screen both say duels and races
+  // are unrated, but their rounds are issued at NTZ and nothing here checked `match_id`, so every
+  // duel chart was quietly moving the overall rating.
   const tierCode = (round.tier as string | null) ?? null;
-  if (round.user_id && tierCode && tierCode !== 'SBX' && score?.percentile != null && !expired) {
+  if (round.user_id && tierCode && tierCode !== 'SBX' && !round.match_id && score?.percentile != null && !expired) {
     await applyRating({
       supabase,
       userId: round.user_id as string,
@@ -553,6 +557,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     style,
     run,
     match,
+    forfeited: expired,
   };
   return NextResponse.json(payload);
 }

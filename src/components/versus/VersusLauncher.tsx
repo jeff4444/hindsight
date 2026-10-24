@@ -2,24 +2,28 @@
 
 import { useState } from 'react';
 import { DUEL_SPEC, RACE_SPEC } from '@/core/duel';
-import { Button, Eyebrow, Panel, cx } from '../ui';
+import { routes } from '@/lib/routes';
+import { Button, Panel, Segmented, cx } from '../ui';
+import { Select, useToast } from '../ui/client';
+import { Icon, type IconName } from '../ui/icons';
 
 /**
- * Open a duel or a race (§10.1).
+ * Set up a duel or a race: the format, the tape, how many charts — then a link to send.
  *
- * ## A duel is a link, not a lobby, and that is a fairness rule rather than a shortcut
- *
- * The charts are drawn when the second player joins, from charts **neither** has played — because
- * both must see the same ones, and a chart either has already played is one they have been shown the
- * answer to. The opponent therefore has to be known before the sequence can exist, so the flow is:
- * open it, send the link, and play when they have taken the seat.
- *
- * That also makes the mode asynchronous for free. Nobody has to be online at the same time, which
- * matters rather a lot for a product whose player base is currently one person.
+ * Neither needs anyone online. A duel is a link your opponent answers whenever they arrive; a race
+ * is a fixed sequence anyone can run, against everyone who ran it before. Both are unrated, which
+ * the panel says in one line instead of a paragraph about the ladder.
  */
-export function VersusLauncher({ tapes }: { tapes: { slug: string; name: string; charts: number }[] }) {
+export function VersusLauncher({
+  tapes,
+  initialTape = 'open',
+}: {
+  tapes: { slug: string; name: string; charts: number }[];
+  initialTape?: string;
+}) {
+  const toast = useToast();
   const [mode, setMode] = useState<'duel' | 'race'>('duel');
-  const [tape, setTape] = useState('open');
+  const [tape, setTape] = useState(tapes.some((t) => t.slug === initialTape) ? initialTape : 'open');
   const [length, setLength] = useState(7);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,135 +47,120 @@ export function VersusLauncher({ tapes }: { tapes: { slug: string; name: string;
   }
 
   if (opened) {
-    const link = `${window.location.origin}/versus/${opened.id}`;
+    const link = `${window.location.origin}${routes.versus.match(opened.id)}`;
+    const share = async () => {
+      try {
+        if (navigator.share) await navigator.share({ text: `${opened.mode === 'duel' ? 'Duel me' : 'Race me'} on Hindsight`, url: link });
+        else {
+          await navigator.clipboard.writeText(link);
+          toast('Link copied', 'success');
+        }
+      } catch {
+        // Dismissed.
+      }
+    };
     return (
-      <Panel pad="lg" className="mt-6">
-        <Eyebrow>{opened.mode === 'duel' ? 'Duel opened' : 'Race opened'}</Eyebrow>
-        <p className="text-ink-lo mt-2 max-w-prose text-sm leading-relaxed">
+      <Panel tone="hero" pad="lg" className="animate-rise mx-auto max-w-xl rounded-3xl text-center">
+        <span className="bg-gold-bg text-gold-ink ring-gold-line mx-auto grid h-12 w-12 place-items-center rounded-full ring-1">
+          <Icon name={opened.mode === 'duel' ? 'swords' : 'flag'} size={22} />
+        </span>
+        <h2 className="font-display text-ink-max mt-4 text-4xl">{opened.mode === 'duel' ? 'Your duel is open.' : 'Your race is open.'}</h2>
+        <p className="text-ink-lo mx-auto mt-2 max-w-md text-sm leading-relaxed">
           {opened.mode === 'duel'
-            ? 'Send this link. The charts are drawn when your opponent takes the seat — from charts neither of you has played, which is why they do not exist yet.'
-            : 'Send this link. The sequence already exists, so anyone can run it whenever they like and their time is theirs alone.'}
+            ? 'Send the link. The charts are drawn when your opponent takes the seat, from ones neither of you has played.'
+            : 'Send the link to anyone. The sequence is set, so each runner plays it on their own time.'}
         </p>
-        <code className="border-line bg-surface-1 text-ink mt-4 block overflow-x-auto rounded-md border px-3 py-2 font-mono text-sm">
-          {link}
-        </code>
-        <div className="mt-5 flex flex-wrap gap-2">
-          <Button
-            onClick={() => void navigator.clipboard?.writeText(link)}
-            variant="secondary"
-          >
-            Copy the link
+        <div className="border-line bg-surface-1 text-ink-hi mt-5 flex items-center gap-2 rounded-full border py-1.5 pr-1.5 pl-4 text-left">
+          <code className="numeral min-w-0 flex-1 truncate text-sm">{link}</code>
+          <Button onClick={() => void share()} variant="secondary" size="sm">
+            <Icon name="share" size={14} />
+            Share
           </Button>
-          {opened.mode === 'race' ? (
-            <Button as="a" href={`/play?mode=race&match=${opened.id}`} variant="primary">
-              Start running
-            </Button>
-          ) : (
-            <Button as="a" href={`/versus/${opened.id}`} variant="primary">
-              Open the duel
-            </Button>
-          )}
+        </div>
+        <div className="mt-5 flex justify-center">
+          <Button href={opened.mode === 'race' ? routes.play.race(opened.id) : routes.versus.match(opened.id)} variant="primary" size="lg">
+            {opened.mode === 'race' ? 'Start running' : 'Go to the duel'}
+          </Button>
         </div>
       </Panel>
     );
   }
 
   return (
-    <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
       <div className="space-y-6">
-        <section>
-          <Eyebrow>Mode</Eyebrow>
-          <div className="mt-2 grid gap-2 sm:grid-cols-2">
-            <Choice
-              active={mode === 'duel'}
-              onClick={() => setMode('duel')}
-              title="Duel"
-              body={`Two players, the same charts, a ${DUEL_SPEC.health}-point bar each. Damage is the gap between your two readings of a chart, capped at ${DUEL_SPEC.damageCap}. A chart you both read equally well does nothing.`}
-            />
-            <Choice
-              active={mode === 'race'}
-              onClick={() => setMode('race')}
-              title="Race"
-              body={`Up to ${RACE_SPEC.maxPlayers} runners on one sequence, each against their own clock. Scored on how well you read them, not on how many you got through.`}
-            />
-          </div>
-        </section>
+        <div role="radiogroup" aria-label="Format" className="grid gap-3 sm:grid-cols-2">
+          <Format
+            active={mode === 'duel'}
+            onClick={() => setMode('duel')}
+            icon="swords"
+            title="Duel"
+            line="You against one friend."
+            body={`Same charts, ${DUEL_SPEC.health} health each. Every chart you outscore them on hits their bar — capped at ${DUEL_SPEC.damageCap}, so no single chart decides it.`}
+          />
+          <Format
+            active={mode === 'race'}
+            onClick={() => setMode('race')}
+            icon="flag"
+            title="Race"
+            line={`Up to ${RACE_SPEC.maxPlayers} runners, one sequence.`}
+            body="Everyone plays the same charts on their own time. Scored on how well you read them, not how fast."
+          />
+        </div>
 
-        <section>
-          <Eyebrow>Tape</Eyebrow>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {tapes.map((t) => (
-              <button
-                key={t.slug}
-                type="button"
-                aria-pressed={tape === t.slug}
-                onClick={() => setTape(t.slug)}
-                className={cx(
-                  'press rounded-md border px-3 py-1.5 text-sm transition-colors',
-                  tape === t.slug
-                    ? 'border-info-line bg-info-bg text-info-ink'
-                    : 'border-line bg-surface-1 text-ink-hi hover:border-line-strong',
-                )}
-              >
-                {t.name}{' '}
-                <span className="numeral text-ink-faint text-xs">{t.charts.toLocaleString()}</span>
-              </button>
-            ))}
+        <div className="border-line bg-surface-2 grid gap-5 rounded-2xl border p-5 sm:grid-cols-2">
+          <div>
+            <div className="eyebrow text-ink-dim">Tape</div>
+            <Select
+              label="Tape"
+              size="md"
+              value={tape}
+              onChange={setTape}
+              className="mt-2 w-full [&>select]:w-full"
+              options={tapes.map((t) => ({ value: t.slug, label: `${t.slug === 'open' ? 'Shuffle' : t.name} · ${t.charts.toLocaleString()}` }))}
+            />
           </div>
-        </section>
-
-        <section>
-          <Eyebrow>Charts</Eyebrow>
-          <p className="text-ink-faint mt-1 text-xs">
-            A duel usually ends before it runs out — a median of 8 charts against a{' '}
-            {DUEL_SPEC.health}-point bar, and 15 at the 99th percentile.
-          </p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {[5, 7, 10, 15].map((n) => (
-              <button
-                key={n}
-                type="button"
-                aria-pressed={length === n}
-                onClick={() => setLength(n)}
-                className={cx(
-                  'press numeral rounded-md border px-3 py-1.5 text-sm transition-colors',
-                  length === n
-                    ? 'border-info-line bg-info-bg text-info-ink'
-                    : 'border-line bg-surface-1 text-ink-hi hover:border-line-strong',
-                )}
-              >
-                {n}
-              </button>
-            ))}
+          <div>
+            <div className="eyebrow text-ink-dim">Charts</div>
+            <Segmented
+              label="How many charts"
+              size="md"
+              block
+              className="mt-2"
+              value={length}
+              onChange={setLength}
+              options={[5, 7, 10, 15].map((n) => ({ value: n, label: String(n) }))}
+            />
+            <p className="text-ink-dim mt-2 text-xs">{mode === 'duel' ? 'Most duels end before the last chart.' : 'Longer races separate readers from lucky streaks.'}</p>
           </div>
-        </section>
+        </div>
       </div>
 
-      <Panel tone="hero" pad="md" className="lg:sticky lg:top-6">
-        <Eyebrow>Unrated</Eyebrow>
-        <p className="text-ink-lo mt-2 text-sm leading-relaxed">
-          Neither mode feeds §12&rsquo;s ladder. A format has to be shown to measure the same skill
-          before its results are allowed to move a rating that means something else — the same call
-          Manage got, for the same reason.
-        </p>
+      <Panel tone="hero" pad="md" className="rounded-3xl lg:sticky lg:top-8">
+        <div className="eyebrow text-ink-dim">Unrated</div>
+        <p className="text-ink-lo mt-2 text-sm leading-relaxed">Versus never moves your rating. Play loose.</p>
         {error && <p className="text-loss-ink mt-4 text-sm">{error}</p>}
-        <Button onClick={() => void open()} variant="primary" size="lg" className="mt-5 w-full" disabled={busy}>
-          {busy ? 'Opening…' : mode === 'duel' ? 'Open a duel' : 'Open a race'}
+        <Button onClick={() => void open()} variant="primary" size="lg" block loading={busy} className="mt-5">
+          {mode === 'duel' ? 'Open a duel' : 'Open a race'}
         </Button>
       </Panel>
     </div>
   );
 }
 
-function Choice({
+function Format({
   active,
   onClick,
+  icon,
   title,
+  line,
   body,
 }: {
   active: boolean;
   onClick: () => void;
+  icon: IconName;
   title: string;
+  line: string;
   body: string;
 }) {
   return (
@@ -181,14 +170,18 @@ function Choice({
       aria-checked={active}
       onClick={onClick}
       className={cx(
-        'press rounded-md border p-3 text-left transition-colors',
-        active ? 'border-info-line bg-info-bg' : 'border-line bg-surface-1 hover:border-line-strong',
+        'press flex flex-col gap-3 rounded-2xl border p-5 text-left transition-colors',
+        active ? 'border-gold bg-gold-bg' : 'border-line bg-surface-2 hover:border-line-strong',
       )}
     >
-      <div className={cx('text-sm font-semibold', active ? 'text-info-ink' : 'text-ink-hi')}>
-        {title}
+      <span className={cx('grid h-11 w-11 place-items-center rounded-xl ring-1', active ? 'bg-gold text-on-gold ring-gold' : 'bg-fill-2 text-ink-hi ring-line')}>
+        <Icon name={icon} size={20} />
+      </span>
+      <div>
+        <div className="text-ink-max text-lg font-semibold">{title}</div>
+        <div className="text-ink-hi text-sm">{line}</div>
+        <p className="text-ink-lo mt-1.5 text-sm leading-relaxed">{body}</p>
       </div>
-      <p className="text-ink-lo mt-1 text-xs leading-relaxed">{body}</p>
     </button>
   );
 }
