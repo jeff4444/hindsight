@@ -36,9 +36,10 @@ export function FieldHistogram({
       <div className={cx('flex items-end gap-1', compact ? 'h-16' : 'h-28')} aria-hidden>
         {histogram.map((count, i) => (
           <div key={i} className="flex h-full flex-1 flex-col justify-end">
+            {/* The field rises bucket by bucket, left to right, and your bucket lands in gold. */}
             <div
-              className={cx('rounded-t-md transition-[height]', i === yourBucket ? 'bg-gold' : 'bg-fill-3')}
-              style={{ height: `${Math.max(4, (count / max) * 100)}%` }}
+              className={cx('grow-up rounded-t-md transition-[height]', i === yourBucket ? 'bg-gold' : 'bg-fill-3')}
+              style={{ height: `${Math.max(4, (count / max) * 100)}%`, ['--i' as string]: i * 4 } as React.CSSProperties}
             />
           </div>
         ))}

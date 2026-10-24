@@ -6,6 +6,7 @@ import type { Direction } from '@/core/resolve';
 import { COIN, SCHOOLS, personaFor, type Persona } from '@/lib/panel';
 import { routes } from '@/lib/routes';
 import { PersonaAvatar, cx } from '../ui';
+import { Indicator } from '../ui/kinetic';
 import { Term } from '../ui/client';
 import { Icon } from '../ui/icons';
 
@@ -71,7 +72,9 @@ export function PanelRow({
         </Link>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2" role="radiogroup" aria-label="Show a school's trade">
+      <div className="relative isolate flex flex-wrap items-center gap-2" role="radiogroup" aria-label="Show a school's trade">
+        {/* The selection ring moves from face to face as you compare schools. */}
+        <Indicator match="[aria-checked=true]" className="ring-ink-max rounded-full ring-2" />
         {schools.map((p) => (
           <Face
             key={p.engine}
@@ -123,7 +126,7 @@ function Face({
       onClick={onClick}
       className={cx(
         'press rounded-full p-0.5 ring-2 transition-colors',
-        selected ? 'ring-ink-max' : 'ring-transparent hover:ring-line-strong',
+        selected ? 'ring-ink-max in-data-[indicator=ready]:ring-transparent' : 'ring-transparent hover:ring-line-strong',
       )}
     >
       <PersonaAvatar persona={persona} direction={direction} muted={direction === null} size={38} />

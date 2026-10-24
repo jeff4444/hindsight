@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Disclosure, cx } from "../ui";
+import { Indicator } from "../ui/kinetic";
 
 export interface RulesSection {
   id: string;
@@ -62,7 +63,10 @@ export function RulesNav({ sections }: { sections: RulesSection[] }) {
   if (sections.length === 0) return null;
 
   const list = (
-    <ol className="flex flex-col gap-0.5">
+    <ol className="relative isolate flex flex-col gap-0.5">
+      {/* As you scroll, the highlight follows the section you are reading. */}
+      <Indicator match="[aria-current=true]" className="bg-fill-1 rounded-md" />
+      <Indicator match="[aria-current=true]" edge="left" className="bg-info rounded-full" />
       {sections.map((section) => (
         <li key={section.id}>
           <a
@@ -72,7 +76,7 @@ export function RulesNav({ sections }: { sections: RulesSection[] }) {
               "block rounded-md py-1.5 pr-2 pl-3 text-sm leading-snug transition-colors",
               "border-l-2",
               active === section.id
-                ? "border-info text-ink-hi bg-fill-1"
+                ? "border-info text-ink-hi bg-fill-1 in-data-[indicator=ready]:border-transparent in-data-[indicator=ready]:bg-transparent"
                 : "text-ink-dim hover:text-ink-hi border-transparent",
             )}
           >

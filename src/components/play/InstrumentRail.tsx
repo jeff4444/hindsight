@@ -3,6 +3,7 @@
 import { useRef } from 'react';
 import { TOOLS, grantingTier, type ToolCode } from '@/core/tiers';
 import { cx } from '../ui';
+import { Indicator } from '../ui/kinetic';
 import { Tooltip } from '../ui/client';
 import { Icon, type IconName } from '../ui/icons';
 import type { DrawTool } from './DrawLayer';
@@ -170,10 +171,11 @@ export function InstrumentRail({
       // a reader is told to expect works either way — which is the promise the attribute exists to
       // make, kept without claiming an orientation that is only true at one width.
       className={cx(
-        'bg-surface-1 border-line-faint flex shrink-0 items-center gap-1 rounded-2xl border p-1 lg:flex-col',
+        'bg-surface-1 border-line-faint relative isolate flex shrink-0 items-center gap-1 rounded-2xl border p-1 lg:flex-col',
         className,
       )}
     >
+      <Indicator match="[aria-checked=true]" className="bg-fill-3 ring-line-strong rounded-lg ring-1" />
       {available.map((instrument, index) => {
         const locked = instrument.needs !== null && !granted.includes(instrument.needs);
         const active = tool === instrument.tool;
@@ -210,7 +212,7 @@ export function InstrumentRail({
                 locked
                   ? 'text-ink-faint opacity-60'
                   : active
-                    ? 'bg-fill-3 text-ink-max ring-line-strong ring-1'
+                    ? 'bg-fill-3 text-ink-max ring-line-strong ring-1 in-data-[indicator=ready]:bg-transparent in-data-[indicator=ready]:ring-0'
                     : 'text-ink-lo enabled:hover:bg-fill-2 enabled:hover:text-ink-hi',
                 disabled && !locked && 'opacity-45',
               )}

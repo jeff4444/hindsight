@@ -13,8 +13,9 @@ import {
   type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { cx, IconButton } from './index';
+import { cx, IconButton, Segmented } from './index';
 import { Icon, type IconName } from './icons';
+import { Indicator, NumberRoll, usePresence } from './kinetic';
 import {
   getMotionSnapshot,
   SERVER_MOTION,
@@ -51,7 +52,10 @@ import { candlesFor } from '@/lib/palette';
 /* ------------------------------------------------------------------ Toast */
 
 type ToastTone = 'neutral' | 'success' | 'error';
-type ToastItem = { id: number; message: string; tone: ToastTone };
+type ToastItem = { id: number; message: string; tone: ToastTone; leaving?: boolean };
+
+/** How long a toast takes to sink away: `--dur-3`, which the exit animation runs on. */
+const TOAST_EXIT_MS = 180;
 
 const ToastContext = createContext<((message: string, tone?: ToastTone) => void) | null>(null);
 
@@ -67,17 +71,27 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<ToastItem[]>([]);
   const next = useRef(0);
 
-  const push = useCallback((message: string, tone: ToastTone = 'neutral') => {
-    const id = next.current++;
-    // Three is the point at which a stack stops being readable and starts being a wall.
-    setItems((prev) => [...prev.slice(-2), { id, message, tone }]);
-    setTimeout(() => setItems((prev) => prev.filter((t) => t.id !== id)), 4000);
+  // Marked as leaving first and removed once it has animated out, so a toast sinks away rather
+  // than vanishing mid-read.
+  const dismiss = useCallback((id: number) => {
+    setItems((prev) => prev.map((t) => (t.id === id ? { ...t, leaving: true } : t)));
+    setTimeout(() => setItems((prev) => prev.filter((t) => t.id !== id)), TOAST_EXIT_MS);
   }, []);
+
+  const push = useCallback(
+    (message: string, tone: ToastTone = 'neutral') => {
+      const id = next.current++;
+      // Three is the point at which a stack stops being readable and starts being a wall.
+      setItems((prev) => [...prev.slice(-2), { id, message, tone }]);
+      setTimeout(() => dismiss(id), 4000);
+    },
+    [dismiss],
+  );
 
   return (
     <ToastContext.Provider value={push}>
       {children}
-      <ToastViewport items={items} onDismiss={(id) => setItems((p) => p.filter((t) => t.id !== id))} />
+      <ToastViewport items={items} onDismiss={dismiss} />
     </ToastContext.Provider>
   );
 }
@@ -125,8 +139,9 @@ function ToastViewport({ items, onDismiss }: { items: ToastItem[]; onDismiss: (i
         return (
           <div
             key={item.id}
+            data-state={item.leaving ? 'closed' : 'open'}
             className={cx(
-              'bg-surface-3 shadow-e4 animate-rise pointer-events-auto flex items-center gap-2.5 rounded-lg px-3.5 py-2.5 ring-1',
+              'toast bg-surface-3 shadow-e4 pointer-events-auto flex items-center gap-2.5 rounded-lg px-3.5 py-2.5 ring-1',
               tone.ring,
             )}
           >
@@ -229,8 +244,11 @@ export function Dialog({
       onClick={(event) => {
         if (event.target === ref.current) onClose();
       }}
+      // Enter and exit are CSS (`.hs-dialog` in globals.css): a sheet rises from the bottom edge on a
+      // phone, the side panel slides in from the right on desktop, and a centred dialog settles.
+      data-placement={placement}
       className={cx(
-        'bg-surface-2 text-ink shadow-e4 border-line m-0 border p-0 backdrop:bg-scrim',
+        'hs-dialog bg-surface-2 text-ink shadow-e4 border-line m-0 border p-0',
         placement === 'side'
           ? 'fixed inset-x-0 bottom-0 top-auto max-h-[88dvh] w-full max-w-none overflow-y-auto rounded-t-2xl md:inset-y-0 md:left-auto md:right-0 md:max-h-none md:h-dvh md:w-[28rem] md:rounded-none md:rounded-l-2xl'
           : placement === 'bottom'
@@ -428,11 +446,8 @@ export function Countdown({ to, className }: { to: number; className?: string })
   const s = Math.floor((left % 60_000) / 1000);
   const pad = (n: number) => String(n).padStart(2, '0');
 
-  return (
-    <span className={cx('numeral tabular-nums', className)}>
-      {h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`}
-    </span>
-  );
+  // Each second rolls over on its wheel, downward, the way a countdown should read.
+  return <NumberRoll value={h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`} className={cx('numeral tabular-nums', className)} />;
 }
 
 /* ------------------------------------------------------- MotionPreference */
@@ -467,23 +482,7 @@ export function MotionPreference({ className }: { className?: string }) {
 
   return (
     <div className={className}>
-      <div className="bg-fill-2 ring-line-faint inline-flex rounded-full p-1 ring-1" role="radiogroup" aria-label="Motion">
-        {options.map((option) => (
-          <button
-            key={option.value}
-            type="button"
-            role="radio"
-            aria-checked={pref === option.value}
-            onClick={() => setMotionPref(option.value)}
-            className={cx(
-              'press h-9 rounded-full px-4 text-sm font-medium transition-colors',
-              pref === option.value ? 'bg-thumb text-ink-max shadow-e1' : 'text-ink-lo hover:text-ink-hi',
-            )}
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
+      <Segmented label="Motion" size="md" value={pref} onChange={setMotionPref} options={options} />
       <p className="text-ink-dim mt-2 text-xs">{options.find((o) => o.value === pref)?.hint}</p>
     </div>
   );
@@ -519,22 +518,24 @@ export function Popover({
   const id = useId();
   const anchor = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
+  // Kept after closing, so the panel can shrink back into its trigger from where it was.
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const presence = usePresence(open, 120);
 
-  const close = useCallback(() => setPos(null), []);
+  const close = useCallback(() => setOpen(false), []);
   const toggle = useCallback(() => {
-    setPos((current) => {
-      if (current) return null;
-      const box = anchor.current?.getBoundingClientRect();
-      if (!box) return null;
-      const half = 144;
-      const left = Math.min(Math.max(box.left + box.width / 2, half + 12), window.innerWidth - half - 12);
-      return { top: placement === 'top' ? box.top - 8 : box.bottom + 8, left };
-    });
-  }, [placement]);
+    if (open) return setOpen(false);
+    const box = anchor.current?.getBoundingClientRect();
+    if (!box) return;
+    const half = 144;
+    const left = Math.min(Math.max(box.left + box.width / 2, half + 12), window.innerWidth - half - 12);
+    setPos({ top: placement === 'top' ? box.top - 8 : box.bottom + 8, left });
+    setOpen(true);
+  }, [open, placement]);
 
   useEffect(() => {
-    if (!pos) return;
+    if (!open) return;
     const onDown = (event: PointerEvent) => {
       const target = event.target as Node;
       if (panel.current?.contains(target) || anchor.current?.contains(target)) return;
@@ -556,7 +557,7 @@ export function Popover({
       window.removeEventListener('resize', close);
       window.removeEventListener('scroll', close, true);
     };
-  }, [pos, close]);
+  }, [open, close]);
 
   return (
     <>
@@ -564,20 +565,22 @@ export function Popover({
         ref={anchor}
         type="button"
         aria-label={label}
-        aria-expanded={pos !== null}
-        aria-controls={pos ? id : undefined}
+        aria-expanded={open}
+        aria-controls={open ? id : undefined}
         onClick={toggle}
         className={className}
       >
         {trigger}
       </button>
-      {pos &&
+      {presence.mounted &&
+        pos &&
         typeof document !== 'undefined' &&
         createPortal(
           <div
             ref={panel}
             id={id}
             role="dialog"
+            data-state={presence.state}
             style={{ top: pos.top, left: pos.left }}
             // A link inside navigates without unmounting the trigger (the shell persists), so close
             // explicitly or the menu would float over the next page.
@@ -585,8 +588,8 @@ export function Popover({
               if ((event.target as HTMLElement).closest('a')) close();
             }}
             className={cx(
-              'bg-surface-3 text-ink shadow-e4 ring-line animate-fade fixed z-50 -translate-x-1/2 rounded-xl p-4 text-sm ring-1',
-              placement === 'top' && '-translate-y-full',
+              'pop-panel bg-surface-3 text-ink shadow-e4 ring-line fixed z-50 -translate-x-1/2 rounded-xl p-4 text-sm ring-1',
+              placement === 'top' ? 'origin-bottom -translate-y-full' : 'origin-top',
               width,
             )}
           >
@@ -655,8 +658,9 @@ export function Tabs<T extends string>({
     <div
       role="tablist"
       aria-label={label}
-      className={cx('border-line-faint no-scrollbar flex gap-1 overflow-x-auto border-b', className)}
+      className={cx('border-line-faint no-scrollbar relative isolate flex gap-1 overflow-x-auto border-b', className)}
     >
+      <Indicator match="[aria-selected=true]" edge="bottom" className="bg-gold rounded-full" />
       {tabs.map((tab, index) => {
         const active = tab.value === value;
         return (
@@ -673,7 +677,7 @@ export function Tabs<T extends string>({
             onKeyDown={(event) => onKey(event, index)}
             className={cx(
               'relative -mb-px flex h-11 shrink-0 items-center gap-2 border-b-2 px-3 text-sm font-medium transition-colors',
-              active ? 'border-gold text-ink-max' : 'text-ink-lo hover:text-ink-hi border-transparent',
+              active ? 'border-gold text-ink-max in-data-[indicator=ready]:border-transparent' : 'text-ink-lo hover:text-ink-hi border-transparent',
             )}
           >
             {tab.label}
@@ -695,27 +699,38 @@ const THEME_OPTIONS: { value: ThemeSnapshot['pref']; label: string; hint: string
   { value: 'dark', label: 'Afterglow', hint: 'Ink and gold, everywhere' },
 ];
 
+/**
+ * Switches theme as a circle of the new one opening from the control that chose it.
+ *
+ * The browser's own view transition: it snapshots the page, the attribute flips underneath, and the
+ * new page is revealed through a growing clip. Where that API is missing, or motion is reduced, the
+ * theme simply changes.
+ */
+function switchTheme(next: ThemeSnapshot['pref']) {
+  const root = document.documentElement;
+  if (!document.startViewTransition || getMotionSnapshot().reduced) return setThemePref(next);
+  const focused = document.activeElement instanceof HTMLElement ? document.activeElement.getBoundingClientRect() : null;
+  const x = focused ? focused.left + focused.width / 2 : window.innerWidth / 2;
+  const y = focused ? focused.top + focused.height / 2 : window.innerHeight / 2;
+  const radius = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y));
+  root.dataset.vt = 'theme';
+  const transition = document.startViewTransition(() => setThemePref(next));
+  void transition.ready
+    .then(() =>
+      root.animate(
+        { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] },
+        { duration: 560, easing: 'cubic-bezier(0.16, 1, 0.3, 1)', pseudoElement: '::view-transition-new(root)' },
+      ),
+    )
+    .catch(() => {});
+  void transition.finished.finally(() => delete root.dataset.vt);
+}
+
 export function ThemePreference({ className }: { className?: string }) {
   const snap = useSyncExternalStore(subscribeTheme, getThemeSnapshot, () => SERVER_THEME);
   return (
     <div className={className}>
-      <div className="bg-fill-2 ring-line-faint inline-flex rounded-full p-1 ring-1" role="radiogroup" aria-label="Theme">
-        {THEME_OPTIONS.map((option) => (
-          <button
-            key={option.value}
-            type="button"
-            role="radio"
-            aria-checked={snap.pref === option.value}
-            onClick={() => setThemePref(option.value)}
-            className={cx(
-              'press h-9 rounded-full px-4 text-sm font-medium transition-colors',
-              snap.pref === option.value ? 'bg-thumb text-ink-max shadow-e1' : 'text-ink-lo hover:text-ink-hi',
-            )}
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
+      <Segmented label="Theme" size="md" value={snap.pref} onChange={switchTheme} options={THEME_OPTIONS} />
       <p className="text-ink-dim mt-2 text-xs">{THEME_OPTIONS.find((o) => o.value === snap.pref)?.hint}</p>
     </div>
   );
@@ -729,27 +744,24 @@ export function PalettePreference({ className }: { className?: string }) {
   ];
   return (
     <div className={className}>
-      <div className="bg-fill-2 ring-line-faint inline-flex rounded-full p-1 ring-1" role="radiogroup" aria-label="Direction colours">
-        {options.map((option) => (
-          <button
-            key={option.value}
-            type="button"
-            role="radio"
-            aria-checked={snap.palette === option.value}
-            onClick={() => setPalette(option.value)}
-            className={cx(
-              'press flex h-9 items-center gap-2 rounded-full px-4 text-sm font-medium transition-colors',
-              snap.palette === option.value ? 'bg-thumb text-ink-max shadow-e1' : 'text-ink-lo hover:text-ink-hi',
-            )}
-          >
-            <span aria-hidden className="flex gap-0.5">
-              <span className="h-2.5 w-2.5 rounded-full" style={{ background: candlesFor(option.value).up }} />
-              <span className="h-2.5 w-2.5 rounded-full" style={{ background: candlesFor(option.value).down }} />
+      <Segmented
+        label="Direction colours"
+        size="md"
+        value={snap.palette}
+        onChange={setPalette}
+        options={options.map((option) => ({
+          value: option.value,
+          label: (
+            <span className="flex items-center gap-2">
+              <span aria-hidden className="flex gap-0.5">
+                <span className="h-2.5 w-2.5 rounded-full" style={{ background: candlesFor(option.value).up }} />
+                <span className="h-2.5 w-2.5 rounded-full" style={{ background: candlesFor(option.value).down }} />
+              </span>
+              {option.label}
             </span>
-            {option.label}
-          </button>
-        ))}
-      </div>
+          ),
+        }))}
+      />
       <p className="text-ink-dim mt-2 text-xs">Blue and orange separate under every common form of colour blindness.</p>
     </div>
   );

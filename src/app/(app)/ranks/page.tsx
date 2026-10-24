@@ -12,6 +12,7 @@ import {
 import { divisionFor, isPlaced, roundsToPlacement } from '@/core/divisions';
 import { routes } from '@/lib/routes';
 import { DivisionBadge, EmptyState, FogPanel, LinkTabs, PageHeader, cx } from '@/components/ui';
+import { Indicator } from '@/components/ui/kinetic';
 import { FieldHistogram } from '@/components/ranks/FieldHistogram';
 import { Leaderboard } from '@/components/ranks/Leaderboard';
 
@@ -71,7 +72,8 @@ async function DailyBoard({ day, owner, viewerId }: { day: 'today' | 'yesterday'
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-ink-max text-xl font-semibold tracking-tight">Daily #{number}</h2>
-        <div className="bg-fill-2 ring-line-faint inline-flex rounded-full p-1 ring-1">
+        <div className="bg-fill-2 ring-line-faint relative isolate inline-flex rounded-full p-1 ring-1">
+          <Indicator match="[aria-current=page]" optimistic="a" className="bg-thumb shadow-e1 rounded-full" />
           {(['today', 'yesterday'] as const).map((option) => (
             <Link
               key={option}
@@ -80,7 +82,9 @@ async function DailyBoard({ day, owner, viewerId }: { day: 'today' | 'yesterday'
               aria-current={day === option ? 'page' : undefined}
               className={cx(
                 'rounded-full px-4 py-1.5 text-sm font-medium capitalize transition-colors',
-                day === option ? 'bg-thumb text-ink-max shadow-e1' : 'text-ink-lo hover:text-ink-hi',
+                day === option
+                  ? 'bg-thumb text-ink-max shadow-e1 in-data-[indicator=ready]:bg-transparent in-data-[indicator=ready]:shadow-none'
+                  : 'text-ink-lo hover:text-ink-hi',
               )}
             >
               {option}
@@ -164,7 +168,8 @@ async function TapeBoards({ tape, viewerId }: { tape?: string; viewerId: string 
 
   return (
     <div className="space-y-6">
-      <div className="no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1">
+      <div className="no-scrollbar relative isolate -mx-1 flex gap-2 overflow-x-auto px-1">
+        <Indicator match="[aria-current=page]" optimistic="a" className="bg-thumb ring-line-strong shadow-e1 rounded-full ring-1" />
         {tapes.map((t) => (
           <Link
             key={t.slug}
@@ -173,7 +178,9 @@ async function TapeBoards({ tape, viewerId }: { tape?: string; viewerId: string 
             aria-current={t.slug === chosen.slug ? 'page' : undefined}
             className={cx(
               'shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium ring-1 transition-colors',
-              t.slug === chosen.slug ? 'bg-thumb text-ink-max ring-line-strong shadow-e1' : 'bg-fill-1 text-ink-lo ring-line-faint hover:text-ink-hi',
+              t.slug === chosen.slug
+                ? 'bg-thumb text-ink-max ring-line-strong shadow-e1 in-data-[indicator=ready]:bg-transparent in-data-[indicator=ready]:shadow-none in-data-[indicator=ready]:ring-transparent'
+                : 'bg-fill-1 text-ink-lo ring-line-faint hover:text-ink-hi',
             )}
           >
             {t.slug === 'open' ? 'Shuffle' : t.name}

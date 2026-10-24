@@ -2,6 +2,7 @@
 
 import { Button, cx } from '../ui';
 import { Term } from '../ui/client';
+import { Indicator, NumberRoll } from '../ui/kinetic';
 import { Icon } from '../ui/icons';
 
 /**
@@ -73,8 +74,13 @@ export function CallDock({
         <div
           role="radiogroup"
           aria-label="Direction"
-          className={cx('grid grid-cols-2 gap-2 lg:flex', nudge && 'animate-pop')}
+          className={cx('relative isolate grid grid-cols-2 gap-2 lg:flex', nudge && 'animate-pop')}
         >
+          {/* One pill, which slides to the chosen side and turns its colour on the way. */}
+          <Indicator
+            match="[aria-checked=true]"
+            className={cx('rounded-full', direction === 'short' ? 'bg-short' : 'bg-long')}
+          />
           <SideButton side="long" active={direction === 'long'} disabled={busy} onClick={() => onDirection('long')} />
           <SideButton side="short" active={direction === 'short'} disabled={busy} onClick={() => onDirection('short')} />
         </div>
@@ -166,12 +172,12 @@ function SideButton({
       disabled={disabled}
       onClick={onClick}
       className={cx(
-        'press flex h-12 items-center justify-center gap-2 rounded-full px-5 text-base font-semibold ring-1 transition-colors lg:min-w-32',
+        'press flex h-12 items-center justify-center gap-2 rounded-full px-5 text-base font-semibold ring-1 transition-colors duration-(--dur-4) lg:min-w-32',
         'disabled:cursor-not-allowed disabled:opacity-45',
         active
           ? long
-            ? 'bg-long text-on-gold ring-long'
-            : 'bg-short text-on-gold ring-short'
+            ? 'bg-long text-on-gold ring-long in-data-[indicator=ready]:bg-transparent'
+            : 'bg-short text-on-gold ring-short in-data-[indicator=ready]:bg-transparent'
           : long
             ? 'bg-long-bg text-long-ink ring-long-line hover:bg-long/25'
             : 'bg-short-bg text-short-ink ring-short-line hover:bg-short/25',
@@ -228,7 +234,7 @@ function Stepper({
           <Icon name="minus" size={16} />
         </button>
         <output className={cx('numeral min-w-0 flex-1 text-center text-base font-semibold', accent)} aria-live="polite">
-          {display}
+          <NumberRoll value={display} />
           <span className="text-ink-dim ml-1 text-xs font-medium">{unit}</span>
         </output>
         <button
@@ -241,7 +247,8 @@ function Stepper({
           <Icon name="plus" size={16} />
         </button>
       </div>
-      <div className="no-scrollbar mt-1.5 flex gap-1 overflow-x-auto">
+      <div className="no-scrollbar relative isolate mt-1.5 flex gap-1 overflow-x-auto">
+        <Indicator match="[aria-pressed=true]" className="bg-thumb shadow-e1 rounded-full" />
         {presets.map((preset) => {
           const on = Math.abs(preset - value) < 1e-6;
           return (
@@ -253,7 +260,9 @@ function Stepper({
               aria-pressed={on}
               className={cx(
                 'numeral h-7 shrink-0 rounded-full px-2.5 text-xs font-medium transition-colors',
-                on ? 'bg-thumb text-ink-max shadow-e1' : 'text-ink-dim hover:text-ink-hi hover:bg-fill-2',
+                on
+                  ? 'bg-thumb text-ink-max shadow-e1 in-data-[indicator=ready]:bg-transparent in-data-[indicator=ready]:shadow-none'
+                  : 'text-ink-dim hover:text-ink-hi',
               )}
             >
               {preset}
@@ -282,7 +291,8 @@ function Confidence({
       <span className="eyebrow text-ink-dim">
         <Term id="calibration">How sure?</Term>
       </span>
-      <div role="radiogroup" aria-label="How sure are you this finishes green?" className="bg-surface-2 ring-line mt-1.5 flex h-11 items-center gap-0.5 rounded-full p-1 ring-1">
+      <div role="radiogroup" aria-label="How sure are you this finishes green?" className="bg-surface-2 ring-line relative isolate mt-1.5 flex h-11 items-center gap-0.5 rounded-full p-1 ring-1">
+        <Indicator match="[aria-checked=true]" className="bg-info rounded-full" />
         {CONFIDENCE.map((option) => {
           const on = value === option;
           return (
@@ -297,7 +307,7 @@ function Confidence({
               onClick={() => onChange(on ? null : option)}
               className={cx(
                 'numeral h-9 min-w-10 flex-1 rounded-full text-xs font-semibold transition-colors',
-                on ? 'bg-info text-ink-inv' : 'text-ink-lo hover:text-ink-hi hover:bg-fill-2',
+                on ? 'bg-info text-ink-inv in-data-[indicator=ready]:bg-transparent' : 'text-ink-lo hover:text-ink-hi',
               )}
             >
               {Math.round(option * 100)}%

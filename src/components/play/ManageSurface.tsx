@@ -11,6 +11,7 @@ import { routes } from '@/lib/routes';
 import { Chart, type ChartHandle } from '../Chart';
 import { Button, Chip, Panel, ProgressBar, ScoreRing, cx } from '../ui';
 import { Dialog, Term, useThemeSnapshot } from '../ui/client';
+import { Indicator, NumberRoll } from '../ui/kinetic';
 import { Icon } from '../ui/icons';
 import { HotkeyLegend } from './layers';
 import { PlayTopBar } from './PlayTopBar';
@@ -272,7 +273,8 @@ export function ManageSurface({ tape = 'open' }: { tape?: string }) {
         {phase === 'placing' && (
           <Panel tone="inset" pad="none" className="rounded-2xl p-3 sm:p-4">
             <div className="grid gap-3 lg:grid-cols-[auto_1fr_auto] lg:items-center lg:gap-5">
-              <div role="radiogroup" aria-label="Direction" className="grid grid-cols-2 gap-2 lg:flex">
+              <div role="radiogroup" aria-label="Direction" className="relative isolate grid grid-cols-2 gap-2 lg:flex">
+                <Indicator match="[aria-checked=true]" className={cx('rounded-full', side === 'short' ? 'bg-short' : 'bg-long')} />
                 {(['long', 'short'] as const).map((option) => (
                   <button
                     key={option}
@@ -281,11 +283,11 @@ export function ManageSurface({ tape = 'open' }: { tape?: string }) {
                     aria-checked={side === option}
                     onClick={() => setSide(option)}
                     className={cx(
-                      'press flex h-12 items-center justify-center gap-2 rounded-full px-5 text-base font-semibold ring-1 transition-colors lg:min-w-32',
+                      'press flex h-12 items-center justify-center gap-2 rounded-full px-5 text-base font-semibold ring-1 transition-colors duration-(--dur-4) lg:min-w-32',
                       side === option
                         ? option === 'long'
-                          ? 'bg-long text-on-gold ring-long'
-                          : 'bg-short text-on-gold ring-short'
+                          ? 'bg-long text-on-gold ring-long in-data-[indicator=ready]:bg-transparent'
+                          : 'bg-short text-on-gold ring-short in-data-[indicator=ready]:bg-transparent'
                         : option === 'long'
                           ? 'bg-long-bg text-long-ink ring-long-line'
                           : 'bg-short-bg text-short-ink ring-short-line',
@@ -303,7 +305,7 @@ export function ManageSurface({ tape = 'open' }: { tape?: string }) {
                     <button type="button" aria-label="Stop closer" onClick={() => setStopAtr((v) => Math.max(0.25, v - STEP_ATR))} className="press text-ink-lo hover:text-ink-hi grid h-11 w-10 place-items-center">
                       <Icon name="minus" size={16} />
                     </button>
-                    <span className="numeral text-short-ink w-20 text-center font-semibold">{stopAtr.toFixed(2)} ATR</span>
+                    <span className="numeral text-short-ink w-20 text-center font-semibold"><NumberRoll value={stopAtr.toFixed(2)} /> ATR</span>
                     <button type="button" aria-label="Stop further" onClick={() => setStopAtr((v) => Math.min(6, v + STEP_ATR))} className="press text-ink-lo hover:text-ink-hi grid h-11 w-10 place-items-center">
                       <Icon name="plus" size={16} />
                     </button>

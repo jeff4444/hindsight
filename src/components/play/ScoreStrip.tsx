@@ -1,5 +1,6 @@
 'use client';
 
+import type { CSSProperties } from 'react';
 import { cx } from '../ui';
 
 /**
@@ -58,12 +59,15 @@ export function ScoreStrip({
             const best = i === n - 1;
             return (
               <span key={i} className="relative flex h-full flex-1 items-center">
+                {/* Each bar grows out of the zero line, worst to best, so the strip sweeps up to
+                    the gold one rather than appearing whole. */}
                 <span
                   className={cx(
                     'absolute inset-x-0 rounded-[1px]',
+                    value >= 0 ? 'grow-up' : 'grow-down',
                     best ? 'bg-gold' : value > 0 ? 'bg-long/70' : value < 0 ? 'bg-short/55' : 'bg-ink-dim',
                   )}
-                  style={value >= 0 ? { bottom: '50%', height: h } : { top: '50%', height: h }}
+                  style={{ ...(value >= 0 ? { bottom: '50%', height: h } : { top: '50%', height: h }), ['--i' as string]: i } as CSSProperties}
                 />
               </span>
             );
@@ -72,7 +76,8 @@ export function ScoreStrip({
         {/* markers */}
         <Marker at={par} label="Par" tone="text-ink-lo" line="bg-ink-lo" position="bottom" />
         {!passed && <Marker at={sitOut} label="Sit out" tone="text-restraint-ink" line="bg-restraint" position="bottom" faint />}
-        {you !== null && <Marker at={you} label={passed ? 'You · sat out' : 'You'} tone="text-ink-max" line="bg-ink-max" position="top" strong />}
+        {/* "You" starts at par and slides to where the trade actually ranked. */}
+        {you !== null && <Marker at={you} label={passed ? 'You · sat out' : 'You'} tone="text-ink-max" line="bg-ink-max" position="top" strong travel />}
       </div>
       <figcaption className="text-ink-dim mt-5 flex justify-between text-mini">
         <span>Worst possible</span>
@@ -90,6 +95,7 @@ function Marker({
   position,
   strong,
   faint,
+  travel,
 }: {
   at: number;
   label: string;
@@ -98,12 +104,13 @@ function Marker({
   position: 'top' | 'bottom';
   strong?: boolean;
   faint?: boolean;
+  travel?: boolean;
 }) {
   const clamped = Math.min(Math.max(at, 0), 1);
   // Labels near either end are pinned inward so they never overflow the strip.
   const align = clamped < 0.12 ? 'left-0' : clamped > 0.88 ? 'right-0' : 'left-1/2 -translate-x-1/2';
   return (
-    <div className="pointer-events-none absolute inset-y-0" style={{ left: `${clamped * 100}%` }}>
+    <div className={cx('pointer-events-none absolute inset-y-0', travel && 'from-par')} style={{ left: `${clamped * 100}%` }}>
       <div className={cx('absolute inset-y-1 -ml-px w-0.5 rounded-full', line, faint && 'opacity-60', strong && 'w-[3px]')} />
       <span
         className={cx(

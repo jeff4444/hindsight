@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { DUEL_SPEC, RACE_SPEC } from '@/core/duel';
 import { routes } from '@/lib/routes';
 import { Button, Panel, Segmented, cx } from '../ui';
+import { Indicator } from '../ui/kinetic';
 import { Select, useToast } from '../ui/client';
 import { Icon, type IconName } from '../ui/icons';
 
@@ -89,7 +90,9 @@ export function VersusLauncher({
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
       <div className="space-y-6">
-        <div role="radiogroup" aria-label="Format" className="grid gap-3 sm:grid-cols-2">
+        <div role="radiogroup" aria-label="Format" className="relative isolate grid gap-3 sm:grid-cols-2">
+          {/* The gold frame moves to the chosen format. */}
+          <Indicator match="[aria-checked=true]" className="border-gold bg-gold-bg rounded-2xl border" />
           <Format
             active={mode === 'duel'}
             onClick={() => setMode('duel')}
@@ -171,10 +174,17 @@ function Format({
       onClick={onClick}
       className={cx(
         'press flex flex-col gap-3 rounded-2xl border p-5 text-left transition-colors',
-        active ? 'border-gold bg-gold-bg' : 'border-line bg-surface-2 hover:border-line-strong',
+        active
+          ? 'border-gold bg-gold-bg in-data-[indicator=ready]:border-transparent in-data-[indicator=ready]:bg-transparent'
+          : 'border-line bg-surface-2 hover:border-line-strong',
       )}
     >
-      <span className={cx('grid h-11 w-11 place-items-center rounded-xl ring-1', active ? 'bg-gold text-on-gold ring-gold' : 'bg-fill-2 text-ink-hi ring-line')}>
+      <span
+        className={cx(
+          'grid h-11 w-11 place-items-center rounded-xl ring-1 transition-colors duration-(--dur-4)',
+          active ? 'bg-gold text-on-gold ring-gold' : 'bg-fill-2 text-ink-hi ring-line',
+        )}
+      >
         <Icon name={icon} size={20} />
       </span>
       <div>

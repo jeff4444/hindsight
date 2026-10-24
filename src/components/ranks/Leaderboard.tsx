@@ -24,11 +24,12 @@ export function Leaderboard({
 }) {
   if (rows.length === 0) return <>{empty}</>;
   return (
-    <ol className="border-line bg-surface-2 divide-line-faint divide-y overflow-hidden rounded-2xl border">
+    <ol data-stagger className="border-line bg-surface-2 divide-line-faint divide-y overflow-hidden rounded-2xl border">
       {rows.map((row, i) => {
         const you = viewerId === row.userId;
         return (
-          <li key={row.userId}>
+          // Rows settle in from the top of the board down.
+          <li key={row.userId} style={{ '--i': i } as React.CSSProperties}>
             <Link
               href={routes.profile(row.handle)}
               className={cx('hover:bg-fill-1 flex items-center gap-4 px-4 py-3 transition-colors sm:px-5', you && 'bg-gold-bg')}

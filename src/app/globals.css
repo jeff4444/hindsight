@@ -675,6 +675,205 @@ canvas {
   color: var(--color-ink-max);
 }
 
+/* ----------------------------------------------------------------- kinetics */
+
+/*
+ * Motion between states, rather than entrances. Every duration is a token, so the reduced-motion
+ * block below zeroes all of it; nothing here needs its own media query.
+ */
+
+/* A page arriving: a short fade and a 6px settle. `translate`, not `transform`, and `backwards`
+ * fill, so once it ends the page carries no transform at all. */
+@keyframes page-in {
+  from {
+    opacity: 0;
+    translate: 0 6px;
+  }
+}
+.page-in {
+  animation: page-in var(--dur-4) var(--ease-entrance) backwards;
+}
+
+/* Grown into place on mount: progress bars from nothing, arcs from empty, strip bars from the
+ * baseline. From-only keyframes, so the resting value stays wherever the markup puts it. */
+@keyframes bar-in {
+  from {
+    width: 0;
+  }
+}
+@keyframes arc-in {
+  from {
+    stroke-dashoffset: var(--arc-c);
+  }
+}
+@keyframes grow-y {
+  from {
+    scale: 1 0;
+  }
+}
+.bar-in {
+  animation: bar-in var(--dur-6) var(--ease-entrance) backwards;
+}
+.arc-in {
+  animation: arc-in var(--dur-7) var(--ease-entrance) backwards;
+}
+.grow-up,
+.grow-down {
+  animation: grow-y var(--dur-5) var(--ease-entrance) backwards;
+  animation-delay: calc(var(--i, 0) * 5ms);
+}
+.grow-up {
+  transform-origin: bottom;
+}
+/* A marker that starts at the middle of its strip and travels to its place, after the bars. */
+@keyframes from-par {
+  from {
+    left: 50%;
+    opacity: 0;
+  }
+}
+.from-par {
+  animation: from-par var(--dur-6) var(--ease-entrance) backwards;
+  animation-delay: calc(var(--dur-5) * 0.8);
+}
+.grow-down {
+  transform-origin: top;
+}
+/* A line that draws itself. The path needs `pathLength={1}`. */
+.draw-in {
+  --len: 1;
+  stroke-dasharray: 1;
+  animation: draw var(--dur-7) var(--ease-entrance) backwards;
+}
+
+/* Popovers scale out of their trigger and back into it. `scale`, not `transform`, so it composes
+ * with the translate that positions them. */
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    scale: 0.96;
+  }
+}
+@keyframes pop-out {
+  to {
+    opacity: 0;
+    scale: 0.97;
+  }
+}
+.pop-panel[data-state='open'] {
+  animation: pop-in var(--dur-3) var(--ease-entrance);
+}
+.pop-panel[data-state='closed'] {
+  animation: pop-out var(--dur-2) var(--ease-exit) forwards;
+  pointer-events: none;
+}
+
+/* Toasts spring up from the bottom and sink back. */
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    translate: 0 14px;
+    scale: 0.96;
+  }
+}
+@keyframes toast-out {
+  to {
+    opacity: 0;
+    translate: 0 10px;
+    scale: 0.98;
+  }
+}
+.toast[data-state='open'] {
+  animation: toast-in var(--dur-5) var(--ease-spring);
+}
+.toast[data-state='closed'] {
+  animation: toast-out var(--dur-3) var(--ease-exit) forwards;
+}
+
+/*
+ * Dialogs: in on the entrance curve, out on the exit curve, entirely in CSS. `@starting-style`
+ * gives the open state somewhere to come from, and `allow-discrete` on `display` and `overlay`
+ * keeps a closing dialog in the top layer until it has finished leaving. A browser without those
+ * opens and closes instantly, which is what it did before.
+ */
+.hs-dialog {
+  --from: translateY(10px) scale(0.98);
+  opacity: 0;
+  transform: var(--from);
+  transition:
+    opacity var(--dur-3) var(--ease-exit),
+    transform var(--dur-3) var(--ease-exit),
+    overlay var(--dur-3) allow-discrete,
+    display var(--dur-3) allow-discrete;
+}
+/* On a phone, sheets come up from the bottom edge. */
+.hs-dialog[data-placement='bottom'],
+.hs-dialog[data-placement='side'] {
+  --from: translateY(100%);
+}
+@media (min-width: 640px) {
+  .hs-dialog[data-placement='bottom'] {
+    --from: translateY(10px) scale(0.98);
+  }
+}
+@media (min-width: 768px) {
+  .hs-dialog[data-placement='side'] {
+    --from: translateX(100%);
+  }
+}
+.hs-dialog[open] {
+  opacity: 1;
+  transform: none;
+  transition-duration: var(--dur-4), var(--dur-5), var(--dur-5), var(--dur-5);
+  transition-timing-function: var(--ease-entrance);
+}
+@starting-style {
+  .hs-dialog[open] {
+    opacity: 0;
+    transform: var(--from);
+  }
+}
+.hs-dialog::backdrop {
+  background-color: transparent;
+  transition:
+    background-color var(--dur-3) var(--ease-exit),
+    overlay var(--dur-3) allow-discrete,
+    display var(--dur-3) allow-discrete;
+}
+.hs-dialog[open]::backdrop {
+  background-color: var(--color-scrim);
+  transition-duration: var(--dur-4);
+}
+@starting-style {
+  .hs-dialog[open]::backdrop {
+    background-color: transparent;
+  }
+}
+
+/* A disclosure opens to its height rather than snapping. Needs `::details-content` and
+ * `interpolate-size`; without them it snaps, as native `<details>` always has. */
+:root {
+  interpolate-size: allow-keywords;
+}
+details::details-content {
+  block-size: 0;
+  overflow-y: clip;
+  transition:
+    block-size var(--dur-4) var(--ease-standard),
+    content-visibility var(--dur-4) allow-discrete;
+}
+details[open]::details-content {
+  block-size: auto;
+}
+
+/* The theme switch, as a circle of the new theme opening from the control that chose it. The
+ * pseudo-elements' default cross-fade is switched off so only the clip moves. */
+html[data-vt='theme']::view-transition-old(root),
+html[data-vt='theme']::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
 /* --------------------------------------------------------------- utilities */
 
 [data-stagger] > * {
@@ -704,6 +903,24 @@ canvas {
 }
 .press:active:not(:disabled) {
   transform: scale(0.985);
+}
+
+/* Cards that lift a little under a pointer. After `.press`, and carrying its transform transition
+ * plus the colour fades, because one `transition` declaration replaces another rather than adding
+ * to it. Never on touch, where hover sticks after a tap. */
+@media (hover: hover) {
+  .lift {
+    transition:
+      translate var(--dur-3) var(--ease-standard),
+      box-shadow var(--dur-3) var(--ease-standard),
+      border-color var(--dur-3) var(--ease-standard),
+      background-color var(--dur-3) var(--ease-standard),
+      transform var(--dur-1) var(--ease-press);
+  }
+  .lift:hover {
+    translate: 0 -2px;
+    box-shadow: var(--shadow-e3);
+  }
 }
 
 .numeral {
