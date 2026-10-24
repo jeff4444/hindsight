@@ -1,12 +1,11 @@
 'use client';
 
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useSyncExternalStore } from 'react';
 import type { DailyPayload, DailyResult } from '@/lib/api-types';
 import { useBeats } from '@/lib/useBeats';
 import { useCountUp } from '@/lib/useTween';
-import { percentileBar } from '@/lib/share';
-import { Button, Eyebrow, Panel, ProgressArc, cx } from '../ui';
-import { useToast } from '../ui/client';
+import { Button, Eyebrow, ProgressArc, cx, scoreTone, toneInk } from '../ui';
+import { Countdown, useToast } from '../ui/client';
 import { Icon } from '../ui/icons';
 import { Beat } from '../ui/motion';
 
@@ -67,23 +66,26 @@ export function DailyCeremony({ daily }: { daily: DailyPayload }) {
     }
   };
 
-  return (
-    // Constrained rather than filling the stage. The play route is capped at 1920 so the chart
-    // can use the whole monitor, but the ceremony is a column of prose and figures — at that width
-    // it strands its own content in the left third with nothing on the right.
-    <Panel
-      tone="hero"
-      glow={daily.streak?.perfect ? 'gold' : 'brand'}
-      pad="none"
-      className="animate-rise mx-auto w-full max-w-3xl p-5 md:p-8"
-    >
-      <Eyebrow tone={daily.streak?.perfect ? 'gold' : undefined}>
-        Daily #{daily.day} complete
-      </Eyebrow>
+  const mean = daily.percentile;
+  const title =
+    mean === null ? 'Daily done.' : mean >= 0.75 ? 'A sharp day.' : mean >= 0.55 ? 'A solid day.' : mean >= 0.35 ? 'A mixed day.' : 'A rough day.';
+  const tomorrow = nextUtcMidnight();
 
-      {/* The shape of the day. Five tiles is the Wordle grid — it is what you played, not what
-          you scored, and it is legible before a single number is read. */}
-      <div className="mt-4 flex flex-wrap gap-2.5">
+  return (
+    <div className="animate-rise mx-auto flex w-full max-w-xl flex-col items-center text-center">
+      <div className={cx('eyebrow', daily.streak?.perfect ? 'text-gold-ink' : 'text-ink-dim')}>Daily #{daily.day}</div>
+      <h2 className="font-display text-ink-max mt-3 text-[2.5rem] leading-[1.05] sm:text-5xl">{title}</h2>
+
+      <Beat on={SCORE_BEAT} beats={beats} className="mt-6">
+        <div className={cx('numeral font-semibold text-display sm:text-display-xl', mean === null ? 'text-ink-max' : toneInk(scoreTone(mean * 100)))}>
+          {counted}
+        </div>
+        <p className="text-ink-lo mt-1 text-sm">Your score · the mean of {daily.total} charts</p>
+      </Beat>
+
+      {/* The shape of the day: five rings, one per chart. What you played, legible before a single
+          number is read — the same squares the card carries. */}
+      <div className="mt-8 flex flex-wrap justify-center gap-2.5">
         {daily.results.map((result, i) => (
           <Beat key={result.index} on={TILE_BEAT + i} beats={beats} animation="pop">
             <RoundTile result={result} ordinal={i + 1} />
@@ -91,74 +93,45 @@ export function DailyCeremony({ daily }: { daily: DailyPayload }) {
         ))}
       </div>
 
-      <Beat on={SCORE_BEAT} beats={beats} className="mt-7">
-        <div className="flex flex-wrap items-end gap-x-8 gap-y-4">
-          <div>
-            <div className="numeral text-ink-max font-semibold text-display-sm sm:text-display-xl">
-              {counted}
-            </div>
-            <p className="text-ink-lo mt-1 text-sm">
-              Mean percentile across {daily.total} charts, against everything each one allowed.
-            </p>
-          </div>
-
-          {/* The same ten blocks the card carries, filling as the number counts. The on-screen bar
-              *is* the card's bar — which makes the card a receipt for something just watched
-              rather than a separate artefact generated afterwards. */}
-          {daily.percentile !== null && (
-            <ShareBar percentile={daily.percentile} shown={beats.at(SCORE_BEAT)} />
-          )}
-        </div>
-      </Beat>
-
       {daily.streak && (
-        <Beat on={STREAK_BEAT} beats={beats} className="mt-7">
+        <Beat on={STREAK_BEAT} beats={beats} className="mt-8 w-full">
           <StreakBump streak={daily.streak} />
         </Beat>
       )}
 
-      <Beat on={CARD_BEAT} beats={beats} className="mt-7">
-        <div className="flex flex-wrap items-start gap-4">
-          {daily.card && (
-            <pre className="border-line bg-surface-1 text-ink min-w-0 flex-1 rounded-lg border p-4 font-mono text-base leading-relaxed whitespace-pre select-all">
-              {daily.card}
-            </pre>
-          )}
-          <div className="flex flex-wrap items-center gap-2">
-            <Button variant="primary" size="lg" onClick={() => void copy()} glow="brand">
-              <Icon name="copy" size={15} />
-              Copy card
-            </Button>
-            {canShare && (
-              <Button variant="secondary" size="lg" onClick={() => void share()}>
-                <Icon name="share" size={15} />
-                Share
-              </Button>
-            )}
-            <Button variant="secondary" size="lg" as="a" href="/tapes">
-              Keep playing
-            </Button>
-          </div>
+      <Beat on={CARD_BEAT} beats={beats} className="mt-8 w-full">
+        {daily.card && (
+          <pre className="border-line bg-surface-2 text-ink-hi mx-auto w-fit max-w-full rounded-2xl border px-6 py-4 text-left font-mono text-base leading-relaxed whitespace-pre select-all">
+            {daily.card}
+          </pre>
+        )}
+        <div className="mt-4 flex flex-col items-stretch justify-center gap-2 sm:flex-row sm:items-center">
+          <Button variant="primary" size="lg" onClick={() => void (canShare ? share() : copy())}>
+            <Icon name={canShare ? 'share' : 'copy'} size={15} />
+            {canShare ? 'Share your card' : 'Copy your card'}
+          </Button>
+          <Button variant="secondary" size="lg" href="/play">
+            Keep playing
+          </Button>
         </div>
-
-        <p className="text-ink-dim mt-4 max-w-prose text-sm leading-relaxed">
-          The card carries no R-multiple, no direction and no ticker, so posting it cannot spoil the
-          setup for anyone who has not played today. Everyone gets the same five charts.
+        <p className="text-ink-dim mt-4 text-xs leading-relaxed">
+          The card says how you scored and nothing about the charts, so it spoils nothing. Next daily in{' '}
+          <Countdown to={tomorrow} className="text-ink-lo" />.
         </p>
       </Beat>
-    </Panel>
+    </div>
   );
 }
 
-/**
- * One chart's outcome.
- *
- * A pass is marked rather than scored-down: it is a decision with its own colour, and a day of
- * five passes should look like five deliberate choices, not five blanks.
- */
+/** The daily resets at midnight UTC. */
+function nextUtcMidnight(): number {
+  const now = new Date();
+  return Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1);
+}
+
 function RoundTile({ result, ordinal }: { result: DailyResult; ordinal: number }) {
   const pct = result.percentile === null ? null : Math.round(result.percentile * 100);
-  const tone = result.passed ? 'restraint' : pct === null ? 'neutral' : pct >= 75 ? 'long' : pct >= 40 ? 'info' : 'short';
+  const tone = result.passed ? 'restraint' : pct === null ? 'neutral' : scoreTone(pct);
 
   return (
     <div
@@ -172,7 +145,7 @@ function RoundTile({ result, ordinal }: { result: DailyResult; ordinal: number }
         tone={tone}
         label={`Chart ${ordinal}, ${result.passed ? 'passed' : 'traded'}${pct === null ? '' : `, ${pct}th percentile`}`}
       >
-        <span className={cx('numeral text-base font-semibold', pct === null ? 'text-ink-faint' : 'text-ink-hi')}>
+        <span className={cx('numeral text-base font-semibold', pct === null ? 'text-ink-dim' : 'text-ink-hi')}>
           {pct ?? '—'}
         </span>
       </ProgressArc>
@@ -187,45 +160,12 @@ function RoundTile({ result, ordinal }: { result: DailyResult; ordinal: number }
 }
 
 /** The ten blocks, filling one at a time. */
-function ShareBar({ percentile, shown }: { percentile: number; shown: boolean }) {
-  const target = percentileBar(percentile);
-  const filled = target.split('').filter((c) => c === '█').length;
-  const [count, setCount] = useState(0);
-
-  useEffect(() => {
-    if (!shown) return;
-    let n = 0;
-    const id = setInterval(() => {
-      n += 1;
-      setCount(n);
-      if (n >= filled) clearInterval(id);
-    }, 70);
-    return () => clearInterval(id);
-  }, [shown, filled]);
-
-  return (
-    <div className="numeral text-2xl leading-none tracking-[0.08em]" aria-hidden>
-      {target.split('').map((glyph, i) => (
-        <span key={i} className={i < count ? 'text-info' : 'text-fill-3'}>
-          {glyph === '█' ? '█' : '░'}
-        </span>
-      ))}
-    </div>
-  );
-}
-
-/**
- * What the day did to the streak.
- *
- * The number counting from yesterday's total to today's is the entire point — a streak that simply
- * appears at its new value communicates a fact; one that moves communicates that *you moved it*.
- */
 function StreakBump({ streak }: { streak: NonNullable<DailyPayload['streak']> }) {
   const counted = useCountUp(streak.after, { ms: 520, decimals: 0, deps: [streak.after] });
 
   return (
-    <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-      <div>
+    <div className="border-line bg-surface-2 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 rounded-2xl border px-5 py-4">
+      <div className="text-left">
         <Eyebrow tone={streak.perfect ? 'gold' : undefined}>
           {streak.perfect ? 'Perfect streak' : 'Streak'}
         </Eyebrow>

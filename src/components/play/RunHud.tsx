@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { STORM_SPEC } from '@/core/run';
 import type { RunState } from '@/lib/api-types';
-import { Button, Chip, Eyebrow, Panel, cx } from '../ui';
+import { Button, Chip, cx } from '../ui';
+import { routes } from '@/lib/routes';
+import { SummaryShell } from './SummaryShell';
 
 /**
  * §10.1's Storm and Streak, on screen.
@@ -27,14 +28,13 @@ export function RunHud({ run, deciding }: { run: RunState; deciding: boolean }) 
   if (run.mode === 'streak') {
     return (
       <div className="flex items-center gap-2">
-        <Eyebrow className="hidden sm:block">Streak</Eyebrow>
         <span className="numeral text-ink-max text-lg leading-none font-semibold">{run.length}</span>
-        <span className="text-ink-faint text-xs">in a row</span>
+        <span className="text-ink-dim text-xs">in a row</span>
         {/* The skip is a resource, so it is shown as one: present or spent, never a number to
             interpret. It is also the only thing standing between this mode and being farmed by
             passing — par_r is negative on 95% of charts and a pass is 0R. */}
-        <Chip tone={run.skipsLeft > 0 ? 'info' : 'neutral'}>
-          {run.skipsLeft > 0 ? '1 skip' : 'no skip'}
+        <Chip tone={run.skipsLeft > 0 ? 'restraint' : 'neutral'}>
+          {run.skipsLeft > 0 ? '1 sit-out left' : 'no sit-outs left'}
         </Chip>
       </div>
     );
@@ -92,36 +92,36 @@ function RunClock({ remainingMs, deciding }: { remainingMs: number; deciding: bo
   return (
     <span
       className={cx(
-        'text-mini inline-flex items-center gap-1.5 rounded px-2 py-1 font-mono tabular-nums ring-1 transition-colors',
+        'numeral inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-sm font-semibold tabular-nums ring-1 transition-colors',
         critical
-          ? 'text-loss-ink ring-loss/40 bg-loss/10'
+          ? 'bg-short-bg text-short-ink ring-short-line'
           : urgent
-            ? 'text-attention-ink ring-attention/40 bg-attention/10'
-            : 'text-ink-lo ring-line-faint',
-        // Frozen is a state worth seeing: it is the answer to "why is my clock not moving?", and
-        // the answer is that watching the reveal is free.
-        !deciding && 'opacity-60',
+            ? 'text-ink-max ring-line-strong bg-fill-2'
+            : deciding
+              ? 'text-ink-hi ring-line bg-fill-1'
+              : 'text-ink-dim ring-line-faint',
       )}
-      title={deciding ? 'Deciding — the clock is running' : 'The reveal is free'}
+      // Paused is a state worth seeing: it answers "why is my clock not moving?" — watching the
+      // reveal is free, only deciding is charged.
+      title={deciding ? 'Deciding — the Storm clock is running' : 'Paused — the reveal is free'}
     >
-      <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden className="shrink-0">
-        <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="2" opacity="0.2" />
+      <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden className="shrink-0">
+        <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="2.5" opacity="0.2" />
         <circle
           cx="12"
           cy="12"
           r="9"
           fill="none"
           stroke="currentColor"
-          strokeWidth="2"
+          strokeWidth="2.5"
           strokeLinecap="round"
           strokeDasharray={2 * Math.PI * 9}
           strokeDashoffset={2 * Math.PI * 9 * (1 - fraction)}
           transform="rotate(-90 12 12)"
         />
       </svg>
-      <span>
-        {Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, '0')}
-      </span>
+      {Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, '0')}
+      {!deciding && <span className="text-micro font-medium">paused</span>}
     </span>
   );
 }
@@ -136,46 +136,31 @@ function RunClock({ remainingMs, deciding }: { remainingMs: number; deciding: bo
 export function RunSummary({ run, onAgain }: { run: RunState; onAgain: () => void }) {
   const storm = run.mode === 'storm';
   return (
-    <Panel pad="lg" className="mx-auto mt-6 max-w-md text-center">
-      <Eyebrow>{storm ? 'Storm over' : 'Streak broken'}</Eyebrow>
-
-      <p className="numeral text-ink-max mt-3 text-5xl font-semibold">
-        {storm ? run.score : run.bestLength}
-      </p>
-      <p className="text-ink-lo mt-1 text-sm">
-        {storm
+    <SummaryShell
+      eyebrow={storm ? 'Storm' : 'Survival'}
+      title={storm ? 'Time.' : 'The run is over.'}
+      figure={storm ? run.score : run.length}
+      figureTone={storm ? 'text-gold-ink' : 'text-ink-max'}
+      caption={
+        storm
           ? `points from ${run.charts} chart${run.charts === 1 ? '' : 's'}`
-          : `in a row, over ${run.charts} chart${run.charts === 1 ? '' : 's'}`}
-      </p>
-
-      {storm && run.bestCombo > 1 && (
-        <p className="text-ink-faint mt-3 text-xs">
-          Best run of <span className="numeral text-ink-lo">{run.bestCombo}</span> in a row.
-        </p>
-      )}
-
-      <p className="text-ink-faint mx-auto mt-5 max-w-prose text-xs leading-relaxed">
-        {storm
-          ? 'A point for every chart where you beat the median of the 98 enumerated brackets, plus the rung at 5, 12, 20 and 30. Standing aside scores nothing — the median bracket loses money on 95% of charts, so a pass would otherwise be free points.'
-          : 'The run ended on the first result below the median of the 98 enumerated brackets. One skip per run, and it does not come back.'}
-      </p>
-
-      <div className="mt-6 flex items-center justify-center gap-2">
-        <Button onClick={onAgain} variant="primary" size="lg">
-          Again
-        </Button>
-        <Button as="a" href="/today" variant="secondary" size="lg">
-          Home
-        </Button>
-      </div>
-
-      <p className="text-ink-faint mt-4 text-xs">
-        Every chart here counts everywhere else —{' '}
-        <Link href="/you" className="underline underline-offset-2">
-          your record
-        </Link>{' '}
-        does not care which mode it was played in.
-      </p>
-    </Panel>
+          : `in a row · your best is ${run.bestLength}`
+      }
+      actions={
+        <>
+          <Button onClick={onAgain} variant="primary" size="lg">
+            {storm ? 'Another Storm' : 'Go again'}
+          </Button>
+          <Button href={routes.play.hub} variant="secondary" size="lg">
+            Something else
+          </Button>
+        </>
+      }
+      footnote={
+        storm
+          ? `A point for every chart that beat par${run.bestCombo > 1 ? ` · best combo ×${run.bestCombo}` : ''}. Sitting out scores nothing.`
+          : 'A run ends on the first chart below par, or on a second sit-out.'
+      }
+    />
   );
 }

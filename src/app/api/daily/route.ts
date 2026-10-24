@@ -99,7 +99,13 @@ export async function POST(request: Request) {
             longest: after.longest,
           }
         : null,
-      card: shareCard({ day, percentile: mean, traded, total: DAILY_CHARTS }),
+      card: shareCard({
+        day,
+        percentile: mean,
+        traded,
+        total: DAILY_CHARTS,
+        charts: results.map((r) => (r.passed ? 'pass' : r.percentile)),
+      }),
       round: null,
     };
     return withSession(payload, sessionId);

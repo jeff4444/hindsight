@@ -241,13 +241,16 @@ export function useRevealLoop(refs: RevealRefs, callbacks: RevealCallbacks) {
       chartApi.revealHour(reveal.current[i], win.current.leadIn + i);
       shown.current.push(reveal.current[i]);
     }
+    // The same marker, label and wash as a reveal played out — skipping is a speed, not a
+    // different ending. It used to label a time exit "stop" and drop the outcome flash entirely.
     const outcome = result.current;
     if (outcome && outcome.outcome !== 'pass' && outcome.exitBarIndex !== null) {
       chartApi.markExit(
         outcome.exitBarIndex,
-        outcome.outcome === 'target' ? 'target' : 'stop',
+        outcome.outcome === 'target' ? 'target' : outcome.outcome === 'stop' ? 'stop' : 'close',
         exitColour(outcome.outcome),
       );
+      if (outcome.outcome === 'target' || outcome.outcome === 'stop') cb.current.onHit(outcome.outcome);
     }
     revealed.current = reveal.current.length;
     cb.current.onRevealed(reveal.current.length);

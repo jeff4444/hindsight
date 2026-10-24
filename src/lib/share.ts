@@ -20,7 +20,8 @@
  */
 
 /** §3.2's letter code for the tier this build plays at. */
-export const TIER_CODE = 'NTZ';
+/** The daily's ruleset, by name. A code like NTZ means nothing to the person a card is sent to. */
+export const TIER_NAME = 'Naked';
 
 // U+2588 FULL BLOCK rather than U+2587: the seven-eighths block sits low in the line box and
 // renders unevenly across platforms, which matters for a string whose whole job is to be
@@ -37,6 +38,23 @@ export interface ShareCardInput {
   /** How many of the session's charts were traded rather than passed. */
   traded: number;
   total: number;
+  /**
+   * Each chart's score, in order — a percentile 0–1, `'pass'` for a sit-out, null if unscored. One
+   * square each: gold for the top decile, green, white, red, and lavender for sitting out. The
+   * squares are score buckets and nothing else, so they spoil nothing about any chart.
+   */
+  charts?: (number | 'pass' | null)[];
+}
+
+const SQUARE = { gold: '🟨', good: '🟩', fair: '⬜', poor: '🟥', pass: '🟪', none: '▫️' } as const;
+
+export function chartSquare(value: number | 'pass' | null): string {
+  if (value === 'pass') return SQUARE.pass;
+  if (value === null) return SQUARE.none;
+  if (value >= 0.9) return SQUARE.gold;
+  if (value >= 0.6) return SQUARE.good;
+  if (value >= 0.35) return SQUARE.fair;
+  return SQUARE.poor;
 }
 
 /** "78th", "3rd", "1st" — the percentile as an ordinal, which is how §10.4's example writes it. */
@@ -74,19 +92,19 @@ export function percentileBar(percentile: number): string {
  * price, and whether any individual chart won or lost. Everything on it is either about the
  * player's standing or about which puzzle it was.
  */
-export function shareCard({ day, percentile, traded, total }: ShareCardInput): string {
+export function shareCard({ day, percentile, traded, total, charts }: ShareCardInput): string {
   const headline =
     percentile === null
-      ? `HINDSIGHT #${day} · ${TIER_CODE}`
-      : `HINDSIGHT #${day} · ${TIER_CODE} · ${ordinal(percentile * 100)}`;
+      ? `Hindsight #${day} · ${TIER_NAME}`
+      : `Hindsight #${day} · ${TIER_NAME} · ${Math.round(percentile * 100)}`;
 
   const lines = [headline];
-  if (percentile !== null) lines.push(percentileBar(percentile));
+  if (charts && charts.length > 0) lines.push(charts.map(chartSquare).join(''));
+  else if (percentile !== null) lines.push(percentileBar(percentile));
 
-  // §4.4: in the daily, passes are unlimited but the count is printed "prominently on the share
-  // card, so the format self-polices socially rather than mechanically". This line is that
-  // mechanism, and it is the only thing standing between the daily and a pass-everything
-  // strategy — measured at roughly three percentile points better than any fixed bracket.
+  // In the daily, passes are unlimited but the count is printed on the card, so the format polices
+  // itself socially rather than mechanically. This line is the only thing standing between the
+  // daily and a sit-out-everything strategy.
   lines.push(`traded ${traded} of ${total}`);
 
   return lines.join('\n');

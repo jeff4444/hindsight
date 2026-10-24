@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { TIER_CODE, ordinal, percentileBar, shareCard } from '@/lib/share';
+import { TIER_NAME, ordinal, percentileBar, shareCard } from '@/lib/share';
 
 describe('the share card cannot leak the setup (§10.4)', () => {
   // §10.4's first property: "spoiler-free — encode percentile buckets, never the R-multiple or
@@ -32,8 +32,8 @@ describe('the share card cannot leak the setup (§10.4)', () => {
   });
 
   it('carries what makes it comparable: the day and the tier', () => {
-    expect(card).toContain('HINDSIGHT #12');
-    expect(card).toContain(TIER_CODE);
+    expect(card).toContain('Hindsight #12');
+    expect(card).toContain(TIER_NAME);
   });
 
   it('prints the traded count prominently, which is §4.4’s only brake on passing', () => {
@@ -42,15 +42,21 @@ describe('the share card cannot leak the setup (§10.4)', () => {
 });
 
 describe('the card', () => {
-  it('reads the way §10.4 writes it', () => {
-    expect(shareCard({ day: 412, percentile: 0.78, traded: 3, total: 5 })).toBe(
-      ['HINDSIGHT #412 · NTZ · 78th', '████████░░', 'traded 3 of 5'].join('\n'),
+  it('reads as a score, a square per chart, and the trade count', () => {
+    expect(shareCard({ day: 412, percentile: 0.78, traded: 3, total: 5, charts: [0.95, 0.7, 'pass', 0.2, 'pass'] })).toBe(
+      ['Hindsight #412 · Naked · 78', '🟨🟩🟪🟥🟪', 'traded 3 of 5'].join('\n'),
     );
   });
 
-  it('drops the percentile rather than inventing one when nothing was scored', () => {
+  it('falls back to the bar when the charts are not given', () => {
+    expect(shareCard({ day: 412, percentile: 0.78, traded: 3, total: 5 })).toBe(
+      ['Hindsight #412 · Naked · 78', '████████░░', 'traded 3 of 5'].join('\n'),
+    );
+  });
+
+  it('drops the score rather than inventing one when nothing was scored', () => {
     const card = shareCard({ day: 7, percentile: null, traded: 0, total: 5 });
-    expect(card).toBe(['HINDSIGHT #7 · NTZ', 'traded 0 of 5'].join('\n'));
+    expect(card).toBe(['Hindsight #7 · Naked', 'traded 0 of 5'].join('\n'));
   });
 
   it('bars are always ten blocks wide and bounded', () => {

@@ -72,8 +72,17 @@ export const approach = (dtMs: number, tauMs: number) => 1 - Math.exp(-dtMs / ta
 export const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
 
 /** The view a player should start on: the whole lead-in, filling the frame. */
+/**
+ * Hours of empty space kept right of the decision bar while placing: the fog, where the future
+ * will arrive. About a fifth of the frame — enough to say "there is more" without shrinking the
+ * candles being read — capped so a 300-candle Full Desk chart is not mostly fog.
+ */
+export function fogGap(window: Window = DEFAULT_WINDOW): number {
+  return Math.min(24, Math.max(8, Math.round(window.leadIn * 0.22)));
+}
+
 export function placementView(window: Window = DEFAULT_WINDOW): LogicalRange {
-  return { from: -0.5, to: window.leadIn - 0.5 };
+  return { from: -0.5, to: window.leadIn - 0.5 + fogGap(window) };
 }
 
 /** The close-up the camera cuts to on commit, before any future arrives. */

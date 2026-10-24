@@ -230,6 +230,12 @@ export interface RevealPayload {
    * common state, not an edge case: most duels are played hours apart.
    */
   match: MatchPayload | null;
+
+  /**
+   * The clock ran out before the order arrived, so the round scored as a forfeit. The client used
+   * to show an ordinary result for these, so a player never learned they had been timed out.
+   */
+  forfeited: boolean;
 }
 
 export type MatchPayload =
@@ -372,5 +378,7 @@ export interface RankedPayload {
     forfeits: number;
     /** §4.4's three-entry minimum. */
     quotaMet: boolean;
+    /** The overall rating before the session's first chart and after its last. */
+    rating: { before: number | null; after: number | null; rd: number | null; attempts: number };
   } | null;
 }
