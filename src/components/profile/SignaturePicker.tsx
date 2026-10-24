@@ -20,12 +20,18 @@ export function SignaturePicker({
   initialSeed,
   initialAccent = 'ember',
   submitLabel = 'Claim it',
+  initialDisplayName,
+  next,
   action,
 }: {
   initialHandle?: string;
   initialSeed: number;
   initialAccent?: Accent;
   submitLabel?: string;
+  /** Present to show the display-name field, which the save action has always read and nothing sent. */
+  initialDisplayName?: string | null;
+  /** Where to land after saving. Settings stays on settings; claiming a handle returns to the game. */
+  next?: string;
   action: (formData: FormData) => Promise<{ error?: string } | void>;
 }) {
   const [seed, setSeed] = useState(initialSeed);
@@ -51,6 +57,7 @@ export function SignaturePicker({
     >
       <input type="hidden" name="seed" value={seed} />
       <input type="hidden" name="accent" value={accent} />
+      {next && <input type="hidden" name="next" value={next} />}
 
       <div className="flex flex-col items-center" style={{ '--i': 0 } as React.CSSProperties}>
         <MarketSignature key={nonce} seed={seed} accent={accent} size={132} ring="accent" animate />
@@ -80,7 +87,7 @@ export function SignaturePicker({
               onClick={() => setAccent(option)}
               className={cx(
                 'press h-8 w-8 rounded-full transition-transform',
-                option === accent ? 'ring-ink-hi scale-110 ring-2 ring-offset-2 ring-offset-(--color-surface-0)' : 'ring-line ring-1',
+                option === accent ? 'ring-ink-hi scale-110 ring-2 ring-offset-2 ring-offset-(--color-surface-2)' : 'ring-line ring-1',
               )}
               style={{ background: ACCENT_HEX[option] }}
             >
@@ -118,6 +125,19 @@ export function SignaturePicker({
           {handle && localError ? localError : '3–22 characters. Letters, numbers, single dashes or underscores.'}
         </p>
       </label>
+
+      {initialDisplayName !== undefined && (
+        <label className="mt-5 block">
+          <span className="text-ink-lo text-xs font-medium">Display name</span>
+          <input
+            name="displayName"
+            defaultValue={initialDisplayName ?? ''}
+            maxLength={40}
+            placeholder="Optional — shown instead of your handle"
+            className={cx(INPUT_CLASS, 'mt-1')}
+          />
+        </label>
+      )}
 
       {error && (
         <Alert tone="short" icon="alert" className="mt-4">

@@ -467,18 +467,17 @@ export function MotionPreference({ className }: { className?: string }) {
 
   return (
     <div className={className}>
-      <div className="bg-fill-1 ring-line inline-flex rounded-md p-0.5 ring-1" role="radiogroup" aria-label="Motion">
+      <div className="bg-fill-2 ring-line-faint inline-flex rounded-full p-1 ring-1" role="radiogroup" aria-label="Motion">
         {options.map((option) => (
           <button
             key={option.value}
             type="button"
             role="radio"
             aria-checked={pref === option.value}
-            title={option.hint}
             onClick={() => setMotionPref(option.value)}
             className={cx(
-              'press h-9 rounded-sm px-3.5 text-sm font-medium transition-colors',
-              pref === option.value ? 'bg-surface-inv text-ink-inv' : 'text-ink-lo hover:text-ink-hi hover:bg-fill-2',
+              'press h-9 rounded-full px-4 text-sm font-medium transition-colors',
+              pref === option.value ? 'bg-thumb text-ink-max shadow-e1' : 'text-ink-lo hover:text-ink-hi',
             )}
           >
             {option.label}

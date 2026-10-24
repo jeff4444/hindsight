@@ -33,14 +33,14 @@ export default async function SignInPage({
   return (
     <div data-stagger>
       <div style={{ "--i": 0 } as React.CSSProperties}>
-        <Eyebrow>Play first, claim later</Eyebrow>
-        <h1 className="text-ink-max mt-2 text-2xl font-semibold">
-          Keep your record
+        <Eyebrow>Play first, sign in later</Eyebrow>
+        <h1 className="font-display text-ink-max mt-2 text-4xl">
+          Keep your record.
         </h1>
         <p className="text-ink-lo mt-3 text-base leading-relaxed">
-          Anything you have already played on this browser is bound to your
-          account when you sign in — rounds, percentiles and today&rsquo;s daily
-          included. Nothing is lost and nothing is replayed.
+          Everything you have played on this browser comes with you — scores,
+          today&rsquo;s daily, all of it. Signing in adds a streak, a rating and
+          tapes of your own.
         </p>
       </div>
 

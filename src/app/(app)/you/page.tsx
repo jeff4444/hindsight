@@ -1,228 +1,210 @@
 import { Suspense } from 'react';
-import Link from 'next/link';
-import { currentViewer, getForecasts, getPercentileSeries, getPlayerStats, getStyleRounds } from '@/lib/viewer';
-import { CardGridSkeleton, PageHeadSkeleton } from '@/components/shell/skeletons';
 import {
-  Button,
-  EmptyState,
-  Eyebrow,
-  Meter,
-  Panel,
-  Sparkline,
-  cx,
-} from '@/components/ui';
-import { Icon } from '@/components/ui/icons';
+  currentViewer,
+  getForecasts,
+  getPercentileSeries,
+  getPlayerStats,
+  getRating,
+  getRatingSeries,
+  getStreak,
+  getStyleRounds,
+} from '@/lib/viewer';
+import { divisionProgress, isPlaced, roundsToPlacement } from '@/core/divisions';
+import { routes } from '@/lib/routes';
+import { Button, DivisionBadge, EmptyState, PageHeader, ProgressBar, Skeleton, Sparkline, scoreTone } from '@/components/ui';
+import { MarketSignature } from '@/components/ui/MarketSignature';
+import { Term } from '@/components/ui/client';
 import { StyleProfile } from '@/components/profile/StyleProfile';
 import { CalibrationCurve } from '@/components/profile/CalibrationCurve';
 
 export const dynamic = 'force-dynamic';
+export const metadata = { title: 'Your progress' };
 
-/** Rounds before a percentile means anything. §4.9's rule, as a number. */
 const SAMPLE_MIN = 10;
 
-export const metadata = { title: 'Stats' };
-
 /**
- * Your record.
+ * Your progress: where you stand, how you are trending, how calibrated you are, and who you trade
+ * like. Private to you; the public profile shows a subset.
  *
- * The rule this page is built around used to be quoted at the reader verbatim, section number and
- * all: "§4.9: no number is shown until the sample supports it." That is a note to an engineer. The
- * rule itself is good and worth keeping visible — a percentile over four rounds is noise — but it
- * is expressed here as a meter you can fill rather than as a citation and a refusal.
+ * Every figure waits for its sample and says how far away that is, instead of a lock and "0/30".
  */
-export default function StatsPage() {
+export default function YouPage() {
   return (
-    <div className="mx-auto max-w-3xl">
-      <Eyebrow>Your record</Eyebrow>
-      <h1 className="text-ink-max mt-1 text-2xl font-semibold">Stats</h1>
-      <p className="text-ink-lo mt-3 max-w-prose text-base leading-relaxed">
-        Nothing here is shown until enough rounds exist to mean it. A percentile over four charts is
-        noise, and printing it would teach exactly the lesson this product exists to unteach.
-      </p>
-
-      <Suspense fallback={<StatsSkeleton />}>
-        <Record />
+    <div className="mx-auto max-w-5xl space-y-6">
+      <Suspense fallback={<Skeleton className="h-28 rounded-3xl" />}>
+        <Header />
+      </Suspense>
+      <Suspense fallback={<Skeleton className="h-96 rounded-3xl" />}>
+        <Body />
       </Suspense>
     </div>
   );
 }
 
-function StatsSkeleton() {
+async function Header() {
+  const viewer = await currentViewer();
+  const profile = viewer.profile;
+  const streak = profile ? await getStreak(viewer) : null;
+
+  if (!profile) {
+    return (
+      <PageHeader
+        eyebrow="You"
+        title="Your progress"
+        lede="Everything you play on this device is recorded. Sign in to keep it, get rated and start a streak."
+        actions={
+          <Button href={routes.signIn(routes.you)} variant="primary">
+            Save your progress
+          </Button>
+        }
+      />
+    );
+  }
+
   return (
-    <>
-      <div className="mt-8">
-        <PageHeadSkeleton lede={false} />
+    <header className="flex flex-wrap items-center justify-between gap-5">
+      <div className="flex items-center gap-4">
+        <MarketSignature seed={profile.avatarSeed} accent={profile.avatarAccent} size={64} ring={streak?.perfect ? 'gold' : 'accent'} />
+        <div>
+          <div className="eyebrow text-ink-dim">Your progress</div>
+          <h1 className="font-display text-ink-max mt-1 text-4xl leading-none md:text-5xl">{profile.displayName ?? `@${profile.handleDisplay}`}</h1>
+          <div className="text-ink-dim mt-1.5 text-sm">
+            @{profile.handleDisplay}
+            {streak && streak.length > 0 ? ` · ${streak.length}-day streak` : ''}
+          </div>
+        </div>
       </div>
-      <CardGridSkeleton count={4} height="h-32" className="mt-6 grid gap-3 sm:grid-cols-2" />
-    </>
+      <div className="flex gap-2">
+        <Button href={routes.profile(profile.handle)} variant="secondary">
+          Public profile
+        </Button>
+        <Button href={routes.settings} variant="ghost">
+          Settings
+        </Button>
+      </div>
+    </header>
   );
 }
 
-async function Record() {
+async function Body() {
   const viewer = await currentViewer();
-  const [stats, series, styleRounds, forecasts] = await Promise.all([
+  const [stats, series, styleRounds, forecasts, rating, ratingSeries] = await Promise.all([
     getPlayerStats(viewer),
-    getPercentileSeries(viewer, 20),
+    getPercentileSeries(viewer, 30),
     getStyleRounds(viewer),
     getForecasts(viewer),
+    getRating(viewer),
+    getRatingSeries(viewer),
   ]);
 
   if (stats.rounds === 0) {
     return (
-      <div className="mt-10">
-        <EmptyState
-          icon="distribution"
-          title="No rounds yet"
-          body="Play a chart and this fills in. Ten rounds is where the percentile starts to mean something."
-          action={
-            <Button as="a" href="/play/daily" variant="primary" size="lg">
-              Play today&rsquo;s daily
-            </Button>
-          }
-        />
-      </div>
+      <EmptyState
+        icon="candle"
+        title="Nothing to show yet"
+        body="Play a chart and this starts filling in: your scores, your rating, how calibrated you are, and which school you trade like."
+        action={
+          <Button href={routes.play.daily} variant="secondary" size="lg">
+            Play today&rsquo;s daily
+          </Button>
+        }
+        className="fog"
+      />
     );
   }
 
   const ready = stats.rounds >= SAMPLE_MIN;
+  const placed = rating.rating !== null && rating.rd !== null && isPlaced(rating.attempts, rating.rd);
+  const progress = placed ? divisionProgress(rating.rating!) : null;
 
   return (
     <>
-      {/* The gate, as a goal rather than a refusal. */}
-      {!ready && (
-        <Panel tone="inset" pad="sm" className="mt-8">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <Eyebrow>Sample</Eyebrow>
-              <p className="text-ink mt-1 text-sm">
-                <span className="numeral text-ink-max font-semibold">
-                  {SAMPLE_MIN - stats.rounds}
-                </span>{' '}
-                more {SAMPLE_MIN - stats.rounds === 1 ? 'round' : 'rounds'} until your percentile
-                means anything.
-              </p>
-            </div>
-            <Meter
-              value={stats.rounds}
-              max={SAMPLE_MIN}
-              tone="info"
-              size="lg"
-              className="w-40"
-              label={`${stats.rounds} of ${SAMPLE_MIN} rounds`}
-            />
-          </div>
-        </Panel>
-      )}
-
-      <div className="mt-6 grid gap-3 sm:grid-cols-2" data-stagger>
-        <Tile
-          index={0}
-          label="Rounds committed"
-          value={stats.rounds}
-          sub={`${stats.traded} traded · ${stats.passed} passed`}
-        />
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" data-stagger>
+        <Tile index={0} label="Charts played" value={String(stats.rounds)} sub={`traded ${stats.traded} · sat out ${stats.passed}`} />
         <Tile
           index={1}
-          label="Mean percentile"
-          value={ready && stats.meanPercentile !== null ? Math.round(stats.meanPercentile * 100) : null}
-          locked={!ready}
-          series={ready ? series : undefined}
+          label={<Term id="score">Average score</Term>}
+          value={ready && stats.meanPercentile !== null ? String(Math.round(stats.meanPercentile * 100)) : '—'}
+          sub={ready ? 'across every chart' : `${SAMPLE_MIN - stats.rounds} more charts to show this`}
         />
         <Tile
           index={2}
           label="Best"
-          value={stats.rounds >= 5 && stats.bestPercentile !== null ? Math.round(stats.bestPercentile * 100) : null}
-          locked={stats.rounds < 5}
-          sub={stats.rounds < 5 ? `${5 - stats.rounds} more rounds` : 'of 100'}
+          value={stats.rounds >= 5 && stats.bestPercentile !== null ? String(Math.round(stats.bestPercentile * 100)) : '—'}
+          sub={stats.rounds >= 5 ? 'single chart' : `${5 - stats.rounds} more charts`}
         />
-        <Tile
-          index={3}
-          label="Restraint"
-          value={Math.round((stats.passed / stats.rounds) * 100)}
-          sub="of your decisions were a pass"
-          suffix="%"
-        />
+        <Tile index={3} label={<Term id="sitOut">Sat out</Term>} value={`${Math.round((stats.passed / stats.rounds) * 100)}%`} sub="of your decisions" />
       </div>
 
-      {/* Traded versus passed, with the baseline that makes it interesting. */}
-      <Panel pad="md" className="mt-3">
-        <Eyebrow>Traded against passed</Eyebrow>
-        <div className="bg-fill-2 mt-3 flex h-3 overflow-hidden rounded-full" role="img" aria-label={`${stats.traded} traded, ${stats.passed} passed`}>
-          <span className="bg-info h-full" style={{ width: `${(stats.traded / stats.rounds) * 100}%` }} />
-          <span className="bg-restraint h-full" style={{ width: `${(stats.passed / stats.rounds) * 100}%` }} />
-        </div>
-        <div className="mt-2.5 flex flex-wrap items-center gap-x-5 gap-y-1 text-sm">
-          <span className="text-ink-lo flex items-center gap-1.5">
-            <span className="bg-info h-2 w-2 rounded-full" aria-hidden /> traded {stats.traded}
-          </span>
-          <span className="text-ink-lo flex items-center gap-1.5">
-            <span className="bg-restraint h-2 w-2 rounded-full" aria-hidden /> passed {stats.passed}
-          </span>
-        </div>
-        <p className="text-ink-dim mt-3 max-w-prose text-sm leading-relaxed">
-          Passing every chart scores a mean 61st percentile, so restraint is a real baseline rather
-          than an absence of a decision. The interesting question is not how often you pass — it is
-          whether the charts you traded beat the ones you stood aside on.
-        </p>
-      </Panel>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <section className="border-line bg-surface-2 rounded-3xl border p-5 md:p-6">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="eyebrow text-ink-dim">
+              <Term id="rating">Rating</Term>
+            </h2>
+            {placed && <span className="numeral text-ink-hi text-lg font-semibold">{Math.round(rating.rating!)}</span>}
+          </div>
+          <div className="mt-3">
+            {progress ? <DivisionBadge division={progress.division} size="lg" /> : <DivisionBadge division={null} placing={roundsToPlacement(rating.attempts)} size="lg" />}
+          </div>
+          {progress && (
+            <>
+              <ProgressBar value={progress.progress} max={1} tone="gold" size="sm" className="mt-4" label="Progress to the next division" />
+              <p className="text-ink-dim mt-2 text-xs">{progress.next ? `Next: ${progress.next.name}` : 'The top of the ladder.'}</p>
+            </>
+          )}
+          {ratingSeries.length >= 2 ? (
+            <div className="mt-5">
+              <Sparkline values={ratingSeries} width={520} height={72} tone="gold" className="h-18 w-full" />
+              <div className="text-ink-dim mt-1 flex justify-between text-mini">
+                <span>{ratingSeries.length} rated charts ago</span>
+                <span>now</span>
+              </div>
+            </div>
+          ) : (
+            <p className="text-ink-lo mt-4 text-sm">
+              {viewer.userId ? 'Your rating line starts with your first rated chart.' : 'Sign in to get a rating.'}
+            </p>
+          )}
+        </section>
 
-      {/* §4.7, first of the two diagnostics: it is the one with evidence behind it, and unlike the
-          style fingerprint it starts saying something after thirty rounds rather than a hundred
-          and fifty. */}
+        <section className="border-line bg-surface-2 rounded-3xl border p-5 md:p-6">
+          <h2 className="eyebrow text-ink-dim">Recent scores</h2>
+          {series.length >= 2 ? (
+            <>
+              <div className="numeral text-ink-max mt-3 text-4xl font-semibold">{Math.round(series[series.length - 1] * 100)}</div>
+              <div className="text-ink-dim text-xs">your latest chart</div>
+              <Sparkline
+                values={series.map((v) => v * 100)}
+                width={520}
+                height={72}
+                tone={stats.meanPercentile !== null ? scoreTone(stats.meanPercentile * 100) : 'neutral'}
+                className="mt-4 h-18 w-full"
+              />
+              <div className="text-ink-dim mt-1 flex justify-between text-mini">
+                <span>{series.length} charts ago</span>
+                <span>latest</span>
+              </div>
+            </>
+          ) : (
+            <p className="text-ink-lo mt-3 text-sm">A couple more charts and your trend appears here.</p>
+          )}
+        </section>
+      </div>
+
       <CalibrationCurve forecasts={forecasts} />
-
-      {/* §5.12. Placed after the traded/passed split because it only speaks about charts you traded,
-          and because the split is the thing that decides how many of those there are. */}
       <StyleProfile rounds={styleRounds} />
-
-      <Panel tone="inset" pad="md" className="mt-3">
-        <Eyebrow>Not here yet</Eyebrow>
-        <p className="text-ink-lo mt-2 max-w-prose text-sm leading-relaxed">
-          Per-theme ratings, your three weakest axes and an edge report all need scoring engines
-          that do not exist yet. Until they do there is nothing honest to put here.{' '}
-          <Link href="/tapes" className="text-brand-ink underline underline-offset-4">
-            Play more charts
-          </Link>
-          .
-        </p>
-      </Panel>
     </>
   );
 }
 
-function Tile({
-  label,
-  value,
-  sub,
-  suffix,
-  series,
-  locked,
-  index,
-}: {
-  label: string;
-  value: number | null;
-  sub?: string;
-  suffix?: string;
-  series?: number[];
-  locked?: boolean;
-  index: number;
-}) {
+function Tile({ label, value, sub, index }: { label: React.ReactNode; value: string; sub: string; index: number }) {
   return (
-    <Panel pad="md" style={{ '--i': index } as React.CSSProperties}>
-      <div className="flex items-start justify-between gap-3">
-        <Eyebrow>{label}</Eyebrow>
-        {locked && <Icon name="lock" size={14} className="text-ink-dim shrink-0" />}
-      </div>
-      <div className="mt-2 flex items-end justify-between gap-3">
-        <div className={cx('numeral font-semibold', locked ? 'text-ink-dim text-2xl' : 'text-ink-max text-display-sm')}>
-          {value === null ? '—' : value}
-          {value !== null && suffix && <span className="text-ink-dim text-xl">{suffix}</span>}
-        </div>
-        {series && series.length > 1 && (
-          <Sparkline values={series} tone="info" width={92} height={28} className="mb-1.5 shrink-0" />
-        )}
-      </div>
-      {sub && <div className="text-ink-dim mt-1.5 text-sm">{sub}</div>}
-    </Panel>
+    <div className="border-line bg-surface-2 rounded-2xl border p-5" style={{ '--i': index } as React.CSSProperties}>
+      <div className="text-ink-dim text-xs font-medium">{label}</div>
+      <div className="numeral text-ink-max mt-2 text-3xl font-semibold">{value}</div>
+      <div className="text-ink-dim mt-1 text-xs">{sub}</div>
+    </div>
   );
 }
+

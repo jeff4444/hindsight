@@ -698,3 +698,24 @@ export async function listMyMatches(viewer: Viewer, limit = 12): Promise<MyMatch
     ];
   });
 }
+
+/**
+ * The overall rating before each rated chart, oldest first — the line on the progress page.
+ *
+ * Read from `rounds.player_rating_at_attempt`, which is stored at issuance (it is what rules §8.3
+ * correlates against), so this is the rating as it actually was, not a reconstruction.
+ */
+export async function getRatingSeries(viewer: Viewer, limit = 60): Promise<number[]> {
+  if (!viewer.userId) return [];
+  const supabase = serviceClient();
+  const { data } = await supabase
+    .from('rounds')
+    .select('player_rating_at_attempt, committed_at')
+    .eq('user_id', viewer.userId)
+    .eq('rated', true)
+    .eq('superseded', false)
+    .not('player_rating_at_attempt', 'is', null)
+    .order('committed_at', { ascending: false })
+    .limit(limit);
+  return (data ?? []).map((row) => row.player_rating_at_attempt as number).reverse();
+}
