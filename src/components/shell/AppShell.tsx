@@ -46,8 +46,13 @@ const DESTINATIONS: { href: string; label: string; icon: IconName; match: string
   { href: routes.ranks(), label: 'Ranks', icon: 'trophy', match: ['/ranks'] },
 ];
 
+/**
+ * Routes that render on the full-bleed stage with no shell around them: the game's play surface,
+ * and the trading terminal (a session, or a market being opened). A session's review is a page and
+ * keeps the shell.
+ */
 export function isStage(pathname: string): boolean {
-  return pathname.startsWith('/play/');
+  return pathname.startsWith('/play/') || /^\/trade\/[^/]+\/?$/.test(pathname);
 }
 
 export function AppShell({

@@ -48,6 +48,30 @@ export const routes = {
     match: (id: string) => `/versus/${encodeURIComponent(id)}`,
   },
 
+  markets: (opts: { scenario?: string } = {}) => `/markets${q({ scenario: opts.scenario })}`,
+  portfolio: (tab?: 'main' | 'practice') => `/portfolio${q({ account: tab === 'practice' && 'practice' })}`,
+  strategies: {
+    index: '/strategies',
+    show: (code: string) => `/strategies/${encodeURIComponent(code.toLowerCase())}`,
+  },
+  leaderboard: (board?: 'all' | 'daily' | 'strategies') => `/leaderboard${q({ board: board !== 'all' && board })}`,
+
+  trade: {
+    /** The open session, or Markets if there is none. */
+    index: '/trade',
+    session: (id: string) => `/trade/${encodeURIComponent(id)}`,
+    review: (id: string) => `/trade/${encodeURIComponent(id)}/review`,
+    /** Open a new market and go to it. */
+    open: (market: { kind: 'random' } | { kind: 'pair'; symbol: string } | { kind: 'daily' } | { kind: 'scenario'; slug: string }, account?: 'main' | 'practice', showDates?: boolean) =>
+      `/trade/new${q({
+        market: market.kind,
+        symbol: market.kind === 'pair' ? market.symbol : undefined,
+        scenario: market.kind === 'scenario' ? market.slug : undefined,
+        account: account === 'practice' && 'practice',
+        dates: showDates && '1',
+      })}`,
+  },
+
   learn: {
     index: '/learn',
     rulebook: (anchor?: string) => `/learn/rulebook${anchor ? `#${anchor}` : ''}`,

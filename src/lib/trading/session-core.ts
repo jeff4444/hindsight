@@ -308,15 +308,16 @@ export function positionView(state: AccountState, market: Market): PositionView 
   if (qty === 0) return null;
   const c = converters(market);
   const unit = pow10(market.instrument.tickExp);
+  const tidy = (value: number) => Number(value.toFixed(market.instrument.priceDecimals + 4));
   return {
     side: qty > 0 ? 'long' : 'short',
     qty: c.qty(Math.abs(qty)),
-    avgPrice: (basis / qty) * unit,
+    avgPrice: tidy((basis / qty) * unit),
     markPrice: c.price(state.mark),
     unrealizedPnl: c.usd(state.unrealized),
     unrealizedPct: basis !== 0 ? state.unrealized / Math.abs(basis) : 0,
     notional: c.usd(Math.abs(qty) * state.mark),
-    liquidationPrice: state.liquidationPrice !== null ? state.liquidationPrice * unit : null,
+    liquidationPrice: state.liquidationPrice !== null ? tidy(state.liquidationPrice * unit) : null,
     openedAt: state.openTrip?.openedAt ?? null,
   };
 }

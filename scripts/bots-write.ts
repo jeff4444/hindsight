@@ -29,11 +29,12 @@ export async function recordBotSeries(
   if (accountError) throw new Error(`account for ${spec.code}: ${accountError.message}`);
 
   let equity = starting;
+  let recorded = 0;
   for (let i = 0; i < result.runs.length; i++) {
     const run = result.runs[i];
     const market = markets[i];
     const payload = finalizePayload(market, run.state, equity);
-    const { error } = await supabase.rpc('trade_record_bot_session', {
+    const { data, error } = await supabase.rpc('trade_record_bot_session', {
       p_account: accountId,
       p_chart: market.chartId,
       p_symbol: market.instrument.symbol,
@@ -44,7 +45,8 @@ export async function recordBotSeries(
       p_curve: payload.curve,
     });
     if (error) throw new Error(`${spec.code} on ${market.chartId}: ${error.message}`);
+    if (data === true) recorded += 1;
     equity = run.state.cash;
   }
-  console.log(`    recorded ${result.runs.length} sessions for ${spec.code}`);
+  console.log(`    ${spec.code}: ${recorded} sessions recorded, ${result.runs.length - recorded} already on the account`);
 }
