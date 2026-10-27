@@ -22,6 +22,12 @@ const eslintConfig = defineConfig([
       ],
     },
   },
+  {
+    // The browser walkthroughs run under plain Node with the preinstalled Playwright, which is
+    // resolved through NODE_PATH and so has to be required rather than imported.
+    files: ["e2e/**/*.cjs"],
+    rules: { "@typescript-eslint/no-require-imports": "off" },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:

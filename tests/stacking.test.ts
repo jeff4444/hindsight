@@ -52,6 +52,9 @@ const GUARDED = [
   'src/app/layout.tsx',
   'src/components/play/PlaySurface.tsx',
   'src/components/play/ChartFrame.tsx',
+  // The trading terminal holds its order lines the same way, in a z-10 layer over the canvas, and
+  // everything between them and <body> is in this file.
+  'src/components/trading/TerminalShell.tsx',
 ];
 
 /**
@@ -179,9 +182,10 @@ describe('the rails stay grabbable', () => {
   }
 
   it('guards every element in the documented ancestor chain', () => {
-    // If the chain ever grows a fifth element, this list has to grow with it. Stated as a test so
-    // that adding a wrapper around PlaySurface is a decision rather than an accident.
-    expect(GUARDED).toHaveLength(3);
+    // If either chain ever grows an element, this list has to grow with it. Stated as a test so
+    // that adding a wrapper around PlaySurface or TerminalShell is a decision rather than an
+    // accident. Three for the game's stage, plus the terminal (which shares the root layout).
+    expect(GUARDED).toHaveLength(4);
     const frame = readFileSync(
       join(process.cwd(), 'src/components/play/ChartFrame.tsx'),
       'utf8',

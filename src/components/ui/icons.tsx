@@ -84,7 +84,11 @@ export type IconName =
   | 'minus'
   | 'eye'
   | 'users'
-  | 'grid';
+  | 'grid'
+  // trading
+  | 'wallet'
+  | 'chart-line'
+  | 'bot';
 
 /** `s` is the stroke width, so a caller can thin the set down without redrawing it. */
 const GLYPHS: Record<IconName, (s: number) => ReactElement> = {
@@ -366,6 +370,26 @@ const GLYPHS: Record<IconName, (s: number) => ReactElement> = {
       <rect x="14" y="3" width="7" height="7" rx="1.5" strokeWidth={s} />
       <rect x="3" y="14" width="7" height="7" rx="1.5" strokeWidth={s} />
       <rect x="14" y="14" width="7" height="7" rx="1.5" strokeWidth={s} />
+    </>
+  ),
+
+  /* ------------------------------------------------------------ trading */
+
+  // Lucide's wallet: the Portfolio destination.
+  wallet: (s) => (
+    <path
+      d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"
+      strokeWidth={s}
+    />
+  ),
+  // An equity curve on its axes.
+  'chart-line': (s) => <path d="M3 3v16a2 2 0 0 0 2 2h16M7 16l4-5 4 3 5-7" strokeWidth={s} />,
+  // Lucide's bot: the schools, trading on their own.
+  bot: (s) => (
+    <>
+      <path d="M12 8V4H8" strokeWidth={s} />
+      <rect width="16" height="12" x="4" y="8" rx="2" strokeWidth={s} />
+      <path d="M2 14h2M20 14h2M15 13v2M9 13v2" strokeWidth={s} />
     </>
   ),
 };

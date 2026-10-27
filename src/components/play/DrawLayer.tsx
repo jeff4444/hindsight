@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { ChartHandle } from '../Chart';
+import type { ChartSurface } from '../chart/surface';
 import { TOOL_COLOUR, measureReadout } from '@/lib/toolOverlays';
 
 /**
@@ -57,7 +57,7 @@ export const FIB_LEVELS = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1] as const;
 const HIT_SLOP = 7;
 
 interface Props {
-  chart: React.RefObject<ChartHandle | null>;
+  chart: React.RefObject<ChartSurface | null>;
   /** Null when no tool is selected, which is when this layer is inert. */
   tool: DrawTool | null;
   drawings: Drawing[];
@@ -69,6 +69,8 @@ interface Props {
   /** Distance from entry to the placed stop, for the R readout. Null before one exists. */
   risk: number | null;
   onDelete: (id: number) => void;
+  /** Index units per candle, for the measure's bar count. The terminal's index is minutes. */
+  indexPerBar?: number;
 }
 
 interface Live {
@@ -103,6 +105,7 @@ export function DrawLayer({
   atr,
   risk,
   onDelete,
+  indexPerBar = 1,
 }: Props) {
   const layer = useRef<HTMLDivElement>(null);
   const svg = useRef<SVGSVGElement>(null);
@@ -421,7 +424,7 @@ export function DrawLayer({
             );
           } else if (drawing.tool === 'measure') {
             const read = measureReadout(drawing.from.price, drawing.to.price, atr, risk);
-            const spanned = Math.abs(drawing.to.index - drawing.from.index);
+            const spanned = Math.round(Math.abs(drawing.to.index - drawing.from.index) / indexPerBar);
             const label =
               `${read.delta >= 0 ? '+' : ''}${read.delta.toFixed(2)}  ` +
               `${read.atr >= 0 ? '+' : ''}${read.atr.toFixed(2)} ATR` +
@@ -464,7 +467,7 @@ export function DrawLayer({
 
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [chart, drawings, live, tool, atr, risk, hovered]);
+  }, [chart, drawings, live, tool, atr, risk, hovered, indexPerBar]);
 
   return (
     <div
