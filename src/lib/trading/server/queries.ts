@@ -9,7 +9,7 @@ import { BOT_VERSION } from '@/core/versions';
  * Everything the pages read about accounts, sessions and the field.
  *
  * Every reader here returns `null` (or an empty list) rather than throwing when its function or
- * table is missing — before migrations 0030–0032 are applied, or if the database is briefly away.
+ * table is missing — before migrations 0030–0033 are applied, or if the database is briefly away.
  * A board that is not there yet is an empty state, never an error page; the same rule
  * `src/lib/leaderboards.ts` set for the game's boards.
  */
@@ -278,19 +278,24 @@ export async function getDailyStanding(day: number, owner: string | null): Promi
   }
 }
 
-/** Has this owner already traded today's market? */
-export async function hasPlayedDaily(owner: string | null, day: number): Promise<boolean> {
-  if (!owner) return false;
+/**
+ * Where this owner is with today's market: not started, open, or finished.
+ *
+ * Today's board, and every school's result on today's market, stay hidden until the trader has
+ * *finished* it (§22.9): a session still open is trading the very market the board describes.
+ */
+export async function dailyStatus(owner: string | null, day: number): Promise<'none' | 'open' | 'closed'> {
+  if (!owner) return 'none';
   try {
     const { data, error } = await serviceClient()
       .from('trade_sessions')
-      .select('id, trade_accounts!inner(owner)')
+      .select('status, trade_accounts!inner(owner)')
       .eq('trade_accounts.owner', owner)
-      .eq('daily_day', day)
-      .limit(1);
-    return !error && Array.isArray(data) && data.length > 0;
+      .eq('daily_day', day);
+    if (error || !Array.isArray(data) || data.length === 0) return 'none';
+    return data.some((row) => (row as { status: string }).status === 'closed') ? 'closed' : 'open';
   } catch {
-    return false;
+    return 'none';
   }
 }
 

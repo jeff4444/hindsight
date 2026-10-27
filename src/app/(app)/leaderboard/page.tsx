@@ -1,14 +1,16 @@
 import { routes } from '@/lib/routes';
+import { currentViewer } from '@/lib/viewer';
 import { dailyNumber } from '@/lib/daily';
 import { formatPct, formatUsd } from '@/lib/trading/format';
 import {
   MIN_BOARD_SESSIONS,
+  dailyStatus,
   getDailyBoard,
   getLeaderboard,
   type BoardEntry,
   type DailyEntry,
 } from '@/lib/trading/server/queries';
-import { EmptyState, LinkTabs, PageHeader, Panel } from '@/components/ui';
+import { Button, EmptyState, LinkTabs, PageHeader, Panel } from '@/components/ui';
 import { DataTable, type Column } from '@/components/ui/data-table';
 import { Trader } from '@/components/leaderboard/Trader';
 
@@ -30,8 +32,12 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
   const board: Board = requested === 'daily' || requested === 'strategies' ? requested : 'all';
   const day = todayNumber();
 
+  // Today's board describes the market the trader may not have traded yet: it, and every school's
+  // result on it, opens only once their own session on it has closed (§22.9).
+  const viewer = await currentViewer();
+  const status = board === 'daily' ? await dailyStatus(viewer.userId ?? viewer.sessionId, day) : 'none';
   const overall = board === 'daily' ? null : await getLeaderboard('return', 100);
-  const daily = board === 'daily' ? await getDailyBoard(day, 100) : null;
+  const daily = board === 'daily' && status === 'closed' ? await getDailyBoard(day, 100) : null;
   const rows = board === 'strategies' ? (overall ?? []).filter((r) => r.kind === 'bot') : (overall ?? []);
 
   const columns: Column<BoardEntry>[] = [
@@ -72,7 +78,19 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
       />
       <Panel pad="none">
         {board === 'daily' ? (
-          daily === null ? (
+          status !== 'closed' ? (
+            <EmptyState
+              icon="lock"
+              title="Finish today’s market to see its board."
+              body="Everyone’s results on it — the schools’ included — would tell you how it goes. The board opens the moment your session closes."
+              action={
+                <Button variant="primary" href={status === 'open' ? routes.trade.index : routes.trade.open({ kind: 'daily' })}>
+                  {status === 'open' ? 'Resume today’s market' : 'Trade today’s market'}
+                </Button>
+              }
+              className="m-4"
+            />
+          ) : daily === null ? (
             <EmptyState icon="trophy" title="Today’s board is not available yet." className="m-4" />
           ) : (
             <DataTable columns={dailyColumns} rows={daily} rowKey={(r, i) => `${r.kind}-${r.handle ?? r.botCode}-${i}`} empty="Nobody has finished today’s market yet." />

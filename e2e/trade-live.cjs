@@ -3,7 +3,7 @@
  * page mid-session (the server holds the clock and the log, so nothing may be lost), end, and read
  * the review with the market's real identity and dates.
  *
- * Needs a running app with a database that has migrations 0030–0032 and at least a BTCUSDT chart.
+ * Needs a running app with a database that has migrations 0030–0033 and at least a BTCUSDT chart.
  * Locally: see README "Running the trading stack locally".
  *
  *   node e2e/trade-live.cjs [baseUrl] [screenshotDir]

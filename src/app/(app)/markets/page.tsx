@@ -8,7 +8,7 @@ import {
   getDailyStanding,
   getMarkets,
   getOpenSession,
-  hasPlayedDaily,
+  dailyStatus,
   untouchedAccount,
 } from '@/lib/trading/server/queries';
 import { Button, Chip, EmptyState, PageHeader, Panel, SectionHeader, Stat, cx } from '@/components/ui';
@@ -31,11 +31,11 @@ export default async function MarketsPage({ searchParams }: { searchParams: Prom
   const owner = viewer.userId ?? viewer.sessionId;
   const day = todayNumber();
 
-  const [account, open, markets, playedDaily, standing, scenarios] = await Promise.all([
+  const [account, open, markets, daily, standing, scenarios] = await Promise.all([
     getAccount(owner, 'main'),
     getOpenSession(owner),
     getMarkets(),
-    hasPlayedDaily(owner, day),
+    dailyStatus(owner, day),
     getDailyStanding(day, owner),
     listTapes().catch((): Tape[] => []),
   ]);
@@ -97,7 +97,7 @@ export default async function MarketsPage({ searchParams }: { searchParams: Prom
             One replay, identical for every trader today, ranked by return. The pair is revealed when you open it; the date
             when the day rolls over.
           </p>
-          {playedDaily ? (
+          {daily === 'closed' ? (
             <div className="flex flex-wrap items-center gap-4">
               {standing ? (
                 <>
@@ -115,6 +115,12 @@ export default async function MarketsPage({ searchParams }: { searchParams: Prom
               )}
               <Button variant="secondary" href={routes.leaderboard('daily')} className="ml-auto">
                 Today’s board
+              </Button>
+            </div>
+          ) : daily === 'open' ? (
+            <div>
+              <Button variant="primary" href={routes.trade.index}>
+                Resume today’s market
               </Button>
             </div>
           ) : (
