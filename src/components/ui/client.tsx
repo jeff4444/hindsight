@@ -432,13 +432,20 @@ export function Tooltip({
 
 /* -------------------------------------------------------------- Countdown */
 
-/** A live clock to a fixed instant. `DailyCard`'s reset time is currently static prose. */
+/**
+ * A live clock to a fixed instant.
+ *
+ * Blank until hydrated: the server and the browser read their own clocks, and whenever a second
+ * boundary fell between the two renders the digits disagreed and React threw a hydration error.
+ */
 export function Countdown({ to, className }: { to: number; className?: string }) {
+  const hydrated = useHydrated();
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, []);
+  if (!hydrated) return <span className={cx('numeral tabular-nums', className)}>–:––</span>;
 
   const left = Math.max(0, to - now);
   const h = Math.floor(left / 3_600_000);
