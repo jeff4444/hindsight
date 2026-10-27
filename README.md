@@ -44,6 +44,12 @@ sessions, the order-event log and its projections (0030), the functions that ope
 and finalise a session (0031), the leaderboards and statements (0032), and the scenario copy
 (0033). Nothing earlier is altered or dropped.
 
+After applying them to a live project, paste
+[`supabase/tests/trading_live_check.sql`](supabase/tests/trading_live_check.sql) into the SQL
+editor. It is one read-only `SELECT` and reports a row per check — tables, RLS and grants, every
+function and who may execute it, the sign-in claim, the markets, today's chart, the scenario copy,
+and whether the schools' accounts have been filled yet.
+
 ### The schools
 
 ```bash
