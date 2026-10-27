@@ -5,7 +5,9 @@ import type { Bar } from '@/core/bars';
 import type { Benchmark, PanelRun, SessionReview as Review, WireBar } from '@/lib/trading/types';
 import { formatPct, formatPrice, formatQty, formatReplayTime, formatUsd } from '@/lib/trading/format';
 import { personaFor } from '@/lib/panel';
-import { Chip, Panel, PersonaAvatar, Stat, cx } from '../ui';
+import { sessionCard } from '@/lib/share';
+import { Button, Chip, Panel, PersonaAvatar, Stat, cx } from '../ui';
+import { Icon } from '../ui/icons';
 import { DataTable, type Column } from '../ui/data-table';
 import { TerminalChart, type ChartMarker, type TerminalChartHandle } from './TerminalChart';
 import { EquityCurve } from './EquityCurve';
@@ -109,7 +111,10 @@ export function SessionReview({ review, actions }: { review: Review; actions?: R
                   : 'Real Binance price action.'))}
           </p>
         </div>
-        {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
+        <div className="flex flex-wrap gap-2">
+          {actions}
+          <CopyCard review={review} />
+        </div>
       </div>
 
       <Panel tone="hero" pad="md" className="grid gap-5 md:grid-cols-[1.1fr_2fr]">
@@ -229,5 +234,33 @@ function PanelRow({ run, active, onToggle }: { run: PanelRun; active: boolean; o
         </div>
       </button>
     </li>
+  );
+}
+
+/** The spoiler-free card (`src/lib/share.ts`), to the clipboard. */
+function CopyCard({ review }: { review: Review }) {
+  const [state, setState] = useState<'idle' | 'copied' | 'failed'>('idle');
+  const copy = async () => {
+    const card = sessionCard({
+      daily: review.daily,
+      symbol: review.identity.symbol,
+      returnPct: review.summary.returnPct,
+      trips: review.trips.map((trip) => trip.net),
+      maxDrawdown: review.summary.maxDrawdown,
+      bankrupt: review.summary.bankrupt,
+    });
+    try {
+      await navigator.clipboard.writeText(card);
+      setState('copied');
+    } catch {
+      setState('failed');
+    }
+    setTimeout(() => setState('idle'), 2000);
+  };
+  return (
+    <Button variant="ghost" onClick={() => void copy()}>
+      <Icon name={state === 'copied' ? 'check' : 'share'} size={15} />
+      {state === 'copied' ? 'Copied' : state === 'failed' ? 'Could not copy' : 'Copy result'}
+    </Button>
   );
 }

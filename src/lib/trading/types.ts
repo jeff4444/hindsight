@@ -187,6 +187,8 @@ export interface PanelRun {
 
 export interface SessionReview {
   sessionId: string;
+  /** The daily's number when this was today's market, so its card can be compared. */
+  daily: number | null;
   instrument: InstrumentView;
   identity: {
     symbol: string;

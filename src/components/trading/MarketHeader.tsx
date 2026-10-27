@@ -74,8 +74,10 @@ export function MarketHeader({
         {exit}
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-ink-max truncate text-base font-semibold tracking-tight">{instrument.display}</span>
-            <Chip size="sm">{instrument.venue}</Chip>
+            <span className="text-ink-max shrink-0 text-base font-semibold tracking-tight">{instrument.display}</span>
+            <span className="hidden sm:contents">
+              <Chip size="sm">{instrument.venue}</Chip>
+            </span>
             {purpose === 'practice' ? (
               <Chip size="sm" tone="info">
                 Practice
@@ -86,11 +88,11 @@ export function MarketHeader({
               </Chip>
             ) : null}
           </div>
-          <div className="text-ink-dim text-mini">
+          <div className="text-ink-dim text-mini truncate">
             Replay · {formatReplayTime(time, clock.revealed - 1)} · {formatElapsed(clock.revealed)}
           </div>
         </div>
-        <div className="ml-auto flex items-baseline gap-2 lg:ml-2">
+        <div className="ml-auto flex shrink-0 flex-col items-end sm:flex-row sm:items-baseline sm:gap-2 lg:ml-2">
           <span className={cx('numeral text-xl font-semibold', stats.up ? 'text-long-ink' : 'text-short-ink')}>
             <NumberRoll value={formatPrice(stats.last, instrument)} />
           </span>

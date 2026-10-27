@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { TIER_NAME, ordinal, percentileBar, shareCard } from '@/lib/share';
+import { TIER_NAME, ordinal, percentileBar, sessionCard, shareCard } from '@/lib/share';
 
 describe('the share card cannot leak the setup (§10.4)', () => {
   // §10.4's first property: "spoiler-free — encode percentile buckets, never the R-multiple or
@@ -88,5 +88,44 @@ describe('the card', () => {
     expect(ordinal(100)).toBe('100th');
     expect(ordinal(101)).toBe('101st');
     expect(ordinal(111)).toBe('111th');
+  });
+});
+
+describe('the session card', () => {
+  const daily = sessionCard({ daily: 412, symbol: 'BTC/USDT', returnPct: 0.02414, trips: [120.5, -40, 310], maxDrawdown: 0.0123 });
+
+  it('reads as the day, the return, a square per trade, and the count', () => {
+    expect(daily).toBe(['Hindsight #412 · Today’s market', '+2.41%', '🟩🟥🟩', '3 trades · 2 won · max drawdown 1.23%'].join('\n'));
+  });
+
+  it('cannot leak the market: no pair on a daily, no side, no price, no date', () => {
+    expect(daily).not.toMatch(/USDT|BTC|Binance/i);
+    expect(daily.toLowerCase()).not.toMatch(/long|short|buy|sell/);
+    expect(daily).not.toMatch(/\$/);
+    expect(daily).not.toMatch(/20\d\d|\d{4}-\d{2}-\d{2}/);
+    expect(daily).not.toMatch(/https?:\/\/|[<>]/);
+  });
+
+  it('names the pair on any other market, which the trader saw before trading', () => {
+    expect(sessionCard({ daily: null, symbol: 'ETH/USDT', returnPct: -0.005, trips: [-500], maxDrawdown: 0.006 }).split('\n')).toEqual([
+      'Hindsight · ETH/USDT replay',
+      '−0.50%',
+      '🟥',
+      '1 trade · 0 won · max drawdown 0.60%',
+    ]);
+  });
+
+  it('says so when nothing was traded, and when the account was liquidated', () => {
+    expect(sessionCard({ daily: 9, symbol: 'X', returnPct: 0, trips: [], maxDrawdown: 0 })).toBe(['Hindsight #9 · Today’s market', '0.00%', 'no trades'].join('\n'));
+    expect(sessionCard({ daily: null, symbol: 'X/USDT', returnPct: -1, trips: [-100_000], maxDrawdown: 1, bankrupt: true }).split('\n')[1]).toBe('−100.00% · liquidated');
+  });
+
+  it('caps the squares and counts the rest', () => {
+    const card = sessionCard({ daily: null, symbol: 'X/USDT', returnPct: 0.1, trips: Array.from({ length: 15 }, (_, i) => (i % 2 ? 1 : -1)), maxDrawdown: 0.02 });
+    expect(card.split('\n')[2]).toMatch(/^(🟩|🟥){12} \+3$/u);
+  });
+
+  it('adds the field rank on a daily when there is one', () => {
+    expect(sessionCard({ daily: 3, symbol: 'X', returnPct: 0.01, trips: [1], maxDrawdown: 0, beat: 0.82 }).split('\n')[1]).toBe('+1.00% · top 18%');
   });
 });

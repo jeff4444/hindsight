@@ -463,6 +463,7 @@ export interface ReviewOptions {
   embargoedUntil?: string | null;
   synthetic?: boolean;
   panel?: PanelRun[];
+  dailyDay?: number | null;
 }
 
 export function buildReview(record: SessionRecord, market: Market, state: AccountState, options: ReviewOptions): SessionReview {
@@ -480,6 +481,7 @@ export function buildReview(record: SessionRecord, market: Market, state: Accoun
   const ending = state.cash;
   return {
     sessionId: record.id,
+    daily: options.dailyDay ?? null,
     instrument: instrumentView(market),
     identity: {
       symbol: market.instrument.display,

@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 
 /**
  * The front door's frame: the mark, three links, and one call to action that changes with who is
- * looking. A returning player goes straight back to Today; a visitor gets "Play today's daily".
+ * looking. A returning trader goes straight to Markets; a visitor gets "Start trading".
  */
 export default async function MarketingLayout({ children }: { children: React.ReactNode }) {
   const viewer = await currentViewer();
@@ -25,11 +25,11 @@ export default async function MarketingLayout({ children }: { children: React.Re
             <Link href={routes.learn.index} className="text-ink-lo hover:text-ink-hi hidden h-10 items-center px-3 text-sm font-medium transition-colors sm:inline-flex">
               How it works
             </Link>
-            <Link href={routes.tapes.index()} className="text-ink-lo hover:text-ink-hi hidden h-10 items-center px-3 text-sm font-medium transition-colors md:inline-flex">
-              Tapes
+            <Link href={routes.strategies.index} className="text-ink-lo hover:text-ink-hi hidden h-10 items-center px-3 text-sm font-medium transition-colors md:inline-flex">
+              Strategies
             </Link>
             {signedIn ? (
-              <Button href={routes.today} variant="primary">
+              <Button href={routes.markets()} variant="primary">
                 Open Hindsight
               </Button>
             ) : (
@@ -37,8 +37,8 @@ export default async function MarketingLayout({ children }: { children: React.Re
                 <Button href={routes.signIn()} variant="ghost">
                   Sign in
                 </Button>
-                <Button href={routes.play.daily} variant="primary">
-                  Play today
+                <Button href={routes.trade.open({ kind: 'random' })} variant="primary">
+                  Start trading
                 </Button>
               </>
             )}
@@ -53,14 +53,14 @@ export default async function MarketingLayout({ children }: { children: React.Re
           <div>
             <Wordmark size="md" />
             <p className="text-ink-dim mt-3 max-w-sm text-sm leading-relaxed">
-              A game about reading charts, built on real historical prices with the names and dates hidden. Not
-              investment advice, and nothing here predicts anything.
+              Paper trading on replayed market history, at real prices with the dates held back until the close.
+              No real money changes hands. Not investment advice, and nothing here predicts anything.
             </p>
           </div>
           <nav className="grid grid-cols-2 gap-x-12 gap-y-2 text-sm sm:grid-cols-3" aria-label="Footer">
-            <Link href={routes.play.daily} className="text-ink-lo hover:text-ink-hi">Daily</Link>
-            <Link href={routes.play.hub} className="text-ink-lo hover:text-ink-hi">Every mode</Link>
-            <Link href={routes.tapes.index()} className="text-ink-lo hover:text-ink-hi">Tapes</Link>
+            <Link href={routes.markets()} className="text-ink-lo hover:text-ink-hi">Markets</Link>
+            <Link href={routes.strategies.index} className="text-ink-lo hover:text-ink-hi">Strategies</Link>
+            <Link href={routes.leaderboard()} className="text-ink-lo hover:text-ink-hi">Leaderboard</Link>
             <Link href={routes.learn.index} className="text-ink-lo hover:text-ink-hi">How it works</Link>
             <Link href={routes.learn.methods} className="text-ink-lo hover:text-ink-hi">Methods</Link>
             <Link href={routes.learn.rulebook()} className="text-ink-lo hover:text-ink-hi">Rulebook</Link>

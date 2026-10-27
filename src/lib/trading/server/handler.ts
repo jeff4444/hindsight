@@ -197,6 +197,7 @@ export async function reviewSession(supabase: SupabaseClient, sessionId: string,
     showDates: !embargoed,
     embargoedUntil: embargoed ? new Date(nextResetAt(now)).toISOString() : null,
     synthetic: meta.synthetic,
+    dailyDay: stored.dailyDay,
   });
 }
 

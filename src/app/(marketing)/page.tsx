@@ -1,129 +1,124 @@
 import Link from 'next/link';
 import { routes } from '@/lib/routes';
-import { MODES } from '@/lib/modes';
-import { PANEL } from '@/lib/panel';
+import { SCHOOLS } from '@/lib/trading/schools';
+import { FEE_SCHEDULE, MARGIN, STARTING_BALANCE_USDT } from '@/core/trading/costs';
+import { formatUsd } from '@/lib/trading/format';
 import { Button, PersonaAvatar, cx } from '@/components/ui';
-import { ChartArt } from '@/components/ui/ChartArt';
 import { Icon, type IconName } from '@/components/ui/icons';
-import { TryChart } from '@/components/marketing/TryChart';
+import { TerminalPreview } from '@/components/marketing/TerminalPreview';
 
 export const dynamic = 'force-dynamic';
 
 /**
  * The front door.
  *
- * It leads with the game itself — a chart you can call right here — because the loop is the
- * pitch and no paragraph about it competes. Then, in order: how a round goes, how scoring works
- * in one picture, the Panel, the ways to play, and one short promise about honesty with a door to
- * the full methods. The old page was eight bands of the same template arguing with its reader;
- * this one shows them.
+ * It leads with the terminal, because a trading platform is the pitch and no paragraph about one
+ * competes with seeing it. Then, in order: how a session goes, what trading here costs (the
+ * schedule itself, read from the constants the simulator charges), the schools trading beside
+ * you, the ways into a market, and the promises that keep a replay honest.
  */
 export default function LandingPage() {
+  const starting = formatUsd(STARTING_BALANCE_USDT, { decimals: 0 });
   return (
     <div className="overflow-hidden">
       {/* Hero */}
-      <section className="mx-auto grid max-w-6xl items-center gap-10 px-5 pt-14 pb-20 md:pt-20 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-14">
+      <section className="mx-auto grid max-w-6xl items-center gap-10 px-5 pt-14 pb-20 md:pt-20 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:gap-14">
         <div>
-          <div className="eyebrow text-gold-ink">A daily game about reading charts</div>
-          <h1 className="font-display text-ink-max mt-4 text-[3.25rem] leading-[0.98] md:text-7xl">
-            Every chart has already happened.
-          </h1>
+          <div className="eyebrow text-gold-ink">Paper trading on real market history</div>
+          <h1 className="font-display text-ink-max mt-4 text-[3.25rem] leading-[0.98] md:text-7xl">Trade the past like it is live.</h1>
           <p className="text-ink-lo mt-6 max-w-lg text-lg leading-relaxed md:text-xl">
-            Real markets, names and dates hidden. Call the trade, watch the next sixty hours play out, and see how your
-            call ranks against every trade you could have made.
+            Real Binance markets, replayed minute by minute at real prices. Place market, limit and stop orders from a{' '}
+            {starting} account, go long or short, and find out what your trading is worth in dollars.
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
-            <Button href={routes.play.daily} variant="primary" size="xl">
-              <Icon name="play" size={16} />
-              Play today&rsquo;s daily
+            <Button href={routes.trade.open({ kind: 'random' })} variant="primary" size="xl">
+              <Icon name="candle" size={16} />
+              Start trading
             </Button>
-            <Button href={routes.learn.index} variant="secondary" size="xl">
-              How it works
+            <Button href="/demo" variant="secondary" size="xl">
+              Try the terminal
             </Button>
           </div>
-          <p className="text-ink-dim mt-5 text-sm">Five charts · about six minutes · no account needed</p>
+          <p className="text-ink-dim mt-5 text-sm">No sign-up · {starting} of paper money · about four minutes a market</p>
         </div>
-        <TryChart />
+        <TerminalPreview />
       </section>
 
-      {/* How a round goes */}
+      {/* How a session goes */}
       <section className="border-line-faint bg-surface-1 border-y">
         <div className="mx-auto max-w-6xl px-5 py-20">
-          <h2 className="font-display text-ink-max max-w-2xl text-4xl leading-tight md:text-5xl">Read. Call. Reveal. Review.</h2>
+          <h2 className="font-display text-ink-max max-w-2xl text-4xl leading-tight md:text-5xl">Pick. Trade. Settle. Review.</h2>
           <div className="mt-10 grid gap-4 md:grid-cols-4">
-            <Step n={1} icon="eye" title="Read" body="Eighty hours of a real market. No ticker, no date, the price indexed to 100 — just the chart." />
-            <Step n={2} icon="arrow-up" title="Call" body="Long, short, or sit out. Set where you are wrong and where you take profit, in ATR and R." />
-            <Step n={3} icon="play" title="Reveal" body="Lock it in and the next sixty hours arrive one candle at a time. The future is fog until then." />
-            <Step n={4} icon="sparkle" title="Review" body="Your score, the best trade in hindsight, what the chart actually was, and what the Panel did." />
+            <Step n={1} icon="candle" title="Pick a market" body="A real pair from the Binance archive, with the history before it. The pair and prices are real; the date stays hidden." />
+            <Step n={2} icon="play" title="Trade the replay" body="Sixty hours of minutes stream in. Play, pause, speed up, step one candle. Order at any moment, with a take-profit and a stop attached." />
+            <Step n={3} icon="wallet" title="Settle like an exchange" body="Fills against the real minute bars, fees on every one, slippage on stops, margin checked on every order, liquidation if it runs out." />
+            <Step n={4} icon="chart-line" title="Review" body="The date, every trade in dollars, what the market offered in hindsight, and what each school did on the same tape." />
           </div>
         </div>
       </section>
 
-      {/* Scoring in one picture */}
+      {/* What it costs */}
       <section className="mx-auto grid max-w-6xl items-center gap-12 px-5 py-20 lg:grid-cols-2">
         <div>
-          <div className="eyebrow text-ink-dim">Scoring</div>
-          <h2 className="font-display text-ink-max mt-3 text-4xl leading-tight md:text-5xl">A good trade, not a lucky one.</h2>
+          <div className="eyebrow text-ink-dim">The mechanics</div>
+          <h2 className="font-display text-ink-max mt-3 text-4xl leading-tight md:text-5xl">Real orders, real costs.</h2>
           <p className="text-ink-lo mt-5 text-lg leading-relaxed">
-            One trade is mostly luck. So Hindsight ranks yours against all 98 trades that were possible on that exact
-            chart — both sides, seven stops, seven targets. Your score is how many of them you beat.
+            Every order fills the way an exchange would fill it against that minute&rsquo;s real candle: limits on touch, stops
+            on the wick with slippage, gaps at the worse price. When a candle could have hit your stop and your target, the
+            stop gets it.
           </p>
           <p className="text-ink-lo mt-4 text-lg leading-relaxed">
-            Win with a reckless bracket and it shows. Lose with a sound one and that shows too. Sitting out is scored like
-            any trade — and on most charts, it ranks well.
+            Nothing is free. Commission is charged on every fill, and a tight stop pays for it again and again.
           </p>
+          <Link href={routes.learn.rulebook('22-trading')} className="text-ink-hi decoration-gold-line hover:decoration-gold mt-5 inline-block underline underline-offset-4">
+            Every rule, written down
+          </Link>
         </div>
-        <ScoringPicture />
+        <CostSheet />
       </section>
 
-      {/* The Panel */}
+      {/* The schools */}
       <section className="border-line-faint bg-surface-1 border-y">
         <div className="mx-auto max-w-6xl px-5 py-20">
           <div className="grid gap-10 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-center">
             <div>
-              <div className="eyebrow text-ink-dim">The Panel</div>
-              <h2 className="font-display text-ink-max mt-3 text-4xl leading-tight md:text-5xl">Seven schools, one coin, no oracle.</h2>
+              <div className="eyebrow text-ink-dim">Strategies</div>
+              <h2 className="font-display text-ink-max mt-3 text-4xl leading-tight md:text-5xl">Seven schools and a coin, trading beside you.</h2>
               <p className="text-ink-lo mt-5 text-lg leading-relaxed">
-                After every chart, seven trading schools show what their published rules would have done — and they
-                disagree, because competent traders do. Beside them sits a coin flip. Beat them over enough charts and it
-                means something.
+                Each school of thought runs its published rules on its own {starting} account, on every market in the
+                library, with the same fees and the same fills as you. Beside them, a coin flip. Their equity curves are
+                public, and so is yours on the leaderboard.
               </p>
-              <Link href={routes.learn.methods} className="text-ink-hi decoration-gold-line hover:decoration-gold mt-5 inline-block underline underline-offset-4">
-                Meet the Panel
+              <Link href={routes.strategies.index} className="text-ink-hi decoration-gold-line hover:decoration-gold mt-5 inline-block underline underline-offset-4">
+                See how they are doing
               </Link>
             </div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {PANEL.map((persona) => (
-                <div key={persona.engine} className="border-line bg-surface-2 rounded-2xl border p-4">
+              {SCHOOLS.map(({ persona, spec }) => (
+                <Link
+                  key={spec.code}
+                  href={routes.strategies.show(spec.code)}
+                  className="press border-line bg-surface-2 hover:border-line-strong rounded-2xl border p-4 transition-colors"
+                >
                   <PersonaAvatar persona={persona} size={40} />
                   <div className="text-ink-max mt-3 text-sm font-semibold">{persona.name}</div>
                   <div className="text-ink-dim mt-1 line-clamp-3 text-xs leading-relaxed">{persona.style}</div>
-                </div>
+                </Link>
               ))}
             </div>
           </div>
         </div>
       </section>
 
-      {/* Modes */}
+      {/* Ways in */}
       <section className="mx-auto max-w-6xl px-5 py-20">
-        <div className="eyebrow text-ink-dim">Ways to play</div>
-        <h2 className="font-display text-ink-max mt-3 max-w-2xl text-4xl leading-tight md:text-5xl">One a day, or as many as you like.</h2>
+        <div className="eyebrow text-ink-dim">Markets</div>
+        <h2 className="font-display text-ink-max mt-3 max-w-2xl text-4xl leading-tight md:text-5xl">One market a day, or any pair you like.</h2>
         <div className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {MODES.map((mode) => (
-            <Link
-              key={mode.id}
-              href={mode.href}
-              className="press lift border-line bg-surface-2 hover:border-line-strong group flex flex-col rounded-2xl border p-5 transition-colors"
-            >
-              <span className={cx('grid h-10 w-10 place-items-center rounded-xl ring-1', mode.id === 'daily' ? 'bg-gold text-on-gold ring-gold' : 'bg-fill-2 text-ink-hi ring-line')}>
-                <Icon name={mode.icon} size={18} />
-              </span>
-              <span className="text-ink-max mt-4 font-semibold">{mode.name}</span>
-              <span className="text-ink-lo mt-1 text-sm leading-relaxed">{mode.tagline}</span>
-              <span className="numeral text-ink-dim mt-auto pt-4 text-xs">{mode.length}</span>
-            </Link>
-          ))}
+          <Way icon="sun" title="Today’s market" body="The same market for everyone, once. Its board opens when you finish." href={routes.trade.open({ kind: 'daily' })} gold />
+          <Way icon="shuffle" title="Random market" body="Any pair, any stretch of its history. The fastest way in." href={routes.trade.open({ kind: 'random' })} />
+          <Way icon="candle" title="Pick a pair" body="BTC, ETH, SOL and the rest, including coins since delisted." href={routes.markets()} />
+          <Way icon="book" title="Practice" body="A second account that may show the dates. It is never ranked." href={routes.portfolio('practice')} />
         </div>
       </section>
 
@@ -135,24 +130,25 @@ export default function LandingPage() {
             <h2 className="font-display text-ink-max mt-3 text-4xl leading-tight">No hindsight, except the kind you earn.</h2>
           </div>
           <ul className="space-y-5">
-            <Promise title="The future never reaches your browser early." body="The candles you have not seen are sent only after you lock in. There is nothing to scroll ahead to and nothing to inspect." />
-            <Promise title="Real charts, including the ones that failed." body="Coins that were delisted are in the library too, so the charts do not quietly drift upward." />
-            <Promise title="The coin flip is on the scoreboard." body="Every method on the Panel is measured against it, in public. Most do not beat it." />
+            <Promise title="The future never reaches your browser early." body="The server keeps the replay clock. Your screen only ever has the minutes that have already printed, so there is nothing to scroll ahead to." />
+            <Promise title="The date waits for the closing bell." body="You trade the real pair at real prices, but the calendar date appears only when the session ends — so nobody can look up what happens next." />
+            <Promise title="Real markets, including the ones that failed." body="Coins that were delisted are in the library too, so the markets do not quietly drift upward." />
+            <Promise title="The coin flip is on the leaderboard." body="Every school trades against it in public. Whether any of them beats it is measured, not claimed." />
           </ul>
         </div>
       </section>
 
       {/* Final call */}
       <section className="mx-auto max-w-6xl px-5 py-24 text-center">
-        <h2 className="font-display text-ink-max mx-auto max-w-2xl text-5xl leading-tight md:text-6xl">Today&rsquo;s daily is waiting.</h2>
-        <p className="text-ink-lo mt-4 text-lg">Five charts. Same for everyone. About six minutes.</p>
+        <h2 className="font-display text-ink-max mx-auto max-w-2xl text-5xl leading-tight md:text-6xl">Your {starting} is waiting.</h2>
+        <p className="text-ink-lo mt-4 text-lg">Paper money, real markets, every trade in dollars.</p>
         <div className="mt-8 flex justify-center">
-          <Button href={routes.play.daily} variant="primary" size="xl">
-            <Icon name="play" size={16} />
-            Play today&rsquo;s daily
+          <Button href={routes.trade.open({ kind: 'random' })} variant="primary" size="xl">
+            <Icon name="candle" size={16} />
+            Start trading
           </Button>
         </div>
-        <p className="text-ink-dim mt-4 text-sm">No account needed. Sign in later and everything comes with you.</p>
+        <p className="text-ink-dim mt-4 text-sm">No account needed. Sign in later and your balance comes with you.</p>
       </section>
     </div>
   );
@@ -173,6 +169,18 @@ function Step({ n, icon, title, body }: { n: number; icon: IconName; title: stri
   );
 }
 
+function Way({ icon, title, body, href, gold }: { icon: IconName; title: string; body: string; href: string; gold?: boolean }) {
+  return (
+    <Link href={href} className="press lift border-line bg-surface-2 hover:border-line-strong group flex flex-col rounded-2xl border p-5 transition-colors">
+      <span className={cx('grid h-10 w-10 place-items-center rounded-xl ring-1', gold ? 'bg-gold text-on-gold ring-gold' : 'bg-fill-2 text-ink-hi ring-line')}>
+        <Icon name={icon} size={18} />
+      </span>
+      <span className="text-ink-max mt-4 font-semibold">{title}</span>
+      <span className="text-ink-lo mt-1 text-sm leading-relaxed">{body}</span>
+    </Link>
+  );
+}
+
 function Promise({ title, body }: { title: string; body: string }) {
   return (
     <li className="flex gap-4">
@@ -187,57 +195,35 @@ function Promise({ title, body }: { title: string; body: string }) {
   );
 }
 
-/**
- * Scoring, drawn: 98 outcomes sorted worst to best, the player's marked, par in the middle, the
- * best in hindsight in gold. A static illustration of the strip the review shows after every chart.
- */
-function ScoringPicture() {
-  const values = Array.from({ length: 98 }, (_, i) => {
-    const t = i / 97;
-    return t < 0.55 ? -1 + t * 0.6 : (t - 0.55) * 7 - 0.5 + (t > 0.9 ? (t - 0.9) * 25 : 0);
-  });
-  const max = Math.max(...values.map(Math.abs));
-  const you = 71;
+/** The fee and margin schedule, as the simulator charges it. */
+function CostSheet() {
+  const pct = (bps: number) => `${(bps / 100).toFixed(2)}%`;
+  const rows: { label: string; value: string; note: string }[] = [
+    { label: 'Starting balance', value: formatUsd(STARTING_BALANCE_USDT, { decimals: 0 }), note: 'Paper money, for every account' },
+    { label: 'Maker fee', value: pct(FEE_SCHEDULE.makerBps), note: 'Binance spot, published' },
+    { label: 'Taker fee', value: pct(FEE_SCHEDULE.takerBps), note: 'Binance spot, published' },
+    { label: 'Spread', value: `${FEE_SCHEDULE.halfSpreadBps * 2} bp`, note: 'Market orders cross it' },
+    { label: 'Stop slippage', value: `${FEE_SCHEDULE.stopSlippageBps} bp`, note: 'A stop fills as a market order' },
+    { label: 'Buying power', value: `${MARGIN.maxGrossLeverage}× equity`, note: 'Long or short' },
+    { label: 'Liquidation', value: `${MARGIN.maintenanceRatio * 100}% margin`, note: `Forced close, ${pct(MARGIN.liquidationFeeBps)} fee` },
+  ];
   return (
     <div className="border-line bg-surface-2 rounded-3xl border p-6">
       <div className="flex items-baseline justify-between">
-        <span className="eyebrow text-ink-dim">Every possible trade</span>
-        <span className="numeral text-ink-dim text-xs">98 trades</span>
+        <span className="eyebrow text-ink-dim">Fee and margin schedule</span>
+        <span className="numeral text-ink-dim text-xs">{FEE_SCHEDULE.version}</span>
       </div>
-      <div className="relative mt-6 h-40">
-        <div className="border-line absolute inset-x-0 top-1/2 border-t" />
-        <div className="absolute inset-0 flex items-center gap-px">
-          {values.map((value, i) => (
-            <span key={i} className="relative flex h-full flex-1 items-center">
-              <span
-                className={cx('absolute inset-x-0 rounded-[1px]', i === 97 ? 'bg-gold' : value > 0 ? 'bg-long/70' : 'bg-short/55')}
-                style={value >= 0 ? { bottom: '50%', height: `${(Math.abs(value) / max) * 48}%` } : { top: '50%', height: `${(Math.abs(value) / max) * 48}%` }}
-              />
-            </span>
-          ))}
-        </div>
-        <div className="absolute inset-y-0" style={{ left: `${(you / 98) * 100}%` }}>
-          <div className="bg-ink-max absolute inset-y-0 w-[3px] rounded-full" />
-          <span className="text-ink-max absolute -top-5 -translate-x-1/2 text-xs font-semibold">You</span>
-        </div>
-        <div className="absolute inset-y-0" style={{ left: '50%' }}>
-          <div className="bg-ink-lo absolute inset-y-2 w-0.5 rounded-full" />
-          <span className="text-ink-lo absolute -bottom-5 -translate-x-1/2 text-xs">Par</span>
-        </div>
-      </div>
-      <div className="mt-8 flex items-center justify-between gap-4">
-        <div>
-          <div className="numeral text-long-ink text-5xl font-semibold">72</div>
-          <div className="text-ink-dim text-xs">your score — better than 72 of 100</div>
-        </div>
-        <div className="text-right">
-          <div className="numeral text-gold-ink text-2xl font-semibold">+6.4R</div>
-          <div className="text-ink-dim text-xs">best in hindsight</div>
-        </div>
-      </div>
-      <div className="mt-6 overflow-hidden rounded-xl opacity-70">
-        <ChartArt seed={4242} width={480} height={60} fog={0} />
-      </div>
+      <dl className="divide-line-faint mt-4 divide-y">
+        {rows.map((row) => (
+          <div key={row.label} className="flex items-baseline justify-between gap-4 py-3">
+            <dt>
+              <div className="text-ink-hi text-sm font-medium">{row.label}</div>
+              <div className="text-ink-dim text-xs">{row.note}</div>
+            </dt>
+            <dd className="numeral text-ink-max text-lg font-semibold">{row.value}</dd>
+          </div>
+        ))}
+      </dl>
     </div>
   );
 }
