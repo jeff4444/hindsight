@@ -25,7 +25,8 @@ export const dynamic = 'force-dynamic';
  * are real; the calendar date is held back until the session ends, so nobody can look up what
  * happens next (§22.9). Practice sessions may show the date, and never reach a leaderboard.
  */
-export default async function MarketsPage() {
+export default async function MarketsPage({ searchParams }: { searchParams: Promise<{ scenario?: string }> }) {
+  const { scenario: wanted } = await searchParams;
   const viewer = await currentViewer();
   const owner = viewer.userId ?? viewer.sessionId;
   const day = todayNumber();
@@ -53,6 +54,18 @@ export default async function MarketsPage() {
           </Button>
         }
       />
+
+      {wanted && scenarios.some((scenario) => scenario.slug === wanted) && (
+        <Panel tone="raised" className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
+          <div>
+            <div className="text-ink-max font-semibold">{scenarios.find((scenario) => scenario.slug === wanted)!.name} is a scenario now</div>
+            <div className="text-ink-dim text-sm">Tapes became scenarios: a market picked by what it was doing, traded like any other.</div>
+          </div>
+          <Button variant="secondary" href={routes.trade.open({ kind: 'scenario', slug: wanted })}>
+            Trade it
+          </Button>
+        </Panel>
+      )}
 
       {open && (
         <Panel tone="raised" glow="gold" className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
@@ -156,15 +169,17 @@ export default async function MarketsPage() {
       </section>
 
       {scenarios.length > 0 && (
-        <section className="flex flex-col gap-4">
+        <section id="scenarios" className="flex scroll-mt-6 flex-col gap-4">
           <SectionHeader eyebrow="Scenarios" title="Markets picked by what they were doing" />
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {scenarios.map((scenario) => (
               <Link
                 key={scenario.slug}
                 href={routes.trade.open({ kind: 'scenario', slug: scenario.slug })}
+                aria-current={scenario.slug === wanted ? 'true' : undefined}
                 className={cx(
                   'press bg-surface-2 border-line hover:border-line-strong group flex flex-col gap-2 rounded-xl border p-4 transition-colors',
+                  scenario.slug === wanted && 'ring-gold border-gold-line ring-2',
                 )}
               >
                 <div className="flex items-center justify-between">

@@ -69,13 +69,13 @@ export const metadata: Metadata = {
     default: 'Hindsight',
     template: '%s · Hindsight',
   },
-  description: 'A daily game about reading charts. Real markets with the names and dates hidden: call the trade, watch what came next, and see how it ranks against every trade you could have made.',
+  description: 'Paper trading on real market history. Real Binance markets replayed minute by minute at real prices, with market, limit and stop orders, real fees and margin, and the date held back until the close.',
   applicationName: 'Hindsight',
   openGraph: {
     type: 'website',
     siteName: 'Hindsight',
     title: 'Hindsight',
-    description: 'A daily game about reading charts. Real markets with the names and dates hidden: call the trade, watch what came next, and see how it ranks against every trade you could have made.',
+    description: 'Paper trading on real market history. Real Binance markets replayed minute by minute at real prices, with market, limit and stop orders, real fees and margin, and the date held back until the close.',
   },
   twitter: {
     card: 'summary_large_image',

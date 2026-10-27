@@ -702,7 +702,7 @@ export function Tabs<T extends string>({
 
 const THEME_OPTIONS: { value: ThemeSnapshot['pref']; label: string; hint: string }[] = [
   { value: 'system', label: 'System', hint: 'Follow your device' },
-  { value: 'light', label: 'Daylight', hint: 'Warm paper. The play screen stays dark.' },
+  { value: 'light', label: 'Daylight', hint: 'Warm paper. The terminal stays dark.' },
   { value: 'dark', label: 'Afterglow', hint: 'Ink and gold, everywhere' },
 ];
 

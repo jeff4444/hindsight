@@ -6,11 +6,11 @@ export default function ProfileNotFound() {
     <div className="mx-auto max-w-lg py-16">
       <EmptyState
         icon="signature"
-        title="No player with that handle"
+        title="No trader with that handle"
         body="Handles can be changed, so a link that used to work may point at a name nobody holds now."
         action={
-          <Button href={routes.today} variant="primary" size="lg">
-            Back to Today
+          <Button href={routes.markets()} variant="primary" size="lg">
+            Back to Markets
           </Button>
         }
       />

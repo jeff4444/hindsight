@@ -28,20 +28,20 @@ export default async function SignInPage({
 }: {
   searchParams: Promise<{ error?: string; next?: string }>;
 }) {
-  const { error, next = "/today" } = await searchParams;
+  const { error, next = "/markets" } = await searchParams;
   const failure = authError(error);
 
   return (
     <div data-stagger>
       <div style={{ "--i": 0 } as React.CSSProperties}>
-        <Eyebrow>Play first, sign in later</Eyebrow>
+        <Eyebrow>Trade first, sign in later</Eyebrow>
         <h1 className="font-display text-ink-max mt-2 text-4xl">
-          Keep your record.
+          Keep your account.
         </h1>
         <p className="text-ink-lo mt-3 text-base leading-relaxed">
-          Everything you have played on this browser comes with you — scores,
-          today&rsquo;s daily, all of it. Signing in adds a streak, a rating and
-          tapes of your own.
+          Everything you have traded on this browser comes with you — your
+          balance, your sessions, today&rsquo;s market, all of it. Signing in
+          keeps it on any device and puts you on the leaderboard.
         </p>
       </div>
 
@@ -169,11 +169,11 @@ export default async function SignInPage({
         style={{ "--i": 5 } as React.CSSProperties}
       >
         <TextLink
-          href={"/play/daily"}
+          href={"/markets"}
         >
-          Or just play
+          Or just start trading
         </TextLink>{" "}
-        — the daily and every tape are open without an account.
+        — every market is open without an account.
       </p>
     </div>
   );

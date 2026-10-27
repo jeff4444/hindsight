@@ -15,14 +15,14 @@ export default function MarketingError({ error, reset }: { error: Error & { dige
       <EmptyState
         icon="alert"
         title="That did not load"
-        body="Something went wrong with this page. The game itself is fine — you can go straight to it."
+        body="Something went wrong with this page. Your account is fine — you can go straight to the markets."
         action={
           <div className="flex flex-wrap items-center justify-center gap-2">
             <Button variant="secondary" size="lg" onClick={reset}>
               Try again
             </Button>
-            <Button href={routes.play.daily} variant="primary" size="lg">
-              Play today&rsquo;s daily
+            <Button href={routes.markets()} variant="primary" size="lg">
+              Go to Markets
             </Button>
           </div>
         }

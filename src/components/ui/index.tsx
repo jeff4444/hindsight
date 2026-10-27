@@ -20,9 +20,8 @@
 import type { CSSProperties, ReactNode } from "react";
 import Link from "next/link";
 import { Icon, type IconName } from "./icons";
-import { Indicator, NumberRoll } from "./kinetic";
+import { Indicator } from "./kinetic";
 import type { Persona, PersonaGlyph } from "@/lib/panel";
-import type { Division, DivisionId } from "@/core/divisions";
 
 export function cx(...parts: (string | false | null | undefined)[]): string {
   return parts.filter(Boolean).join(" ");
@@ -762,7 +761,7 @@ export function Sparkline({
 export function Gated({
   sample,
   min,
-  label = "rounds",
+  label = "sessions",
   children,
 }: {
   sample: number;
@@ -1359,62 +1358,6 @@ export function Disclosure({
   );
 }
 
-/* ------------------------------------------------------------- ScoreRing */
-
-/**
- * The Score, as a ring: how this trade ranked against every trade that was possible on the chart.
- *
- * The ring's colour is the score's band, not the trade's direction — a winning trade can score 40
- * and a losing one can score 70, and that gap is the lesson. Gold is reserved for the top decile.
- */
-export function scoreTone(score: number): Tone {
-  if (score >= 90) return "gold";
-  if (score >= 60) return "long";
-  if (score >= 35) return "neutral";
-  return "short";
-}
-
-export function ScoreRing({
-  score,
-  size = 132,
-  thickness = 8,
-  label = "Score",
-  roll,
-  className,
-}: {
-  /** 0–100, or null for a round with no score yet. */
-  score: number | null;
-  size?: number;
-  thickness?: number;
-  label?: string;
-  /** Spin the figure up from zero on mount, for a score being revealed. */
-  roll?: boolean;
-  className?: string;
-}) {
-  const tone = score === null ? "neutral" : scoreTone(score);
-  return (
-    <ProgressArc
-      value={score ?? 0}
-      max={100}
-      size={size}
-      thickness={thickness}
-      tone={tone}
-      label={score === null ? label : `${label} ${Math.round(score)} of 100`}
-      className={className}
-    >
-      <div className="flex flex-col items-center">
-        <span
-          className={cx("numeral leading-none font-semibold", TONE_INK[tone])}
-          style={{ fontSize: size * 0.34 }}
-        >
-          {score === null ? "–" : <NumberRoll value={Math.round(score)} rollIn={roll} />}
-        </span>
-        <span className="eyebrow text-ink-dim mt-1.5">{label}</span>
-      </div>
-    </ProgressArc>
-  );
-}
-
 /* ---------------------------------------------------------- PersonaAvatar */
 
 const PERSONA_GLYPHS: Record<PersonaGlyph, ReactNode> = {
@@ -1519,76 +1462,6 @@ export function PersonaAvatar({
         </span>
       )}
     </span>
-  );
-}
-
-/* --------------------------------------------------------- DivisionBadge */
-
-const DIVISION_TONE: Record<DivisionId, string> = {
-  paper: "text-ink-lo ring-line bg-fill-1",
-  retail: "text-ink-hi ring-line-strong bg-fill-2",
-  swing: "text-info-ink ring-info-line bg-info-bg",
-  desk: "text-long-ink ring-long-line bg-long-bg",
-  prop: "text-restraint-ink ring-restraint-line bg-restraint-bg",
-  fund: "text-gold-ink ring-gold-line bg-gold-bg",
-  wizard: "text-on-gold ring-gold bg-gold",
-};
-
-/** A division, named. `placing` shows the unplaced state with rounds to go. */
-export function DivisionBadge({
-  division,
-  placing,
-  size = "md",
-  className,
-}: {
-  division: Division | null;
-  /** Rounds left before placement, when not yet placed. */
-  placing?: number;
-  size?: "sm" | "md" | "lg";
-  className?: string;
-}) {
-  const box = {
-    sm: "h-6 px-2.5 text-mini gap-1.5",
-    md: "h-8 px-3 text-xs gap-2",
-    lg: "h-10 px-4 text-sm gap-2",
-  }[size];
-  if (!division) {
-    return (
-      <span className={cx("fog text-ink-lo border-line-strong inline-flex items-center rounded-full border border-dashed font-medium", box, className)}>
-        Placing{placing !== undefined && <span className="numeral text-ink-dim">· {placing} to go</span>}
-      </span>
-    );
-  }
-  return (
-    <span className={cx("inline-flex items-center rounded-full font-semibold ring-1", DIVISION_TONE[division.id], box, className)}>
-      <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden fill="currentColor">
-        <path d="M5 0l1.5 3.5L10 5 6.5 6.5 5 10 3.5 6.5 0 5l3.5-1.5z" />
-      </svg>
-      {division.name}
-    </span>
-  );
-}
-
-/* -------------------------------------------------------------- FogPanel */
-
-/**
- * The future, as a surface: a hatched block with a dashed "now" edge. For anything not yet known —
- * an empty tape, a locked figure, a chart still loading.
- */
-export function FogPanel({
-  label,
-  className,
-  children,
-}: {
-  label?: string;
-  className?: string;
-  children?: ReactNode;
-}) {
-  return (
-    <div className={cx("fog border-line relative overflow-hidden rounded-xl border border-dashed", className)}>
-      {label && <span className="numeral text-ink-dim absolute top-2.5 right-3 text-mini">{label}</span>}
-      {children}
-    </div>
   );
 }
 

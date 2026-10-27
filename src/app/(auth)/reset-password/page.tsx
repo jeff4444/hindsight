@@ -76,7 +76,7 @@ export default async function ResetPasswordPage({
       </form>
 
       <p className="text-ink-dim mt-8 text-sm" style={{ '--i': 3 } as React.CSSProperties}>
-        <TextLink href="/today">Skip for now</TextLink> — you are signed in either way, but the link
+        <TextLink href="/markets">Skip for now</TextLink> — you are signed in either way, but the link
         you followed will not work twice.
       </p>
     </div>

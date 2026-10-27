@@ -18,7 +18,7 @@
 /** Parsed against a base that cannot be reached, so escaping it is detectable and harmless. */
 const BASE = 'https://hindsight.invalid';
 
-export const DEFAULT_NEXT = '/today';
+export const DEFAULT_NEXT = '/markets';
 
 /** Where a password recovery has to land, whatever else the link asked for. */
 export const RECOVERY_NEXT = '/reset-password';

@@ -25,9 +25,9 @@ import { routes } from '@/lib/routes';
  * transitioned: the chart re-applies its range from a ResizeObserver, and an animating nav width
  * would fire that every frame.
  *
- * The play stage (`/play/…`) opts out entirely. During a round the chart owns the screen and the
- * only navigation that matters is the way out. The hub at `/play` is a destination like any other
- * and keeps the shell.
+ * A trading session opts out entirely: the terminal owns the screen and the only navigation that
+ * matters is the way out. Markets, where a session starts, is a destination like any other and
+ * keeps the shell.
  */
 
 export interface ViewerChip {
@@ -35,8 +35,6 @@ export interface ViewerChip {
   displayName: string | null;
   avatarSeed: number;
   avatarAccent: Accent;
-  perfectStreak: boolean;
-  streakLength: number;
 }
 
 const DESTINATIONS: { href: string; label: string; icon: IconName; match: string[] }[] = [
@@ -47,12 +45,11 @@ const DESTINATIONS: { href: string; label: string; icon: IconName; match: string
 ];
 
 /**
- * Routes that render on the full-bleed stage with no shell around them: the game's play surface,
- * and the trading terminal (a session, or a market being opened). A session's review is a page and
- * keeps the shell.
+ * Routes that render on the full-bleed stage with no shell around them: the trading terminal (a
+ * session, or a market being opened). A session's review is a page and keeps the shell.
  */
 export function isStage(pathname: string): boolean {
-  return pathname.startsWith('/play/') || /^\/trade\/[^/]+\/?$/.test(pathname);
+  return /^\/trade\/[^/]+\/?$/.test(pathname);
 }
 
 export function AppShell({
@@ -215,7 +212,7 @@ export function AppShell({
               seed={viewer.avatarSeed}
               accent={viewer.avatarAccent}
               size={20}
-              ring={viewer.perfectStreak ? 'gold' : 'accent'}
+              ring="accent"
             />
           ) : (
             <Icon name="user" size={19} />
@@ -250,7 +247,7 @@ function AccountMenu({ viewer, compact, active }: { viewer: ViewerChip; compact?
       seed={viewer.avatarSeed}
       accent={viewer.avatarAccent}
       size={compact ? 30 : 32}
-      ring={viewer.perfectStreak ? 'gold' : 'accent'}
+      ring="accent"
     />
   );
 

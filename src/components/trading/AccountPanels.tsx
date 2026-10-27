@@ -12,7 +12,7 @@ import type {
 } from '@/lib/trading/types';
 import { formatPct, formatPrice, formatQty, formatReplayTime, formatUsd } from '@/lib/trading/format';
 import { Button, Chip, cx, type Tone } from '../ui';
-import { Tabs } from '../ui/client';
+import { Tabs, Term } from '../ui/client';
 import { DataTable, type Column } from '../ui/data-table';
 
 /**
@@ -23,7 +23,7 @@ import { DataTable, type Column } from '../ui/data-table';
 const tone = (value: number): Tone => (value > 0 ? 'long' : value < 0 ? 'short' : 'neutral');
 const ink = (value: number) => (value > 0 ? 'text-long-ink' : value < 0 ? 'text-short-ink' : 'text-ink-hi');
 
-function Figure({ label, value, className, valueClassName }: { label: string; value: string; className?: string; valueClassName?: string }) {
+function Figure({ label, value, className, valueClassName }: { label: React.ReactNode; value: string; className?: string; valueClassName?: string }) {
   return (
     <div className={cx('min-w-0 shrink-0', className)}>
       <div className="eyebrow text-ink-dim truncate">{label}</div>
@@ -35,19 +35,21 @@ function Figure({ label, value, className, valueClassName }: { label: string; va
 export function AccountStrip({ account, className }: { account: AccountView; className?: string }) {
   return (
     <div className={cx('no-scrollbar flex items-center gap-6 overflow-x-auto px-4 py-2.5', className)}>
-      <Figure label="Equity" value={formatUsd(account.equity)} />
+      <Figure label={<Term id="equity" />} value={formatUsd(account.equity)} />
       <Figure
         label="Session P&L"
         value={`${formatUsd(account.sessionPnl, { sign: true })} (${formatPct(account.sessionReturn, { sign: true })})`}
         valueClassName={ink(account.sessionPnl)}
       />
-      <Figure label="Unrealized" value={formatUsd(account.unrealizedPnl, { sign: true })} valueClassName={ink(account.unrealizedPnl)} />
-      <Figure label="Realized" value={formatUsd(account.realizedPnl, { sign: true })} valueClassName={ink(account.realizedPnl)} />
-      <Figure label="Cash" value={formatUsd(account.cash)} />
-      <Figure label="Buying power" value={formatUsd(account.buyingPower)} />
+      <Figure label={<Term id="unrealized">Unrealized</Term>} value={formatUsd(account.unrealizedPnl, { sign: true })} valueClassName={ink(account.unrealizedPnl)} />
+      <Figure label={<Term id="realized">Realized</Term>} value={formatUsd(account.realizedPnl, { sign: true })} valueClassName={ink(account.realizedPnl)} />
+      <Figure label={<Term id="cash" />} value={formatUsd(account.cash)} />
+      <Figure label={<Term id="buyingPower" />} value={formatUsd(account.buyingPower)} />
       <Figure label="Fees" value={formatUsd(account.fees)} />
       <div className="min-w-[7rem] shrink-0">
-        <div className="eyebrow text-ink-dim">Margin used</div>
+        <div className="eyebrow text-ink-dim">
+          <Term id="margin" />
+        </div>
         <div className="mt-1.5 flex items-center gap-2">
           <div className="bg-fill-2 h-1.5 flex-1 overflow-hidden rounded-full">
             <div

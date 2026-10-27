@@ -8,7 +8,7 @@ describe('a sign-in cannot be redirected off-origin', () => {
   // honours hands an authenticated player to whoever wrote the link.
   it('keeps an ordinary path', () => {
     expect(safeNext('/tapes/abc')).toBe('/tapes/abc');
-    expect(safeNext('/play?tape=abc#top')).toBe('/play?tape=abc#top');
+    expect(safeNext('/markets?scenario=abc#top')).toBe('/markets?scenario=abc#top');
   });
 
   it('refuses an absolute URL, whatever the scheme', () => {
@@ -39,16 +39,16 @@ describe('a sign-in cannot be redirected off-origin', () => {
     expect(safeNext('home')).toBe(DEFAULT_NEXT);
   });
 
-  it('honours a caller that wants somewhere other than the daily', () => {
+  it('honours a caller that wants somewhere other than Markets', () => {
     expect(safeNext(null, RECOVERY_NEXT)).toBe(RECOVERY_NEXT);
   });
 
   it('builds a callback URL whose next is validated on the way out too', () => {
-    expect(callbackUrl('https://hindsight.app', '/versus/9')).toBe(
-      'https://hindsight.app/auth/callback?next=%2Fversus%2F9',
+    expect(callbackUrl('https://hindsight.app', '/trade/9')).toBe(
+      'https://hindsight.app/auth/callback?next=%2Ftrade%2F9',
     );
     expect(callbackUrl('https://hindsight.app', 'https://evil.example')).toBe(
-      'https://hindsight.app/auth/callback?next=%2Ftoday',
+      'https://hindsight.app/auth/callback?next=%2Fmarkets',
     );
   });
 });

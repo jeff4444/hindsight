@@ -4,19 +4,19 @@ import { BRAND_HEX, FAVICON, markSvg } from '@/components/ui/brand';
 /**
  * The share card for the site itself.
  *
- * Hard rule, and it is a product rule rather than a technical one: there is never a per-round or
- * per-daily OG image. The daily share card is plain Unicode with no image and no link precisely so
- * that sharing a result cannot leak the shape of a setup to somebody who has not played it yet. An
+ * Hard rule, and it is a product rule rather than a technical one: there is never a per-session or
+ * per-daily OG image. The session card is plain Unicode with no image and no link precisely so that
+ * sharing a result cannot leak the shape of a market to somebody who has not traded it yet. An
  * image keyed to `#day` would carry chart character in every pixel. If you are here to add one,
  * that is what you would be undoing.
  *
  * Everything below is deliberately generic: the mark, the promise, and a walk that is not any real
- * chart, running into the fog.
+ * market, running into what has not printed yet.
  */
 
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
-export const alt = 'Hindsight — every chart has already happened.';
+export const alt = 'Hindsight — trade the past like it is live.';
 
 // Literal hex throughout: satori resolves no custom properties and no oklch.
 const { canvas: CANVAS, ink: INK, inkLo: INK_LO, gold: GOLD, long: LONG, short: SHORT } = BRAND_HEX;
@@ -118,20 +118,20 @@ export default async function Image() {
             <span style={{ color: INK, fontSize: 38, fontFamily: display, letterSpacing: -0.5 }}>Hindsight</span>
           </div>
           <div style={{ color: INK, fontSize: 92, fontFamily: display, lineHeight: 1.0, letterSpacing: -1.5, marginTop: 44 }}>
-            Every chart has already happened.
+            Trade the past like it is live.
           </div>
           <div style={{ color: INK_LO, fontSize: 28, lineHeight: 1.4, marginTop: 22, maxWidth: 860 }}>
-            Call the trade, watch what came next, and see how it ranks against every trade you could have made.
+            Real markets, replayed minute by minute at real prices, with a $100,000 paper account.
           </div>
         </div>
 
         <div style={{ display: 'flex', position: 'absolute', left: 0, bottom: 0, width: chartWidth, height: chartHeight }}>
           <img src={dataUri(chartSvg(chartWidth, chartHeight))} width={chartWidth} height={chartHeight} alt="" />
           <div style={{ position: 'absolute', left: chartWidth * 0.68 + 18, top: 14, display: 'flex', color: INK_DIM, fontSize: 20 }}>
-            60h ahead
+            not yet printed
           </div>
           <div style={{ position: 'absolute', right: 72, bottom: 30, display: 'flex', color: GOLD, fontSize: 22, fontWeight: 600 }}>
-            A new daily every day
+            A new market every day
           </div>
         </div>
       </div>

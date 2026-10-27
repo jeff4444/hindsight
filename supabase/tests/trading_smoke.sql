@@ -1,4 +1,5 @@
--- A smoke test of 0030–0032 against a scratch database (never the live project):
+-- A smoke test of 0030–0033 against a fresh scratch database with every migration applied (never
+-- the live project, and not one the bot writer has already filled — it expects no school accounts):
 --
 --   psql -v ON_ERROR_STOP=1 -f supabase/tests/trading_smoke.sql
 --
@@ -129,6 +130,23 @@ begin
   if v_count <> 1 then raise exception 'curve wrong'; end if;
   select count(*) into v_count from public.trade_markets(null);
   if v_count <> 2 then raise exception 'markets should list the two real pairs, got %', v_count; end if;
+
+  -- Scenarios: the rule is applied to the real drift (a mirrored chart's stored drift has the other
+  -- sign), and a locked scenario is never dealt.
+  update public.charts set lead_in_drift_atr = -9
+  where id in ('00000000-0000-0000-0000-0000000000c1', '00000000-0000-0000-0000-0000000000c2');
+  insert into public.tapes (slug, name, blurb, drift_below, published) values ('smoke-drop', 'Smoke drop', 'x', -8, false);
+  insert into public.tapes (slug, name, blurb, locked_reason, published) values ('smoke-locked', 'Smoke locked', 'x', 'closed', false);
+  select * into r from public.trade_open_session('00000000-0000-0000-0000-00000000a003', null, 'main', 'scenario', null, 'smoke-drop', null, false, 100000000000, 15, 'n8', v_versions);
+  if r.chart_id <> '00000000-0000-0000-0000-0000000000c1' then
+    raise exception 'a scenario dealt a market outside its rule: %', r.chart_id;
+  end if;
+  begin
+    perform public.trade_open_session('00000000-0000-0000-0000-00000000a004', null, 'main', 'scenario', null, 'smoke-locked', null, false, 100000000000, 15, 'n9', v_versions);
+    raise exception 'a locked scenario was dealt';
+  exception when others then
+    if sqlerrm not like '%is not open%' then raise; end if;
+  end;
 
   -- Signing in: the anonymous accounts come with the session.
   insert into auth.users (id) values ('00000000-0000-0000-0000-00000000b003');

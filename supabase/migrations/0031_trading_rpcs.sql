@@ -106,6 +106,11 @@ begin
     if v_tape.visibility = 'private' and (p_user is null or p_user is distinct from v_tape.owner_id) then
       raise exception 'scenario % is private', p_scenario;
     end if;
+    -- A locked tape's rule reads the outcome (The Null Set is defined by how its charts end), so it
+    -- is never dealt; with its filter columns empty it would otherwise deal any market at all.
+    if v_tape.locked_reason is not null then
+      raise exception 'scenario % is not open', p_scenario;
+    end if;
     -- The tape's filter, over real charts. Drift was measured on the stored bars, so a mirrored
     -- chart's real drift is the opposite sign (the reflection is in log space).
     select c.* into v_chart from public.charts c

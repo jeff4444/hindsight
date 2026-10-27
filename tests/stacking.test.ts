@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { isStage } from '@/components/shell/AppShell';
 
 /**
  * The rails must stay grabbable.
@@ -40,20 +41,20 @@ import { describe, expect, it } from 'vitest';
  */
 
 /**
- * The ancestor chain, in order. Exactly four elements, which is the property being defended —
- * `PlaySurface` mounts under the root layout and opts out of `AppShell`, so nothing else comes
- * between `<body>` and the frame.
+ * The ancestor chain, in order: everything between `<body>` and the terminal's order-line layer.
+ * A session page renders inside the app layout and its template; `AppShell` sits between them too
+ * but returns its children bare on a stage, which the test below pins rather than scanning the
+ * shell's own chrome. The template already declines its entrance fade on a stage for this reason.
  *
- * `DrawLayer`, `TradeOverlay`, `layers.tsx` and `Toolbar` are deliberately absent: every one of
- * them is a sibling of the rail layer or lives outside the frame entirely, and guarding them would
- * ban the transforms the reveal is built out of.
+ * `DrawLayer`, `OrderLinesOverlay` and the ticket are deliberately absent: each is a sibling of the
+ * line layer or lives outside the frame entirely, and guarding them would ban the transforms their
+ * own animations are built out of.
  */
 const GUARDED = [
   'src/app/layout.tsx',
-  'src/components/play/PlaySurface.tsx',
-  'src/components/play/ChartFrame.tsx',
-  // The trading terminal holds its order lines the same way, in a z-10 layer over the canvas, and
-  // everything between them and <body> is in this file.
+  'src/app/(app)/layout.tsx',
+  'src/app/(app)/template.tsx',
+  'src/components/trading/LiveTerminal.tsx',
   'src/components/trading/TerminalShell.tsx',
 ];
 
@@ -142,7 +143,7 @@ function withoutControlStates(text: string): string {
     .join(' ');
 }
 
-describe('the rails stay grabbable', () => {
+describe('the order lines stay grabbable', () => {
   for (const file of GUARDED) {
     const source = readFileSync(join(process.cwd(), file), 'utf8');
 
@@ -182,69 +183,47 @@ describe('the rails stay grabbable', () => {
   }
 
   it('guards every element in the documented ancestor chain', () => {
-    // If either chain ever grows an element, this list has to grow with it. Stated as a test so
-    // that adding a wrapper around PlaySurface or TerminalShell is a decision rather than an
-    // accident. Three for the game's stage, plus the terminal (which shares the root layout).
-    expect(GUARDED).toHaveLength(4);
-    const frame = readFileSync(
-      join(process.cwd(), 'src/components/play/ChartFrame.tsx'),
-      'utf8',
-    );
-    // The frame box and the canvas box must remain the same rectangle: TradeOverlay's drag maths
-    // reads the layer's rect and hands the offset straight to `chart.yToPrice`.
-    expect(frame).toMatch(/relative overflow-hidden/);
-    expect(frame).toMatch(/<Chart[\s\S]*?className="absolute inset-0"/);
+    // If the chain ever grows an element, this list has to grow with it. Stated as a test so that
+    // adding a wrapper around TerminalShell is a decision rather than an accident.
+    expect(GUARDED).toHaveLength(5);
+  });
+
+  it('the shell steps aside on a session, and only on a session', () => {
+    const shell = readFileSync(join(process.cwd(), 'src/components/shell/AppShell.tsx'), 'utf8');
+    expect(shell).toMatch(/if \(isStage\(pathname\)\) return <>\{children\}<\/>;/);
+    expect(isStage('/trade/abc')).toBe(true);
+    expect(isStage('/trade/new')).toBe(true);
+    expect(isStage('/trade/abc/review')).toBe(false);
+    expect(isStage('/markets')).toBe(false);
   });
 });
 
 describe('the in-frame layers stay out of the way of the drag', () => {
   /**
-   * The other half of the rule, and the one the toolbox makes newly relevant.
-   *
-   * A layer may transform freely, but if it lies across the frame *while the rails are live* and
-   * takes pointer events, it cuts a dead stripe through a full-width drag target. So the frame has
-   * two tiers of layer and the z-index says which:
-   *
-   * - **Below z-40 — annotation.** Coexists with draggable rails, so it must be
-   *   `pointer-events-none`. The atmosphere wash, the hit flash, the hint pill, the watermark.
-   * - **z-40 and above — takeover.** Replaces the chart rather than annotating it, and only
-   *   renders in phases where `showRails` is false: the loading veil and the error panel, which
-   *   owns a Retry button and therefore *must* take the pointer.
-   *
-   * `DrawLayer` is the deliberate third case and lives outside this file: it sits at z-20 and takes
-   * the pointer only while an instrument is armed, which is a mode the player chose and — after
-   * T2 — one the frame visibly announces.
+   * The other half of the rule. A layer inside the frame may transform freely, but if it lies
+   * across the chart *while the order lines are live* and takes pointer events, it cuts a dead
+   * stripe through every drag target. So the full-bleed layers that do take the pointer — the
+   * closing card with its buttons and the loading veil — may only exist once there is nothing to
+   * drag: after the bell, or before the tape has loaded.
    */
-  const frame = readFileSync(join(process.cwd(), 'src/components/play/ChartFrame.tsx'), 'utf8');
+  const shell = readFileSync(join(process.cwd(), 'src/components/trading/TerminalShell.tsx'), 'utf8');
+  const overlay = readFileSync(join(process.cwd(), 'src/components/trading/OrderLinesOverlay.tsx'), 'utf8');
 
-  /** The z-index at which a layer stops annotating the chart and starts replacing it. */
-  const TAKEOVER = 40;
-
-  function zIndexOf(text: string): number | null {
-    const match = text.match(/(?:^|\s)z-(\d+)(?:\s|$)/);
-    return match ? Number(match[1]) : null;
-  }
-
-  it('every annotation layer in the frame is pointer-events-none', () => {
-    const offenders: string[] = [];
-    for (const { text, line } of literals(frame)) {
-      const z = zIndexOf(text);
-      if (z === null || z >= TAKEOVER) continue;
-      const fullBleed = /(?:^|\s)inset-0(?:\s|$)/.test(text);
-      if (fullBleed && !text.includes('pointer-events-none')) {
-        offenders.push(`ChartFrame.tsx:${line} — z-${z} "${text.slice(0, 70)}"`);
-      }
-    }
-    expect(offenders).toEqual([]);
+  it('the line layer is the canvas, rectangle for rectangle', () => {
+    // OrderLinesOverlay's drag maths reads its layer's rect and hands the offset straight to the
+    // chart's price scale, so the two boxes must stay the same one.
+    expect(shell).toMatch(/<TerminalChart[^>]*className="absolute inset-0"/);
+    expect(overlay).toMatch(/className="pointer-events-none absolute inset-0 z-10/);
   });
 
-  it('only the takeover layers accept the pointer, and only above the rails', () => {
-    // Stated positively so that demoting the error panel below z-40 — which would put a button on
-    // top of a live rail — fails here rather than in a bug report about a dead stripe.
-    const takeovers = literals(frame)
-      .filter(({ text }) => (zIndexOf(text) ?? 0) >= TAKEOVER)
-      .map(({ text }) => text);
-    expect(takeovers.length).toBeGreaterThan(0);
-    expect(frame).toMatch(/showRails && entry !== null/);
+  it('every full-bleed layer that takes the pointer appears only when nothing can be dragged', () => {
+    const lines = shell.split('\n');
+    const offenders: string[] = [];
+    for (const { text, line } of literals(shell)) {
+      if (!/(?:^|\s)absolute inset-0 z-\d+/.test(text) || text.includes('pointer-events-none')) continue;
+      const guard = lines.slice(Math.max(0, line - 3), line).join('\n');
+      if (!/\{closed && |\{!open && /.test(guard)) offenders.push(`TerminalShell.tsx:${line} — "${text.slice(0, 70)}"`);
+    }
+    expect(offenders).toEqual([]);
   });
 });

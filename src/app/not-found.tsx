@@ -21,10 +21,10 @@ export default function NotFound() {
         </div>
         <div className="numeral text-ink-dim mt-8 text-sm">404</div>
         <h1 className="font-display text-ink-max mt-1 text-4xl text-balance">There is no chart at this address.</h1>
-        <p className="text-ink-lo mt-3 text-base">The link is wrong or the page has moved. Nothing you played has been lost.</p>
+        <p className="text-ink-lo mt-3 text-base">The link is wrong or the page has moved. Nothing in your account has been lost.</p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-2.5">
-          <Button href={routes.play.daily} variant="primary" size="lg">
-            Play today&rsquo;s daily
+          <Button href={routes.markets()} variant="primary" size="lg">
+            Go to Markets
           </Button>
           <Button href="/" variant="secondary" size="lg">
             Go home

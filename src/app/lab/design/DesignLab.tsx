@@ -4,21 +4,17 @@ import { useState } from 'react';
 import {
   Button,
   Chip,
-  DivisionBadge,
   EmptyState,
   Eyebrow,
   Field,
-  FogPanel,
   Panel,
   PersonaAvatar,
-  ScoreRing,
   Segmented,
   Stat,
   Toggle,
 } from '@/components/ui';
 import { PalettePreference, Tabs, Term, ThemePreference } from '@/components/ui/client';
 import { Wordmark, Mark } from '@/components/ui/icons';
-import { DIVISIONS } from '@/core/divisions';
 import { PANEL } from '@/lib/panel';
 
 const SWATCHES = [
@@ -38,8 +34,8 @@ const SWATCHES = [
 ];
 
 export function DesignLab() {
-  const [rules, setRules] = useState('NTZ');
-  const [tab, setTab] = useState('daily');
+  const [type, setType] = useState('limit');
+  const [tab, setTab] = useState('positions');
   const [on, setOn] = useState(true);
 
   return (
@@ -66,62 +62,61 @@ export function DesignLab() {
 
       <section className="space-y-3">
         <Eyebrow>Type</Eyebrow>
-        <h1 className="font-display text-ink-max text-5xl md:text-6xl">In hindsight, short was the trade.</h1>
-        <p className="font-display text-ink-hi text-3xl italic">Clean read.</p>
+        <h1 className="font-display text-ink-max text-5xl md:text-6xl">Trade the past like it is live.</h1>
+        <p className="font-display text-ink-hi text-3xl italic">A clean session.</p>
         <h2 className="text-ink-max text-2xl font-semibold tracking-tight">Section heading in Inter</h2>
         <p className="text-ink max-w-prose text-base">
-          Body copy. Read the chart, call the trade, watch it play out. Your <Term id="score" /> ranks
-          your trade against every one you could have placed, and <Term id="par" /> is the typical one.
+          Body copy. Read the market, place the order, watch it fill. Your <Term id="equity" /> is what
+          the account is worth, and <Term id="buyingPower" /> is how much more it can take on.
         </p>
-        <p className="numeral text-ink-max text-display">+2.40R</p>
+        <p className="numeral text-ink-max text-display">+$2,412.80</p>
       </section>
 
       <section className="space-y-4">
         <Eyebrow>Actions</Eyebrow>
         <div className="flex flex-wrap items-center gap-3">
-          <Button variant="primary" size="lg" kbd="⏎">Lock in</Button>
-          <Button size="lg">Sit out</Button>
-          <Button variant="ghost" size="lg">Replay</Button>
-          <Button variant="danger">Leave session</Button>
-          <Button variant="primary" loading>Locking in</Button>
+          <Button variant="primary" size="lg" kbd="⏎">Buy 0.25 BTC</Button>
+          <Button size="lg">Cancel all</Button>
+          <Button variant="ghost" size="lg">Step</Button>
+          <Button variant="danger">End session</Button>
+          <Button variant="primary" loading>Placing</Button>
           <Button href="/lab/design" variant="subtle">A link</Button>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Chip>Naked · 1h · 90s</Chip>
+          <Chip>Binance spot</Chip>
           <Chip tone="long" dot>Long</Chip>
           <Chip tone="short" dot>Short</Chip>
-          <Chip tone="restraint">Sat out</Chip>
-          <Chip tone="gold">Best in hindsight</Chip>
-          <Chip tone="info" mono>3/5</Chip>
+          <Chip tone="info">Practice</Chip>
+          <Chip tone="gold">Ranked</Chip>
+          <Chip tone="info" mono>15m/s</Chip>
         </div>
         <Segmented
-          label="Rules"
-          value={rules}
-          onChange={setRules}
+          label="Order type"
+          value={type}
+          onChange={setType}
           size="md"
           options={[
-            { value: 'FD', label: 'Full Desk' },
-            { value: 'NT', label: 'No Tools' },
-            { value: 'NTZ', label: 'Naked' },
-            { value: 'NTVZ', label: 'Blackout' },
+            { value: 'market', label: 'Market' },
+            { value: 'limit', label: 'Limit' },
+            { value: 'stop', label: 'Stop' },
           ]}
         />
         <Tabs
-          label="Boards"
+          label="Account"
           value={tab}
           onChange={setTab}
           tabs={[
-            { value: 'daily', label: 'Daily', count: 1203 },
-            { value: 'ranked', label: 'Ranked' },
-            { value: 'tapes', label: 'Tapes' },
+            { value: 'positions', label: 'Positions', count: 1 },
+            { value: 'orders', label: 'Open orders', count: 2 },
+            { value: 'fills', label: 'Fills' },
           ]}
         />
       </section>
 
       <section className="grid gap-5 md:grid-cols-3">
-        <Panel pad="md" className="flex flex-col items-center gap-4">
-          <ScoreRing score={78} />
-          <div className="numeral text-long-ink text-3xl font-semibold">+1.40R</div>
+        <Panel pad="md" className="flex flex-col items-center justify-center gap-1">
+          <div className="numeral text-long-ink text-3xl font-semibold">+$1,402.16</div>
+          <div className="numeral text-long-ink text-sm">+1.40% on $100,000.00</div>
         </Panel>
         <Panel pad="md" className="space-y-4">
           <Eyebrow>The Panel</Eyebrow>
@@ -137,30 +132,31 @@ export function DesignLab() {
           </div>
         </Panel>
         <Panel pad="md" className="space-y-3">
-          <Eyebrow>Divisions</Eyebrow>
-          <div className="flex flex-wrap gap-2">
-            <DivisionBadge division={null} placing={18} />
-            {DIVISIONS.map((division) => (
-              <DivisionBadge key={division.id} division={division} />
-            ))}
-          </div>
+          <Eyebrow>Terms</Eyebrow>
+          <p className="text-ink-lo text-sm leading-relaxed">
+            <Term id="liquidation" />, <Term id="maker" /> and <Term id="taker" />, <Term id="oco" />.
+          </p>
         </Panel>
       </section>
 
       <section className="grid gap-5 md:grid-cols-3">
         <Panel pad="md" className="space-y-4">
-          <Stat label="Rating" value="1,532" delta={12} />
-          <Stat label="Score" value="78" tone="long" />
-          <Toggle on={on} onChange={setOn} label="Sound" hint="A tick per candle, a chime at the target." />
+          <Stat label="Equity" value="$101,402.16" delta={0.014} />
+          <Stat label="Win rate" value="62%" tone="long" />
+          <Toggle on={on} onChange={setOn} label="Take-profit" hint="Close the position at a price on the winning side." />
         </Panel>
         <Panel pad="md" className="space-y-4">
           <Field id="email" label="Email" placeholder="you@example.com" />
           <Mark size={48} tone="duo" />
         </Panel>
-        <FogPanel label="60h ahead" className="min-h-44" />
+        <Panel pad="md" className="space-y-2">
+          <Eyebrow>Fee schedule</Eyebrow>
+          <Stat label="Maker" value="0.10%" size="sm" />
+          <Stat label="Taker" value="0.10%" size="sm" />
+        </Panel>
       </section>
 
-      <EmptyState icon="tape" title="Make your first tape" body="A tape is a playlist of charts that share one rule." action={<Button variant="primary">New tape</Button>} />
+      <EmptyState icon="candle" title="No sessions yet." body="Open a market, place a trade, and it shows up here with its result and a full review." action={<Button variant="primary">Browse markets</Button>} />
     </main>
   );
 }

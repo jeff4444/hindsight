@@ -30,8 +30,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                 displayName: viewer.profile.displayName,
                 avatarSeed: viewer.profile.avatarSeed,
                 avatarAccent: viewer.profile.avatarAccent,
-                perfectStreak: false,
-                streakLength: 0,
               }
             : null
         }
