@@ -42,7 +42,7 @@ export default async function SettingsPage({
       <Panel pad="md" className="space-y-6 rounded-3xl md:p-6">
         <div>
           <h2 className="text-ink-max text-lg font-semibold">Appearance</h2>
-          <p className="text-ink-lo mt-1 text-sm">The play screen is always dark — charts read best on ink.</p>
+          <p className="text-ink-lo mt-1 text-sm">The trading terminal is always dark — charts read best on ink.</p>
         </div>
         <Setting label="Theme">
           <ThemePreference />
@@ -87,17 +87,17 @@ export default async function SettingsPage({
               </Button>
             </form>
             <p className="text-ink-dim mt-3 max-w-prose text-xs leading-relaxed">
-              Signing out starts a fresh anonymous session, so anything played afterwards on this browser stays
-              separate from this account.
+              Signing out starts a fresh anonymous account, so anything traded afterwards on this browser stays
+              separate from this one.
             </p>
           </Panel>
         </>
       ) : (
         <Panel pad="md" className="rounded-3xl md:p-6">
           <h2 className="text-ink-max text-lg font-semibold">Account</h2>
-          <p className="text-ink-lo mt-1 text-sm">Sign in to keep your record, get rated and make tapes.</p>
+          <p className="text-ink-lo mt-1 text-sm">Sign in to keep your balance and history on any device, and to appear on the leaderboard.</p>
           <Button href={routes.signIn(routes.settings)} variant="primary" className="mt-4">
-            Save your progress
+            Keep your account
           </Button>
         </Panel>
       )}

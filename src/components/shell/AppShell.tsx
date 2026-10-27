@@ -25,9 +25,9 @@ import { routes } from '@/lib/routes';
  * transitioned: the chart re-applies its range from a ResizeObserver, and an animating nav width
  * would fire that every frame.
  *
- * The play stage (`/play/…`) opts out entirely. During a round the chart owns the screen and the
- * only navigation that matters is the way out. The hub at `/play` is a destination like any other
- * and keeps the shell.
+ * A trading session opts out entirely: the terminal owns the screen and the only navigation that
+ * matters is the way out. Markets, where a session starts, is a destination like any other and
+ * keeps the shell.
  */
 
 export interface ViewerChip {
@@ -35,19 +35,21 @@ export interface ViewerChip {
   displayName: string | null;
   avatarSeed: number;
   avatarAccent: Accent;
-  perfectStreak: boolean;
-  streakLength: number;
 }
 
 const DESTINATIONS: { href: string; label: string; icon: IconName; match: string[] }[] = [
-  { href: routes.today, label: 'Today', icon: 'sun', match: ['/today'] },
-  { href: routes.play.hub, label: 'Play', icon: 'play', match: ['/play', '/versus'] },
-  { href: routes.tapes.index(), label: 'Tapes', icon: 'tape', match: ['/tapes'] },
-  { href: routes.ranks(), label: 'Ranks', icon: 'trophy', match: ['/ranks'] },
+  { href: routes.markets(), label: 'Markets', icon: 'candle', match: ['/markets', '/trade'] },
+  { href: routes.portfolio(), label: 'Portfolio', icon: 'wallet', match: ['/portfolio'] },
+  { href: routes.strategies.index, label: 'Strategies', icon: 'bot', match: ['/strategies'] },
+  { href: routes.leaderboard(), label: 'Leaderboard', icon: 'trophy', match: ['/leaderboard'] },
 ];
 
+/**
+ * Routes that render on the full-bleed stage with no shell around them: the trading terminal (a
+ * session, or a market being opened). A session's review is a page and keeps the shell.
+ */
 export function isStage(pathname: string): boolean {
-  return pathname.startsWith('/play/');
+  return /^\/trade\/[^/]+\/?$/.test(pathname);
 }
 
 export function AppShell({
@@ -56,7 +58,7 @@ export function AppShell({
   children,
 }: {
   viewer: ViewerChip | null;
-  /** The daily launcher, streamed in separately so the shell paints before the query lands. */
+  /** The account chip, streamed in separately so the shell paints before the query lands. */
   launcher?: ReactNode;
   children: React.ReactNode;
 }) {
@@ -66,7 +68,7 @@ export function AppShell({
   const isActive = (match: string[]) =>
     match.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
   const youActive =
-    isActive(['/you', '/settings']) || (viewer !== null && pathname === routes.profile(viewer.handle));
+    isActive(['/settings']) || (viewer !== null && pathname === routes.profile(viewer.handle));
 
   return (
     <div className="flex min-h-dvh flex-col md:flex-row">
@@ -79,7 +81,7 @@ export function AppShell({
 
       {/* Phone top bar */}
       <header className="border-line-faint bg-surface-0/95 sticky top-0 z-30 flex h-14 items-center justify-between border-b px-4 md:hidden">
-        <Link href={routes.today} aria-label="Hindsight, today">
+        <Link href={routes.markets()} aria-label="Hindsight, markets">
           <Wordmark size="sm" />
         </Link>
         <div className="flex items-center gap-2">
@@ -109,8 +111,8 @@ export function AppShell({
         className="border-line-faint bg-surface-1 sticky top-0 hidden h-dvh w-[4.75rem] shrink-0 flex-col border-r px-2 py-5 md:flex lg:w-60 lg:px-4"
       >
         <Link
-          href={routes.today}
-          aria-label="Hindsight, today"
+          href={routes.markets()}
+          aria-label="Hindsight, markets"
           className="mb-6 flex h-9 items-center justify-center lg:justify-start lg:px-2"
         >
           <Mark size={24} tone="duo" className="text-ink-max lg:hidden" />
@@ -175,9 +177,9 @@ export function AppShell({
             >
               <Icon name="user" size={18} className="text-ink-lo lg:hidden" />
               <span className="text-micro text-ink-lo font-medium lg:hidden">Sign in</span>
-              <span className="text-ink-hi hidden text-sm font-semibold lg:block">Save your progress</span>
+              <span className="text-ink-hi hidden text-sm font-semibold lg:block">Keep your account</span>
               <span className="text-ink-dim hidden text-xs leading-relaxed lg:block">
-                Keep your streak, get rated, make tapes. Everything you have played comes with you.
+                Sign in to keep your balance and history on any device, and to appear on the leaderboard.
               </span>
             </Link>
           )}
@@ -198,7 +200,7 @@ export function AppShell({
           <Tab key={tab.href} {...tab} active={isActive(tab.match)} />
         ))}
         <Link
-          href={viewer ? routes.you : routes.signIn()}
+          href={viewer ? routes.settings : routes.signIn()}
           aria-current={youActive ? 'page' : undefined}
           className={cx(
             'flex h-14 flex-1 flex-col items-center justify-center gap-1 transition-colors',
@@ -210,7 +212,7 @@ export function AppShell({
               seed={viewer.avatarSeed}
               accent={viewer.avatarAccent}
               size={20}
-              ring={viewer.perfectStreak ? 'gold' : 'accent'}
+              ring="accent"
             />
           ) : (
             <Icon name="user" size={19} />
@@ -245,10 +247,9 @@ function AccountMenu({ viewer, compact, active }: { viewer: ViewerChip; compact?
       seed={viewer.avatarSeed}
       accent={viewer.avatarAccent}
       size={compact ? 30 : 32}
-      ring={viewer.perfectStreak ? 'gold' : 'accent'}
+      ring="accent"
     />
   );
-  const streak = viewer.streakLength > 0 ? `${viewer.streakLength}-day streak` : 'No streak yet';
 
   return (
     <Popover
@@ -270,20 +271,8 @@ function AccountMenu({ viewer, compact, active }: { viewer: ViewerChip; compact?
               <span className="text-ink-hi block truncate text-sm font-medium">
                 {viewer.displayName ?? `@${viewer.handle}`}
               </span>
-              <span className={cx('block text-xs', viewer.perfectStreak ? 'text-gold-ink' : 'text-ink-dim')}>
-                {streak}
-              </span>
+              <span className="text-ink-dim block truncate text-xs">@{viewer.handle}</span>
             </span>
-            {viewer.streakLength > 0 && (
-              <span
-                className={cx(
-                  'numeral text-micro font-semibold lg:hidden',
-                  viewer.perfectStreak ? 'text-gold-ink' : 'text-ink-dim',
-                )}
-              >
-                {viewer.streakLength}d
-              </span>
-            )}
             <Icon name="chevron-down" size={14} className="text-ink-dim hidden lg:block" />
           </>
         )
@@ -297,10 +286,8 @@ function AccountMenu({ viewer, compact, active }: { viewer: ViewerChip; compact?
         </div>
       </div>
       <nav className="-mx-2 flex flex-col" aria-label="Account">
-        <MenuLink href={routes.you} icon="grid">Your progress</MenuLink>
+        <MenuLink href={routes.portfolio()} icon="wallet">Portfolio</MenuLink>
         <MenuLink href={routes.profile(viewer.handle)} icon="user">Public profile</MenuLink>
-        <MenuLink href={routes.versus.index} icon="swords">Your matches</MenuLink>
-        <MenuLink href={routes.tapes.index('yours')} icon="tape">Your tapes</MenuLink>
         <MenuLink href={routes.settings} icon="settings">Settings</MenuLink>
         <MenuLink href={routes.learn.index} icon="book">Learn</MenuLink>
         <form action="/auth/sign-out" method="post" className="border-line-faint mt-1.5 border-t pt-1.5">

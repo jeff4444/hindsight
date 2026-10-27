@@ -75,7 +75,7 @@ const ruleset = cache(async () => {
 export const metadata = {
   title: 'Rulebook',
   description:
-    'The whole ruleset, published: the tiers, the scoring, the achievable set, and the parts that are uncomfortable to state.',
+    'The whole ruleset, published: how markets are dealt, how orders fill, what is charged, and the parts that are uncomfortable to state.',
 };
 
 export default async function RulesPage() {

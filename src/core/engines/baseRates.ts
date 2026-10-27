@@ -164,6 +164,12 @@ export const BRACKET: Record<EngineCode, BaseRate> = {
  * built for a position held for months, and sixty candles is not months. Both REVERSION variants
  * invert: their native exit wins **more** often (54.5%) while making **less**, which is what taking
  * many small profits looks like when it is measured in R.
+ *
+ * > **Measured under a window bug, and due to be re-measured.** The replay that produced these rows
+ * > compared each close to an exit window that included its own bar, so Channel's Turtle exit almost
+ * > never fired, and averaged Connors' closes over the reveal only. Both are corrected in
+ * > `src/core/bots/exits.ts`; `npm run engines` reproduces this table under the corrected rules once
+ * > the database is reachable. The values stay as measured until then rather than being guessed.
  */
 export const NATIVE: Partial<Record<EngineCode, BaseRate>> = {
   CHANNEL: {

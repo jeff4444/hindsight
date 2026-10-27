@@ -21,14 +21,14 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         </Link>
 
         <div className="relative">
-          <p className="font-display text-ink-max max-w-md text-5xl leading-[1.05]">Every chart has already happened.</p>
+          <p className="font-display text-ink-max max-w-md text-5xl leading-[1.05]">Trade the past like it is live.</p>
           <p className="text-ink-lo mt-4 max-w-sm text-base leading-relaxed">
-            Read it, call it, watch it play out — and see how your trade ranks against every one you could have made.
+            Real markets replayed minute by minute at real prices — and a $100,000 paper account to trade them with.
           </p>
         </div>
 
         <div className="border-line relative overflow-hidden rounded-2xl border">
-          <ChartArt seed={20261024} width={520} height={140} fog={0.3} />
+          <ChartArt seed={20261024} width={520} height={140} fog={0} />
         </div>
       </aside>
 

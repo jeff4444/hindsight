@@ -44,7 +44,7 @@ export default async function CheckEmail({
         )}{' '}
         {reset
           ? 'Open it on this device. If there is no account on that address, no email was sent — and we will not say which.'
-          : 'Open it on this device, so the round history on this browser is the one that gets claimed.'}
+          : 'Open it on this device, so the account on this browser is the one that comes with you.'}
       </p>
       <p className="text-ink-dim mt-6 text-sm leading-relaxed">
         Nothing arrived? It can take a minute, and it sometimes lands in spam. Links last an hour
@@ -63,8 +63,8 @@ export default async function CheckEmail({
         <Button href={reset ? '/forgot-password' : routes.signIn()} variant="ghost" size="lg">
           Use a different address
         </Button>
-        <Button href={routes.play.daily} variant="ghost" size="lg">
-          Keep playing
+        <Button href={routes.markets()} variant="ghost" size="lg">
+          Keep trading
         </Button>
       </div>
     </div>

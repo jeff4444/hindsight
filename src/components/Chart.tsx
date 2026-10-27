@@ -29,8 +29,10 @@ import { DECISION_TF, timeframePhase, timeframePlan } from '@/lib/timeframe';
  * refers to changes the instant the resolution does — index 40 is hour 40 at the display tier
  * and hour 3⅓ at one minute — so a view expressed in indices silently means something
  * different after every switch. Hours are invariant, every tier divides sixty, and the
- * conversion is a single multiply. The camera in src/lib/camera.ts works in these units too,
- * and never has to know what resolution is on screen.
+ * conversion is a single multiply.
+ *
+ * Since the game was retired this chart serves only `/lab/geometry`; the trading terminal draws
+ * with `TerminalChart`.
  */
 export interface LogicalRange {
   from: number;

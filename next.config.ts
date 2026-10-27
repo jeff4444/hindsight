@@ -3,63 +3,33 @@ import type { NextConfig } from "next";
 /**
  * Old URLs, kept working.
  *
- * The redesign moved every play mode from a query string to a path (`/play?mode=tape&tape=chop`
- * became `/play/tape/chop`) and renamed four destinations. Links already in the wild — a duel sent
- * last week, a bookmarked tape — redirect rather than 404. Query values carry through to the
- * destination automatically, so a legacy `tier=` still reaches the tape page that reads it.
+ * Hindsight was a chart-reading game before it was a trading platform. Its pages are gone, and
+ * every link to them already in the wild — a bookmarked daily, a tape sent to a friend, a duel —
+ * lands on the page that does that job now rather than on a 404. A tape became a scenario, so a
+ * tape link opens Markets with that scenario picked out.
  *
- * The renames are permanent. The `/play?mode=…` mappings are not marked permanent, because `/play`
- * itself is now the hub and a browser that cached a 308 for it would never see the hub again.
+ * The renames that predate the platform stay permanent. The retirements are not: these paths are
+ * free to mean something again, and a browser that cached a 308 for one would never find out.
  */
-const PLAY_MODES: [mode: string, destination: string][] = [
-  ["daily", "/play/daily"],
-  ["ranked", "/play/ranked"],
-  ["storm", "/play/storm"],
-  ["streak", "/play/survival"],
+const RETIRED: [source: string, destination: string][] = [
+  ["/today", "/markets"],
+  ["/you", "/portfolio"],
+  ["/ranks", "/leaderboard"],
+  ["/manage", "/markets"],
+  ["/play/:path*", "/markets"],
+  ["/versus/:path*", "/markets"],
+  // Before `/tapes/:slug`, which would otherwise read these as tape names.
+  ["/tapes/new", "/markets#scenarios"],
+  ["/tapes/mine", "/markets#scenarios"],
+  ["/tapes/:slug/:rest*", "/markets?scenario=:slug"],
+  ["/tapes", "/markets#scenarios"],
 ];
 
 export const REDIRECTS = [
-  { source: "/home", destination: "/today", permanent: true },
-  { source: "/stats", destination: "/you", permanent: true },
+  { source: "/home", destination: "/markets", permanent: true },
+  { source: "/stats", destination: "/portfolio", permanent: true },
   { source: "/rules", destination: "/learn/rulebook", permanent: true },
-  { source: "/tapes/mine", destination: "/tapes?tab=yours", permanent: false },
-  {
-    source: "/manage",
-    has: [{ type: "query" as const, key: "tape", value: "(?<tape>[^&]+)" }],
-    destination: "/play/manage/:tape",
-    permanent: false,
-  },
-  { source: "/manage", destination: "/play/manage/open", permanent: false },
-  ...PLAY_MODES.map(([mode, destination]) => ({
-    source: "/play",
-    has: [{ type: "query" as const, key: "mode", value: mode }],
-    destination,
-    permanent: false,
-  })),
-  {
-    source: "/play",
-    has: [
-      { type: "query" as const, key: "mode", value: "tape" },
-      { type: "query" as const, key: "tape", value: "(?<tape>[^&]+)" },
-    ],
-    destination: "/play/tape/:tape",
-    permanent: false,
-  },
-  {
-    source: "/play",
-    has: [{ type: "query" as const, key: "mode", value: "tape" }],
-    destination: "/play/tape/open",
-    permanent: false,
-  },
-  {
-    source: "/play",
-    has: [
-      { type: "query" as const, key: "mode", value: "(?<kind>duel|race)" },
-      { type: "query" as const, key: "match", value: "(?<id>[^&]+)" },
-    ],
-    destination: "/play/:kind/:id",
-    permanent: false,
-  },
+  ...RETIRED.map(([source, destination]) => ({ source, destination, permanent: false })),
 ];
 
 const nextConfig: NextConfig = {

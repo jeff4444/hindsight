@@ -118,3 +118,33 @@ export const RATING_VERSION = 'rating-1';
  * and move when the roster does.
  */
 export const TAPE_FILTER_VERSION = 'tape-filter-1';
+
+/**
+ * The trading simulator: order types, the intrabar fill walk, netting, liquidation and the
+ * session-end flatten (`src/core/trading/simulator.ts`, published in docs/rules.md §22).
+ *
+ * Every stored session records the version it was simulated under, and a stored session is
+ * re-derivable from its order-event log under that version — the same promise `RESOLVER_VERSION`
+ * makes for a bracket, extended to a log.
+ */
+export const SIM_VERSION = 'sim-1';
+
+/** Commission, spread and slippage (`src/core/trading/costs.ts`). */
+export const FEE_VERSION = 'fees-1';
+
+/** Leverage cap, maintenance margin and the liquidation fee. */
+export const MARGIN_VERSION = 'margin-1';
+
+/** How a pair's tick and quantity step are derived from its price, and the minimum order. */
+export const INSTRUMENT_VERSION = 'instrument-1';
+
+/**
+ * The schools as traders: sizing, the exit each one uses, re-entry, and the order they meet the
+ * corpus in (`src/core/bots/`).
+ *
+ * Separate from `ENGINE_VERSION` because it invalidates a different thing. A threshold change
+ * moves what a school *sees*; this moves what it *does with it*. Either one starts every school's
+ * account again from its starting balance, so a track record is never inherited by rules that
+ * did not earn it.
+ */
+export const BOT_VERSION = 'bots-1';

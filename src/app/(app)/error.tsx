@@ -24,14 +24,14 @@ export default function AppError({ error, reset }: { error: Error & { digest?: s
       <EmptyState
         icon="alert"
         title="That did not load"
-        body="Something went wrong fetching this page. It is usually temporary, and nothing you played has been lost."
+        body="Something went wrong fetching this page. It is usually temporary, and nothing in your account has been lost."
         action={
           <div className="flex flex-wrap items-center justify-center gap-2">
             <Button variant="primary" size="lg" onClick={reset}>
               Try again
             </Button>
-            <Button href={routes.today} variant="secondary" size="lg">
-              Back to Today
+            <Button href={routes.markets()} variant="secondary" size="lg">
+              Back to Markets
             </Button>
           </div>
         }

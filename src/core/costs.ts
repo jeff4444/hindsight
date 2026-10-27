@@ -74,7 +74,16 @@ export const SPOT_COSTS: Costs = {
   stopSlippageBps: 5,
 };
 
-/** Round trip on notional, in basis points. What a flat trade actually costs. */
+/**
+ * Round trip on notional, in basis points, as documented: 0.1% each way.
+ *
+ * **Not what the resolver charges.** `resolve` treats `spreadBps` as the *full* spread and charges
+ * half of it at entry and half at exit, so the round trip it actually took was `spreadBps` — 10 bps,
+ * half this figure — and `costInR` overstates the stored results' costs by the same factor of two.
+ * Both values are frozen with everything scored under them, so the correction is documentation
+ * (rules §5). The trading platform charges commission and spread separately and in full
+ * (`src/core/trading/costs.ts`).
+ */
 export const ROUND_TRIP_BPS = SPOT_COSTS.spreadBps * 2;
 
 /**

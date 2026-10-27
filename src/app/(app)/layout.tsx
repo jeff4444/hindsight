@@ -1,8 +1,8 @@
 import { Suspense } from 'react';
 import { AppShell } from '@/components/shell/AppShell';
-import { DailyLauncher, DailyLauncherSkeleton } from '@/components/shell/DailyLauncher';
+import { AccountChip, AccountChipSkeleton } from '@/components/shell/AccountChip';
 import { ToastProvider } from '@/components/ui/client';
-import { currentViewer, getStreak } from '@/lib/viewer';
+import { currentViewer } from '@/lib/viewer';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,7 +19,6 @@ export const dynamic = 'force-dynamic';
  */
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const viewer = await currentViewer();
-  const streak = viewer.profile ? await getStreak(viewer) : null;
 
   return (
     <ToastProvider>
@@ -31,14 +30,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                 displayName: viewer.profile.displayName,
                 avatarSeed: viewer.profile.avatarSeed,
                 avatarAccent: viewer.profile.avatarAccent,
-                perfectStreak: streak?.perfect ?? false,
-                streakLength: streak?.length ?? 0,
               }
             : null
         }
         launcher={
-          <Suspense fallback={<DailyLauncherSkeleton />}>
-            <DailyLauncher />
+          <Suspense fallback={<AccountChipSkeleton />}>
+            <AccountChip />
           </Suspense>
         }
       >

@@ -1,5 +1,13 @@
 # Hindsight rules
 
+> **Hindsight is now a paper-trading platform, and §22 is its rulebook.** Sections 1–21 describe
+> the chart game it replaced — the bracket, the R-multiple, the percentile, the ladder, the rating
+> and the modes. That game is retired: its pages redirect, its API is gone, and nothing new is
+> scored by it. The sections stay, unedited except where they were wrong, because every result
+> stored under them was produced by these rules and can still be re-derived from them, and because
+> the trading platform reuses their corpus (§7), causality (§8), engines (§14) and costs (§16).
+> Read §22 for how the product works today.
+
 Scope §3.6 argues that a ruleset has to be written at the level of specificity the Souls
 no-hit community uses, and for a reason that is easy to underrate:
 
@@ -15,9 +23,9 @@ Every rule here is enforced in code and pinned to a version constant in
 was produced under, so a result can always be re-derived from the rules that were in force
 when it was played.
 
-**The names on screen are plainer than the names here.** This document keeps its technical
-vocabulary, because the code and the stored results use it. The game says the same things in
-words a player already has:
+**The names on screen were plainer than the names here.** This document keeps its technical
+vocabulary, because the code and the stored results use it. The game said the same things in
+words a player already had:
 
 | here | on screen |
 | --- | --- |
@@ -244,21 +252,27 @@ Van Tharp's definitions, per §4.1, and no others.
 
 ## 5. Costs
 
-Phase 0 charges **zero**. The resolver takes a cost parameter and both the spread and the stop
-slippage are stored on every round, currently as `0`.
+Phase 0 charged **zero**: the resolver took a cost parameter and stored `0` for both the spread and
+the stop slippage on every round. That seam was filled in Phase 4. **§16.1 is the game's cost model**
+— Binance spot commission plus 5 bps of stop slippage, inside the enumeration rather than beside it
+— and every round scored since carries it.
 
-This is a seam, not a feature. §7.5 is blunt about why it has to exist before results are
-stored: a frictionless game trains players toward tight stops and marginal setups that lose
-money net of costs, and the strongest negative finding in the technical-analysis literature is
-that low transaction costs alone erase the profitability of technical rules. When the cost
-model lands, it must not invalidate everything already recorded.
+One correction to §16.1, stated here because it changes what that section's numbers mean: the
+resolver charges `spreadBps` **half at entry and half at exit**, so with `spreadBps = 10` the round
+trip it actually charged was **10 bps**, not the 20 that §16.1 and `ROUND_TRIP_BPS` state. The
+measured grid (§16.1's second table) was produced by the resolver and is right; the cost-in-R
+table, computed from the stated 20, is twice what was charged. The values are frozen — stored
+results depend on them — so this is a documentation fix only.
+
+The trading platform charges commission and spread separately and in full: **§22.5**.
 
 ## 6. Integrity
 
 - **Future data and identity never reach the client before the order is committed.** The
   issuance API returns eight fields — round id, lead-in bars, ATR, tick size, entry, reveal length — and the
   database function that serves it does not have the reveal bars in its return type at all.
-  Enforced by [`tests/api-leak.test.ts`](../tests/api-leak.test.ts).
+  Enforced, while the game ran, by `tests/api-leak.test.ts`, which retired with its API; the
+  trading platform's equivalent is §22.9.
 - **Charts and rounds are unreadable without the service-role key.** Both tables have RLS
   enabled with no policies and no grants to `anon` or `authenticated`.
 - **A round belongs to one session** and can be committed only by that session.
@@ -1679,7 +1693,7 @@ synthetic controls, and an admission about the regime breakdown.
 ### 16.1 Every score is now net of costs
 
 The corpus is Binance spot, so a round trip is **20 basis points** — 0.1% maker and taker at VIP 0 —
-before slippage. We add **5 bps of stop slippage**, which is **ours**: a stop is a market order on a
+before slippage. (As implemented, the resolver charged half of that: see the correction in §5.) We add **5 bps of stop slippage**, which is **ours**: a stop is a market order on a
 trigger and does not fill at the trigger, and no published figure exists. It is the only number here
 without a source and is labelled accordingly.
 
@@ -2464,3 +2478,246 @@ second is known exactly.
 A race is scored on **IMPs, not charts finished**. Rushing eight badly loses to reading three well,
 and ties break towards the player who needed *fewer* charts. Making raw speed the objective would
 reward exactly the guessing the rest of this scoring model exists to discourage.
+
+## 22. Trading
+
+The platform that replaced the game. A trader gets a $100,000 paper account, a real market from the
+Binance archive replayed minute by minute, and an exchange that fills orders against the real
+minute bars and charges for every one of them. Every rule below is enforced in
+[`src/core/trading/`](../src/core/trading/) and pinned to `SIM_VERSION`, `FEE_VERSION`,
+`MARGIN_VERSION` and `INSTRUMENT_VERSION` in [`src/core/versions.ts`](../src/core/versions.ts);
+every session stores the versions it ran under.
+
+Where a number is published by Binance it says so. Where it is ours, it says that.
+
+### 22.1 The market
+
+A session is **one corpus chart**, shown as the instrument it really was.
+
+- **History**: up to 300 hourly bars before the replay (`lead_in_bars` plus `lead_in_extra`), and
+  the one-minute bars under the last 80 of them (the first half of `detail_path`).
+- **Tape**: the 60-hour reveal, **3,600 one-minute bars**. Fills walk `resolution_path`, the array
+  every stored bracket was resolved against, so a session and a bracket on the same chart agree to
+  the minute. Volume comes from the reveal half of `detail_path`.
+- **Real prices.** A stored chart is indexed to 100 and, about half the time, mirrored (§1). Both
+  are undone: un-mirror first, then divide by `index_factor` — the reverse of the order the
+  pipeline applied them. Volume is multiplied back by `volume_base`.
+- **Only real charts are dealt.** Synthetic controls (§16) are never a market: a generated walk
+  under a real ticker would be a lie about the product's one claim.
+
+**Tick and step are derived from the price at the start of the replay**, because the corpus never
+stored Binance's filters and they are unrecoverable for delisted pairs:
+
+    e    = floor(log10(price))
+    tick = 10^(e − 5)        about six significant digits
+    step = 10^(−1 − e)       so tick × step = 10^−6 exactly
+
+A price in ticks times a quantity in steps is a notional in **micro-USDT**, an integer, so the
+whole ledger — cash, fees, realised P&L — is exact integer arithmetic. BTC at 43,000 gets a 0.1
+tick and a 0.00001 step, which is close to what Binance uses. The smallest order is **$5** of
+notional, Binance spot's `MIN_NOTIONAL` for USDT pairs.
+
+**Markets are dealt** at random (preferring markets the account has not traded), by pair, as
+today's market (the same chart for everyone, chosen deterministically from the day number), or by
+scenario — an official tape (§20) whose filter picks markets by what they were doing before the
+replay. A tape's drift bounds are applied to the **real** drift: a mirrored chart's stored drift
+has the other sign, so The Drop deals markets that really fell. A locked tape is never dealt.
+
+### 22.2 The clock
+
+The server keeps the replay clock, and nothing the browser says moves it.
+
+- The state is an **anchor**: at server time `anchorAt`, `anchorRevealed` minutes had printed, and
+  since then the replay has run at `speed` tape-minutes per second. Play, pause, a speed change and
+  a step all re-anchor at the present, so the arithmetic never accumulates drift.
+- **Speeds** are 1, 5, 15, 60 and 240 tape-minutes per second. The default, 15, plays a session in
+  four minutes. A **step** reveals a whole number of minutes while paused.
+- **A lease.** The clock runs only while the trader keeps asking for it: every request extends a
+  15-second lease, and if it lapses the clock stops at the moment it lapsed. A replay that ran on
+  in an empty room would fill stops and liquidate a position nobody was watching.
+- Updates are **compare-and-swap** on a version number, so two tabs cannot race the clock.
+- A session opens **paused** at the decision close, with nothing of the tape revealed.
+
+### 22.3 Orders
+
+| | |
+| --- | --- |
+| **side** | buy or sell. Selling with no position opens a short. |
+| **type** | market, limit or stop |
+| **quantity** | whole steps, at least $5 of notional |
+| **take-profit / stop-loss** | optional, attached to an entry; a one-cancels-other pair |
+| **reduce-only** | may only shrink the position |
+
+- **One position per market**, signed. Buying more scales in; selling part scales out; selling more
+  than is held flips the position, realising the old side first.
+- **Take-profit and stop-loss** wait, pending, until their entry fills, then become working
+  reduce-only orders sized to the entry. When one fills the other is cancelled. If the position is
+  closed some other way, they are cancelled with it.
+- **Modify** changes a working order's price, stop price or quantity. A limit moved through the
+  market fills at once, as a taker; a stop moved through the market is rejected.
+- **Close position** sends a reduce-only market order for a fraction of the position.
+- **End session** cancels everything and closes the position at the last price.
+
+Every order is checked when it is placed, and rejected with a reason: below the minimum notional,
+a bracket on the wrong side of the entry, a stop that would trigger the moment it is placed, a
+reduce-only order with nothing to reduce, too large for the market's liquidity, or more than the
+buying power allows (§22.6).
+
+**The liquidity guard is ours.** An order may not exceed **5% of the trailing 24 hours' traded
+value**. The tape is history, and a size history could not have absorbed would fill at prices that
+never existed.
+
+### 22.4 Fills
+
+The exchange generalises the bracket resolver (§3) from one bracket to an order book.
+
+1. **Time.** An event stamped at minute `i` happens at the close of minute `i`, after that minute's
+   intrabar fills. A resting order placed at `i` is live from minute `i + 1`. The browser sends
+   only intent; the server stamps the minute.
+2. **Market orders** fill at once at the last trade price — the close of the latest printed minute
+   — buying the ask and selling the bid: the close plus or minus half the spread. Taker.
+3. **Limit orders** fill when the market trades through them: a buy when the minute's low (plus
+   half the spread) reaches the limit, at the limit or at a better open if the minute gapped
+   through it. Maker. A limit that is already marketable when placed fills at once, as a taker.
+4. **Stop orders** trigger on the wick and fill at the trigger or at a worse open, across half the
+   spread **plus stop slippage** (§22.5). Taker.
+5. **Inside one minute** the path is open → low → high → close or open → high → low → close, and the
+   bar cannot say which. Whenever two or more levels sit inside the bar, **both orders are
+   simulated; if they disagree, the one that leaves the account poorer at the close is taken**, and
+   its fills are flagged `ambiguous` and counted in the review. For a single stop-and-target
+   bracket this is exactly §3's stop-first rule, and a test holds the two equal on 500 paths.
+   Among levels equally far from the open, liquidation comes first, then stops, then limits.
+6. **Buying power is checked twice**: when an order is placed, at its expected price, and again
+   when it fills, at its fill price. An order that would breach it at the fill is cancelled with
+   its take-profit and stop-loss.
+7. **The end of the tape** cancels every order and closes the position at the last close, as a
+   taker.
+
+Everything is integer arithmetic, so replaying the same log over the same tape produces the same
+account to the micro-dollar. **The account is the replay of its log** — nothing else about a
+session's money is stored as authoritative — and a test holds that an incremental replay equals a
+fold from the start, and that changing the future changes nothing about the past.
+
+### 22.5 Costs
+
+| | value | source |
+| --- | --- | --- |
+| maker commission | **0.10%** of notional | Binance spot VIP 0, published |
+| taker commission | **0.10%** of notional | Binance spot VIP 0, published |
+| half spread | **1 bp**, at least one tick | **ours** — the corpus has trades, not quotes |
+| stop slippage | **5 bp** | **ours**, as in §16.1 |
+| liquidation fee | **1%** of what is closed | **ours** |
+
+**Commission and spread are separate charges.** The spread moves the fill price; the commission is
+a line on the statement, rounded against the trader to the micro-dollar. (The game folded both into
+one "spread" and charged half of it each way — §5.) A market order round trip therefore costs about
+22 bps; a stop-loss exit costs 5 bps more.
+
+### 22.6 Margin and liquidation
+
+- **Buying power.** The position plus every resting order that would add to it may be worth up to
+  **2× equity**, long or short. Reducing exposure is always allowed.
+- **Maintenance.** When equity falls below **25% of the position's value**, the position is
+  **liquidated**: every order is cancelled and the position is closed at the liquidation level, or
+  at the open if the market gapped through it, less the spread and stop slippage, with the
+  liquidation fee on top of the taker commission. The level is shown on the terminal.
+- **Bankruptcy.** If a liquidation leaves equity at or below zero, cash is set to zero and the
+  account is **bankrupt**: it can open no session until it is reset.
+
+### 22.7 Profit and loss
+
+- **Equity** = cash + the position valued at the last trade price. **Unrealised P&L** is that
+  position's value minus its cost basis.
+- **Realised P&L** is booked when a position shrinks or flips, against the average cost of what was
+  held. Fees are kept apart and shown separately; net P&L is both.
+- **A round trip** runs from flat to flat (a flip closes one and opens the next). Each records its
+  side, average entry and exit, largest size, fees, net P&L, and its best and worst moments in
+  dollars (MFE and MAE) on the minute path.
+- **Session figures**: return on the session's starting equity, fees, round trips, win rate (round
+  trips that made money after fees), profit factor (gross profit over gross loss), maximum
+  drawdown on hourly equity, and ambiguous fills.
+- **Benchmarks** in the review, at the largest size the trader held: buying at the decision close and
+  selling at the last close, and the best single long and best single short the tape allowed in
+  hindsight — market orders at minute closes, across the spread, with fees.
+
+### 22.8 Accounts and sessions
+
+- **Two accounts per trader.** **Main** is ranked and never shows dates while a session is open.
+  **Practice** may show the real dates and is never ranked. Both start at $100,000.
+- **Money carries.** A session starts at the account's equity and its result is the account's new
+  cash; there is no reset between sessions. **Reset** archives the account — its history is kept —
+  and opens a fresh one at $100,000; it is refused while a session is open.
+- **One open session per account**, because margin is account-wide. Opening another returns the one
+  already open.
+- **Today's market** is once per account per day.
+- **Accounts belong to the browser until the trader signs in.** Signing in adopts the anonymous
+  accounts, or archives them if the user already has their own.
+- A session **finalises once**, in one transaction: its summary, fills, round trips and equity
+  curve are written and the account is updated together, so a result can never be booked twice.
+
+### 22.9 Integrity
+
+Enforced at the API boundary by
+[`tests/trading-api-leak.test.ts`](../tests/trading-api-leak.test.ts):
+
+- **No minute the server clock has not reached is ever sent.** Every response carries bars only up
+  to the revealed minute, and the review of an open session is refused.
+- **No date while a session is open** — no calendar date, no year, no epoch — unless it is a
+  Practice session with dates turned on. The weekday and the time of day are real; the date
+  arrives with the review.
+- **Nothing about how the chart was stored**: not its id, its index factor, whether it was mirrored,
+  or its raw paths.
+- **A session belongs to its account.** Anyone else asking about it is told it does not exist.
+- **Today's market keeps its date until the day rolls over**, even in the review, and its board —
+  every trader's result on it and every school's — opens only to a trader whose own session on it
+  has closed. A session still open is trading the very market the board describes.
+- **The tables are unreadable without the service-role key**, as in §6.
+
+A determined trader can still recognise a famous market from its pair, its price and the time of
+day. The mitigations are the ones above: the date is held back, dated play is never ranked, the
+daily's date and board are embargoed, other traders' sessions are never listed by market, and a
+board needs ten sessions before it ranks anyone.
+
+### 22.10 The schools as traders
+
+Every engine on the council (§14) trades its own $100,000 account, on every real market in the
+library in the order history dealt them. The engines are **unchanged**: `Engine.read` is called
+exactly as the council calls it, so `THRESHOLD_HASH`, the look-ahead suite and the published base
+rates still describe the same rules. What a bot adds is pinned by `BOT_SPEC_HASH` under
+`BOT_VERSION`, and changing it starts a new account rather than rewriting the old one.
+
+- **Reads.** At every hourly close while flat, the bot shows its engine every closed bar — the
+  stored history plus the tape hours so far, indexed and un-mirrored, as the council sees a chart.
+  A mirrored chart read as stored would turn a long-only school into a short seller on half the
+  corpus.
+- **Entries** are market orders at that close, with the engine's stop attached as a stop-loss.
+- **Sizing**: the stop costs **1% of equity**, capped by buying power; an order below the minimum
+  notional is skipped.
+- **Exits** are each school's own:
+
+  | school | exit |
+  | --- | --- |
+  | Channel (the Turtle) | the opposite 10-bar extreme of the bars *before* the one traded, as a trailing stop |
+  | Reversion, and our variant | the first close beyond the 5-bar average, over the full history |
+  | Tape | an opposing signal from the engine |
+  | Sweep, Pattern, Geometry | the engine's stop and target, resting |
+  | Engine Zero | a 2 ATR stop and a target twice as far, then flips again: always in the market |
+
+- **Two exit bugs were fixed on the way.** The measurement helper in `scripts/engines.ts` compared
+  the Turtle's close to a window that included its own bar — a close can never be below its own
+  bar's low, so the exit almost never fired — and took Connors' average over the reveal only. What
+  `src/core/engines/baseRates.ts` publishes as those schools' native exits was measured under the
+  old code and is due a re-measurement.
+- **Recorded offline**, by `npm run bots -- --write`, through the same finalise path a trader's
+  session ends with. A bot's log replays to its account like anyone's.
+
+### 22.11 Leaderboards
+
+- **Ranked by money**: return on the account, win rate, maximum drawdown, sessions or profit
+  factor.
+- **A sample before a rank.** A trader appears after **ten** closed Main sessions, and only signed-in
+  traders are named. Practice never reaches a board.
+- **The schools are on the board**, tagged as schools, at the current bot version.
+- **Today's market** has its own board, ranked by session return, with the schools' sessions on the
+  same market beside the traders'. It opens only once the trader's own session on it has closed
+  (§22.9).

@@ -19,6 +19,57 @@
  * 1.5, so there are no mods to append yet.
  */
 
+/* ---------------------------------------------------------- session card */
+
+/**
+ * The card for a trading session.
+ *
+ * The same four properties, in dollars. It carries the return, how many trades, and one square
+ * per round trip — won or lost, nothing else — so it says how the trader did without saying which
+ * way the market went: no side, no price, no date. A daily card names the day rather than the pair,
+ * because the day is what makes two cards comparable; any other card names the pair, which the
+ * trader saw before their first order and which spoils nothing.
+ */
+export interface SessionCardInput {
+  /** The daily number, or null for any other market. */
+  daily: number | null;
+  /** "BTC/USDT". Left off a daily card. */
+  symbol: string;
+  returnPct: number;
+  /** Each round trip's net P&L, in order. Only the sign is printed. */
+  trips: readonly number[];
+  maxDrawdown: number;
+  bankrupt?: boolean;
+  /** Share of the day's field this trader finished ahead of, 0–1. */
+  beat?: number | null;
+}
+
+const TRIP_SQUARES = 12;
+
+export function sessionCard({ daily, symbol, returnPct, trips, maxDrawdown, bankrupt, beat }: SessionCardInput): string {
+  const pct = (value: number, sign: boolean) => {
+    const v = Math.round(value * 10_000) / 100;
+    const s = v < 0 ? '−' : sign && v > 0 ? '+' : '';
+    return `${s}${Math.abs(v).toFixed(2)}%`;
+  };
+  const top = daily !== null && beat !== null && beat !== undefined ? Math.max(1, Math.round((1 - beat) * 100)) : null;
+  const lines = [daily !== null ? `Hindsight #${daily} · Today’s market` : `Hindsight · ${symbol} replay`];
+  lines.push(`${pct(returnPct, true)}${top !== null ? ` · top ${top}%` : ''}${bankrupt ? ' · liquidated' : ''}`);
+  if (trips.length > 0) {
+    const shown = trips.slice(0, TRIP_SQUARES).map((net) => (net > 0 ? SQUARE.good : SQUARE.poor)).join('');
+    lines.push(trips.length > TRIP_SQUARES ? `${shown} +${trips.length - TRIP_SQUARES}` : shown);
+  }
+  const won = trips.filter((net) => net > 0).length;
+  lines.push(
+    trips.length === 0
+      ? 'no trades'
+      : `${trips.length} ${trips.length === 1 ? 'trade' : 'trades'} · ${won} won · max drawdown ${pct(maxDrawdown, false)}`,
+  );
+  return lines.join('\n');
+}
+
+/* ------------------------------------------------- the bracket game's card */
+
 /** §3.2's letter code for the tier this build plays at. */
 /** The daily's ruleset, by name. A code like NTZ means nothing to the person a card is sent to. */
 export const TIER_NAME = 'Naked';

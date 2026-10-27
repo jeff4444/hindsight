@@ -2,26 +2,30 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { serviceClient } from '@/lib/supabase/server';
 import { MarketSignature } from '@/components/ui/MarketSignature';
-import { Button, DivisionBadge, EmptyState, Eyebrow, Gated, Panel, cx } from '@/components/ui';
+import { Button, EmptyState, Panel, Stat } from '@/components/ui';
 import { Icon } from '@/components/ui/icons';
 import { isAccent } from '@/lib/avatar';
-import { currentViewer, getCompletedDays, getStyleRounds } from '@/lib/viewer';
-import { divisionFor, isPlaced } from '@/core/divisions';
-import { describe as describeStyle, fingerprint } from '@/core/style';
-import { ENGINES } from '@/core/engines';
-import { personaFor } from '@/lib/panel';
+import { currentViewer } from '@/lib/viewer';
 import { routes } from '@/lib/routes';
+import { formatPct, formatUsd } from '@/lib/trading/format';
+import { MIN_BOARD_SESSIONS, getAccount, getEquityCurve } from '@/lib/trading/server/queries';
+import { EquityCurve } from '@/components/trading/EquityCurve';
 
 export const dynamic = 'force-dynamic';
-
-/** Days shown in the public activity strip. Two weeks reads as a habit without becoming a wall. */
-const STRIP_DAYS = 21;
 
 export async function generateMetadata({ params }: { params: Promise<{ handle: string }> }) {
   const { handle } = await params;
   return { title: `@${handle}` };
 }
 
+/**
+ * A trader, in public: who they are and what their main account has done.
+ *
+ * Aggregates only. The sessions behind them — which pairs, on which days — stay on the trader's own
+ * Portfolio, because a list of someone's markets and results is a list of hints about markets other
+ * people have not traded yet. Practice is never shown: it is where a trader is allowed to look at
+ * dates, and it is nobody's record.
+ */
 export default async function ProfilePage({ params }: { params: Promise<{ handle: string }> }) {
   const { handle } = await params;
   const supabase = serviceClient();
@@ -35,69 +39,28 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
 
   if (!profile) notFound();
 
-  const [{ data: rounds }, { data: streak }, { count: dailies }, activity, { data: rating }, styleRounds] = await Promise.all([
-    supabase
-      .from('rounds')
-      .select('passed, percentile')
-      .eq('user_id', profile.user_id)
-      .eq('superseded', false)
-      .not('committed_at', 'is', null),
-    supabase
-      .from('player_streaks')
-      .select('longest_length, longest_perfect')
-      .eq('user_id', profile.user_id)
-      .maybeSingle(),
-    supabase
-      .from('daily_completions')
-      .select('day', { count: 'exact', head: true })
-      .eq('user_id', profile.user_id),
-    getCompletedDays(profile.user_id as string, STRIP_DAYS),
-    supabase.from('player_ratings').select('rating, rd, attempts').eq('user_id', profile.user_id).eq('tier', 'ALL').maybeSingle(),
-    getStyleRounds({ userId: profile.user_id as string, sessionId: profile.user_id as string, email: null, profile: null }),
-  ]);
-  const placed = rating ? isPlaced(rating.attempts as number, rating.rd as number) : false;
-  const division = placed && rating ? divisionFor(rating.rating as number) : null;
-  // The style badge: earned from which school's trades theirs resemble, never chosen.
-  const style = describeStyle(
-    fingerprint(styleRounds, ENGINES.map((engine) => engine.code)),
-    (engine) => personaFor(engine)?.name ?? engine,
-  );
-
-  const { today, days: completed } = activity;
-  const rows = rounds ?? [];
-  const scored = rows.map((r) => r.percentile as number | null).filter((p): p is number => p !== null);
-  const mean = scored.length ? scored.reduce((a, b) => a + b, 0) / scored.length : null;
+  const account = await getAccount(profile.user_id as string, 'main');
+  const curve = account ? await getEquityCurve(account.id, account.starting) : [];
   const accent = isAccent(profile.avatar_accent) ? profile.avatar_accent : 'ember';
-  const perfect = (streak?.longest_perfect ?? 0) > 0;
   const isSelf = viewer.userId === profile.user_id;
   const name = profile.display_name ?? profile.handle_display ?? profile.handle;
+  const traded = account !== null && account.sessions > 0;
+  const tone = (value: number) => (value > 0 ? 'long' : value < 0 ? 'short' : 'neutral');
 
   return (
     <div className="mx-auto max-w-3xl">
       {/* Identity band. The signature is the largest thing on the page, because it is the only
-          thing here that is actually this player's rather than a number about them. */}
+          thing here that is actually this trader's rather than a number about them. */}
       <Panel tone="hero" pad="lg" className="rounded-3xl">
         <div className="flex flex-wrap items-center gap-6">
-          <MarketSignature
-            seed={profile.avatar_seed}
-            accent={accent}
-            size={112}
-            ring={perfect ? 'gold' : 'accent'}
-          />
+          <MarketSignature seed={profile.avatar_seed} accent={accent} size={112} ring="accent" />
           <div className="min-w-0">
             <h1 className="font-display text-ink-max text-4xl leading-none md:text-5xl">{name}</h1>
             <div className="text-ink-dim mt-1.5 text-base">@{profile.handle}</div>
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              {division ? <DivisionBadge division={division} /> : <DivisionBadge division={null} />}
-              {style && <span className="text-ink-lo text-sm">{style}</span>}
-            </div>
             <div className="mt-3 flex flex-wrap items-center gap-3">
               <span className="text-ink-dim text-sm">
-                Reading charts since{' '}
-                {new Date(profile.created_at as string).toLocaleDateString('en-GB', {
-                  month: 'long',
-                  year: 'numeric',
-                })}
+                Trading since{' '}
+                {new Date(profile.created_at as string).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}
               </span>
               {isSelf && (
                 <Link
@@ -113,20 +76,16 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
         </div>
       </Panel>
 
-      {rows.length === 0 ? (
+      {!traded || !account ? (
         <div className="mt-6">
           <EmptyState
             icon="candle"
-            title={isSelf ? 'You have not played a chart yet' : `${name} has not played a chart yet`}
-            body={
-              isSelf
-                ? 'Play a chart and your record starts here.'
-                : 'Nothing to show until they play one.'
-            }
+            title={isSelf ? 'You have not traded a market yet' : `${name} has not traded a market yet`}
+            body={isSelf ? 'Close a session and your record starts here.' : 'Nothing to show until they close a session.'}
             action={
               isSelf ? (
-                <Button href={routes.play.daily} variant="primary" size="lg">
-                  Play your first chart
+                <Button href={routes.markets()} variant="primary" size="lg">
+                  Trade your first market
                 </Button>
               ) : undefined
             }
@@ -134,77 +93,36 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
         </div>
       ) : (
         <>
-          <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4" data-stagger>
-            <Tile label="Rounds" value={rows.length} index={0} />
-            <Tile label="Dailies" value={dailies ?? 0} index={1} />
-            <Tile label="Longest streak" value={streak?.longest_length ?? 0} index={2} />
-            <Tile
-              label="Average score"
-              index={3}
-              gate={{ sample: rows.length, min: 10 }}
-              value={mean === null ? '—' : Math.round(mean * 100)}
-            />
-          </div>
-
-          {/* The public habit, without publishing anybody's scores. */}
-          <Panel pad="md" className="mt-3">
-            <Eyebrow>Last three weeks</Eyebrow>
-            <div
-              className="mt-3 flex gap-1"
-              role="img"
-              aria-label={`${completed.size} of the last ${STRIP_DAYS} dailies completed`}
-            >
-              {Array.from({ length: STRIP_DAYS }, (_, i) => {
-                const day = today - STRIP_DAYS + 1 + i;
-                const done = completed.has(day);
-                return (
-                  <span
-                    key={day}
-                    title={done ? `Daily #${day} — done` : `Daily #${day}`}
-                    className={cx(
-                      'h-7 min-w-0 flex-1 rounded-sm sm:h-8',
-                      done ? (perfect ? 'bg-gold/70' : 'bg-long/70') : 'bg-fill-1',
-                    )}
-                  />
-                );
-              })}
-            </div>
-            <p className="text-ink-dim mt-3 text-sm">
-              {completed.size} of the last {STRIP_DAYS} dailies. Which days, not which scores —
-              results stay between a player and their own debrief.
-            </p>
+          <Panel tone="raised" pad="md" className="mt-6 grid grid-cols-2 gap-5 sm:grid-cols-3">
+            <Stat label="Equity" value={formatUsd(account.equity)} />
+            <Stat label="Return" value={formatPct(account.returnPct, { sign: true })} tone={tone(account.returnPct)} />
+            <Stat label="Max drawdown" value={formatPct(account.maxDrawdown)} />
+            <Stat label="Sessions" value={String(account.sessions)} />
+            <Stat label="Win rate" value={account.winRate === null ? '—' : formatPct(account.winRate, { decimals: 0 })} />
+            <Stat label="Profit factor" value={account.profitFactor === null ? '—' : account.profitFactor.toFixed(2)} />
           </Panel>
+
+          <Panel pad="md" className="mt-3">
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="text-ink-hi text-sm font-medium">Equity, session by session</span>
+              <span className="text-ink-dim text-xs">
+                {account.sessions >= MIN_BOARD_SESSIONS
+                  ? 'On the leaderboard'
+                  : `${MIN_BOARD_SESSIONS - account.sessions} more sessions to be ranked`}
+              </span>
+            </div>
+            <EquityCurve values={curve} baseline={account.starting} height={176} className="mt-4" label={`${name}’s equity, session by session`} />
+          </Panel>
+
+          {isSelf && (
+            <div className="mt-4 flex justify-end">
+              <Button href={routes.portfolio()} variant="secondary">
+                Every session, in Portfolio
+              </Button>
+            </div>
+          )}
         </>
       )}
-
     </div>
-  );
-}
-
-function Tile({
-  label,
-  value,
-  index,
-  gate,
-}: {
-  label: string;
-  value: number | string;
-  index: number;
-  gate?: { sample: number; min: number };
-}) {
-  const figure = <span className="numeral text-ink-max text-2xl font-semibold">{value}</span>;
-  return (
-    <Panel pad="md" style={{ '--i': index } as React.CSSProperties}>
-      <Eyebrow>{label}</Eyebrow>
-      <div className="mt-1.5">
-        {gate ? (
-          <Gated sample={gate.sample} min={gate.min}>
-            {figure}
-          </Gated>
-        ) : (
-          figure
-        )}
-      </div>
-    </Panel>
   );
 }
