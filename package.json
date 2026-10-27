@@ -27,7 +27,8 @@
     "leaderboard": "tsx --env-file-if-exists=.env.local scripts/leaderboard.ts",
     "synthesise": "tsx --env-file-if-exists=.env.local scripts/synthesise.ts",
     "manage": "tsx --env-file-if-exists=.env.local scripts/backfill-manage.ts",
-    "tape-filters": "tsx --env-file-if-exists=.env.local scripts/backfill-tape-filters.ts"
+    "tape-filters": "tsx --env-file-if-exists=.env.local scripts/backfill-tape-filters.ts",
+    "bots": "tsx --env-file-if-exists=.env.local scripts/bots.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",

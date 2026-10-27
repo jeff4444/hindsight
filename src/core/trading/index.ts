@@ -5,3 +5,4 @@ export * from './market';
 export * from './simulator';
 export * from './clock';
 export * from './metrics';
+export * from './demo';

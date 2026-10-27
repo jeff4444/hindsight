@@ -269,6 +269,19 @@ export class Simulator {
     }
   }
 
+  /** The live book without copying it, for a strategy deciding at a bar close. Do not mutate. */
+  peek(): { qty: number; basis: number; cash: number; equity: number; open: readonly OrderState[]; bankrupt: boolean } {
+    const book = this.book;
+    return {
+      qty: book.qty,
+      basis: book.basis,
+      cash: book.cash,
+      equity: book.cash + book.qty * this.mark - book.basis,
+      open: book.open,
+      bankrupt: book.bankrupt,
+    };
+  }
+
   /** Everything a screen needs, derived. */
   snapshot(): AccountState {
     const book = this.book;

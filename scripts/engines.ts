@@ -43,6 +43,7 @@ import { fromPgHex, unpackPath } from '../src/core/pack';
 import { NO_COSTS, resolve, type Direction } from '../src/core/resolve';
 import { council, ENGINES, REGISTERED, THRESHOLD_HASH, type Verdict } from '../src/core/engines';
 import { mulberry32 } from '../src/core/random';
+import { walkNativeExit } from '../src/core/bots/exits';
 
 interface Row {
   id: string;
@@ -95,56 +96,15 @@ function resolveBracket(verdict: Verdict, entry: number, path: Bar[]): Outcome |
  * The stop still applies — the engine's stop, whoever it belongs to — because a conditional exit
  * without one is an unbounded loss and no school on this roster claims that. What changes is the
  * *upside*: instead of a fixed target, the trade runs until the school says to leave.
+ *
+ * The walk itself lives in `src/core/bots/exits.ts`, shared with the bots that trade these rules,
+ * and reads the corrected windows: the Turtle extreme over the bars before the one being traded,
+ * the Connors average over the whole history. The figures in `baseRates.ts` `NATIVE` were measured
+ * before that correction and are re-measured by running this.
  */
-function resolveNative(verdict: Verdict, entry: number, reveal: Bar[]): Outcome | null {
-  if (!verdict.exit || !verdict.bracket || verdict.direction === null) return null;
-  const long = verdict.direction === 'long';
-  const stop = verdict.bracket.stop;
-  const risk = Math.abs(entry - stop);
-  if (!(risk > 0)) return null;
-
-  const closes: number[] = [];
-  let extremeHigh = -Infinity;
-  let extremeLow = Infinity;
-
-  for (let i = 0; i < reveal.length; i++) {
-    const bar = reveal[i];
-    // The stop is checked first, matching §12.3.2's stop-first convention for a bar that touches
-    // both. It is the pessimistic reading and it is the one the resolver already uses.
-    if (long ? bar.l <= stop : bar.h >= stop) {
-      return { r: -1, won: false, hitTarget: false };
-    }
-
-    closes.push(bar.c);
-    extremeHigh = Math.max(extremeHigh, bar.h);
-    extremeLow = Math.min(extremeLow, bar.l);
-
-    let leave = false;
-    if (verdict.exit.kind === 'opposite-extreme') {
-      // The trailing exit: the opposite N-bar extreme of the bars seen so far in the reveal.
-      const window = reveal.slice(Math.max(0, i - verdict.exit.bars + 1), i + 1);
-      if (window.length >= verdict.exit.bars) {
-        const trail = long
-          ? Math.min(...window.map((b) => b.l))
-          : Math.max(...window.map((b) => b.h));
-        leave = long ? bar.c <= trail : bar.c >= trail;
-      }
-    } else if (verdict.exit.kind === 'close-beyond-ma' && closes.length >= verdict.exit.period) {
-      const recent = closes.slice(-verdict.exit.period);
-      const average = recent.reduce((a, b) => a + b, 0) / recent.length;
-      leave = long ? bar.c > average : bar.c < average;
-    }
-
-    if (leave) {
-      const r = ((long ? bar.c - entry : entry - bar.c) / risk);
-      return { r, won: r > 0, hitTarget: false };
-    }
-  }
-
-  // Never exited inside the window: marked to market at the last close, as §4.6 does for a timeout.
-  const last = reveal[reveal.length - 1];
-  const r = ((long ? last.c - entry : entry - last.c) / risk);
-  return { r, won: r > 0, hitTarget: false };
+function resolveNative(verdict: Verdict, entry: number, history: Bar[], reveal: Bar[]): Outcome | null {
+  const outcome = walkNativeExit(verdict, entry, history, reveal);
+  return outcome === null ? null : { r: outcome.r, won: outcome.won, hitTarget: false };
 }
 
 function summarise(label: string, outcomes: Outcome[], charts: number): string {
@@ -245,7 +205,7 @@ async function run() {
           byRegime.set(id, [...(byRegime.get(id) ?? []), b.r]);
         }
       }
-      const n = resolveNative(verdict, row.entry_price, reveal);
+      const n = resolveNative(verdict, row.entry_price, bars, reveal);
       if (n) native.get(verdict.engine)!.push(n);
     }
   }
