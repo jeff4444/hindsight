@@ -1,12 +1,17 @@
 # Hindsight rules
 
-> **Hindsight is now a paper-trading platform, and §22 is its rulebook.** Sections 1–21 describe
-> the chart game it replaced — the bracket, the R-multiple, the percentile, the ladder, the rating
-> and the modes. That game is retired: its pages redirect, its API is gone, and nothing new is
-> scored by it. The sections stay, unedited except where they were wrong, because every result
-> stored under them was produced by these rules and can still be re-derived from them, and because
-> the trading platform reuses their corpus (§7), causality (§8), engines (§14) and costs (§16).
-> Read §22 for how the product works today.
+> **Hindsight is a game again, and §23 is its rulebook.** Nobody holds money: a round is one tape
+> and a fresh $500, graded from 0 to 1000 against the best and worst trade that tape allowed, and
+> the training grounds, duels and duels against a school are three ways of using that grade. §23 is
+> written ahead of the code that will enforce it; until it ships, what runs is §22.
+>
+> Two products came before it. Sections 1–21 describe the chart game — the bracket, the R-multiple,
+> the percentile, the ladder, the rating and the modes. That game is retired: its pages redirect,
+> its API is gone, and nothing new is scored by it. §22 describes the paper-trading platform that
+> replaced it, whose exchange §23 keeps and whose accounts §23 retires (§23.9). Both stay, unedited
+> except where they were wrong, because every result stored under them was produced by these rules
+> and can still be re-derived from them, and because the game reuses their corpus (§7), causality
+> (§8), duel dealing (§21.1) and exchange (§22.3–22.5).
 
 Scope §3.6 argues that a ruleset has to be written at the level of specificity the Souls
 no-hit community uses, and for a reason that is easy to underrate:
@@ -19,7 +24,8 @@ This is that document. It began at Phase 0 size and has grown with the ladder ra
 rewritten; it covers what the game actually implements, and §15 lists what it does not.
 
 Every rule here is enforced in code and pinned to a version constant in
-[`src/core/versions.ts`](../src/core/versions.ts). Every stored result records the versions it
+[`src/core/versions.ts`](../src/core/versions.ts) — except §23's, which are written first and
+pinned as they ship. Every stored result records the versions it
 was produced under, so a result can always be re-derived from the rules that were in force
 when it was played.
 
@@ -2481,6 +2487,9 @@ reward exactly the guessing the rest of this scoring model exists to discourage.
 
 ## 22. Trading
 
+> **§23 keeps this section's exchange and retires its accounts.** §23.9 says which rules survive
+> into a round. Until §23 ships, this section is what runs.
+
 The platform that replaced the game. A trader gets a $100,000 paper account, a real market from the
 Binance archive replayed minute by minute, and an exchange that fills orders against the real
 minute bars and charges for every one of them. Every rule below is enforced in
@@ -2721,3 +2730,295 @@ rates still describe the same rules. What a bot adds is pinned by `BOT_SPEC_HASH
 - **Today's market** has its own board, ranked by session return, with the schools' sessions on the
   same market beside the traders'. It opens only once the trader's own session on it has closed
   (§22.9).
+
+## 23. The game
+
+> **Written before the code.** Everything else in this document describes something that runs.
+> This section does not yet: it is the rulebook the game will be built to, written first so its
+> edge cases are decided before anyone plays them — the argument this document opens with. Nothing
+> in §23 is pinned to a version constant yet; each rule gets one when it ships, and this note comes
+> out when the last of them does. Every number marked **ours** is a first setting, not a
+> measurement, and §23.10 lists them.
+
+Hindsight is a game again, and nobody holds money in it. **A round is one tape and a fresh $500.**
+The player reads the history, draws on it, places one trade with its take-profit and stop-loss, and
+locks it in. Then the tape plays. When it ends, the result is **graded from 0 to 1000 against the
+best and the worst trade that tape allowed** (§23.3).
+
+That grade is the only number the game has, and every mode is a way of using it:
+
+| mode | what the grade does |
+| --- | --- |
+| **Training grounds** | it is the score (§23.5) |
+| **Duel** | the gap between two players' grades is damage to whoever graded lower (§23.6) |
+| **Against a school** | a duel whose opponent is a school; afterwards the player reads what it saw and why (§23.7) |
+
+This replaces §22's accounts, not its exchange. A round is placed, filled and charged exactly as
+§22.3–22.5 describe, on the market §22.1 describes, under §22.9's integrity rules. What goes is
+everything that made money persistent, and §23.9 lists it rule by rule.
+
+### 23.1 A round
+
+- **One tape**, dealt as §22.1 deals a market: up to 300 hourly bars of history, then the 60-hour
+  tape of 3,600 one-minute bars. Only tapes that move enough are dealt (§23.4), and never one the
+  player has already played.
+- **A stake of $500, every round.** Nothing carries in and nothing carries out. The stake is the
+  same for everyone so that a dollar means the same thing on every screen, but the grade divides it
+  out (§23.3): a round would grade the same at $50 or $5,000.
+- **No clock.** The player reads for as long as they like. A duel is asynchronous (§23.6), so nobody
+  is kept waiting.
+- **One trade, or none:**
+
+  | | |
+  | --- | --- |
+  | **side** | buy, or sell to open a short |
+  | **size** | a dollar amount, at least $5 (§22.1's minimum) and at most **$500**. The quantity is worked out at the fill price, so a resting entry that fills higher buys less and the notional never exceeds the stake |
+  | **entry** | market, filled at the decision close; or a limit or a stop that rests on the tape from its first minute |
+  | **take-profit / stop-loss** | optional, attached to the entry, one cancels the other — exactly §22.3 |
+
+- **Sitting out is a move**, not an absence. The round ends at $500 and is graded like any other.
+- **An entry that never fills** leaves the round flat at $500: the same result as sitting out, and
+  the same grade.
+- **No leverage.** §22.6's buying power, maintenance margin and liquidation do not exist in a round.
+  One consequence is kept on purpose: **a short with no stop can lose more than the stake**, if the
+  price more than doubles. The grade handles it, because the worst trade the tape allowed includes
+  that short (§23.2).
+- **A round locks in once**, and after that nothing changes: no modify, no cancel, no closing early.
+  §22.3's modify, reduce-only, close-position and end-session are not available in a round.
+- **The result** is the round's value when the tape ends: $500 plus its net profit or loss after
+  every cost §22.5 charges. A trade still open at the end is closed at the last close, as §22.4
+  closes one.
+
+**Why set and forget.** A trade that can be managed while the tape plays turns "the best trade the
+tape allowed" into a question about every decision a player could have made at every minute, and it
+makes a duel depend on both players watching at once. Locked in, a round is decided the moment it is
+placed: the server resolves it at lock-in and the replay only shows it. Managing a live trade is a
+different skill, and §17 kept it on its own ladder for the same reason.
+
+### 23.2 The best and worst the tape allowed
+
+The grade needs two numbers per tape: **the best and the worst result of any trade the player could
+have locked in**. "Could have locked in" is literal — the orders §23.1 allows, at full size, filled
+by §22.4 and charged by §22.5.
+
+The tape's **biggest rise** is the largest gain from the decision close or any minute's low to a
+later minute's high; its **biggest fall** is the largest drop from the decision close or any
+minute's high to a later minute's low. Each is a share of the price it starts from.
+
+- **Best**: buying the bottom of the biggest rise and selling its top, or shorting the top of the
+  biggest fall and covering its bottom — whichever made more.
+- **Worst**: the same two moves the wrong way round — buying the top of the biggest fall and stopped
+  at its bottom, or shorting the bottom of the biggest rise and stopped at its top — whichever lost
+  more.
+
+Both are computed by the exchange's own fill code, so neither is a trade that could not have been
+filled. As with the oracle (§10.2), the test suite will rebuild both as real orders and resolve them.
+
+**They are mirror images, apart from costs.** The best and the worst are made of the same two moves,
+so before costs they sit the same distance either side of $500. Both pay commission and spread; the
+worst also pays stop slippage on both legs. Sitting out pays nothing, which is why it grades a
+little *above* the middle (§23.3).
+
+**Full size bounds everything.** A smaller trade moves its result towards $500 in proportion, so no
+trade at any size, entered and exited anywhere, can land outside the two.
+
+### 23.3 The grade
+
+    grade = 1000 × (result − worst) / (best − worst)
+
+rounded to the nearest whole point. 1000 is the best trade the tape allowed and 0 is the worst. It is
+clamped to 0–1000 only as a guard: §23.2 makes a result outside the two impossible, so a clamp that
+ever binds is a bug, and the test suite will say so.
+
+**A worked example.** On a tape whose best trade ends at $650 and whose worst ends at $350 — a range
+of $300:
+
+| | ended at | grade |
+| --- | --- | --- |
+| A | $625 | 1000 × (625 − 350) / 300 = **917** |
+| B | $400 | 1000 × (400 − 350) / 300 = **167** |
+
+**Sitting out grades a little above 500**, because it is the only result that pays no costs. Under
+§22.5's costs, estimated with the 1 bp half spread rather than the one-tick minimum:
+
+| the tape's biggest move | best | worst | sitting out grades |
+| --- | --- | --- | --- |
+| 3% (the minimum, §23.4) | $513.88 | $483.37 | **545** |
+| 5% | $523.87 | $473.34 | 528 |
+| 10% | $548.84 | $448.29 | 514 |
+| 20% | $598.78 | $398.18 | 508 |
+
+That is restraint scored as §10.3 scored it: not a free 500 and not a penalty. A trade has to beat
+it to have been worth taking, and on a tape that barely moved the bar is higher, because costs eat
+more of what the tape offered.
+
+**The grade does not care how volatile the tape was.** A 3% tape and a 30% tape both run from 0 to
+1000, so a round on a quiet market counts the same as a round on a violent one. That is the point of
+normalising, and §23.4 is its price.
+
+### 23.4 Which tapes are dealt
+
+**A tape is dealt only if its biggest rise or its biggest fall (§23.2) is at least 3%.** Ours.
+
+Normalising divides by the tape's range, and on a tape that barely moved the range is a few dollars:
+costs become most of it, and a small difference between two players becomes a large share of a
+grade. A minimum move keeps the denominator large enough that a grade measures the reading rather
+than the spread.
+
+3% is a first setting. The share of the corpus it removes, and how that share falls across §7.4's
+regime grid, will be measured and printed here before it ships. If it empties the `quiet` cells, the
+threshold is wrong, not the cells.
+
+Otherwise tapes are dealt under §22.1's rules — real charts only, never a synthetic control — and
+never one the player has already played.
+
+### 23.5 Training grounds
+
+One player, one tape, one grade, and the grade is the score.
+
+After the tape, the review draws **the best and the worst trades on the chart** beside the player's
+own — the two §23.2 computed, with where each entered and exited — and shows the grade. The best
+trade is the gold line the old game called Best in hindsight (§10.2). It is shown so the player can
+see what the tape offered, not to suggest it was findable.
+
+### 23.6 Duels
+
+Two players, the same tapes in the same order, each starting at **1000 points**. Points are the
+duel's health bar: they exist for that duel and carry nowhere.
+
+- **Dealing is §21.1's.** A duel is a link; its tapes are drawn when the second player joins, from
+  tapes **neither** has played, and every one passes §23.4. Each round resolves when the second
+  player locks in, so the two never need to be online together.
+- **Nobody sees an opponent's trade before locking in their own.** Afterwards, both trades play on
+  the same chart.
+- **Damage.** Each round, the player with the lower grade loses
+
+      gap    = (higher grade − lower grade) / 1000
+      damage = round(1000 × (e^(k·gap) − 1) / (e^k − 1)),   k = 2
+
+  and points never go below zero. Equal grades do nothing. The winner of a round gains nothing:
+  damage only comes off.
+- **The end.** A duel ends when a player reaches 0, or after **10 tapes**, when the player with more
+  points wins. Equal points after ten is a draw. Both ours.
+
+**The curve is on the gap, not on each grade.** Curving each grade would move sitting out off its
+place in §23.3 and change what the training grounds score. Curving the gap leaves every grade alone
+and changes only how hard a round hits: a small gap barely hurts, and a large one hurts a great deal.
+
+| gap | linear | **k = 2** | k = 3 |
+| --- | --- | --- | --- |
+| 0.10 | 100 | **35** | 18 |
+| 0.25 | 250 | **102** | 59 |
+| 0.50 | 500 | **269** | 182 |
+| 0.75 | 750 | **545** | 445 |
+| 0.90 | 900 | **790** | 727 |
+| 1.00 | 1000 | **1000** | 1000 |
+
+In §23.3's example A out-grades B by 750 points, a gap of 0.75, so B takes **545** and drops to 455.
+
+At k = 2 a duel at a steady gap of 0.75 ends in **2 tapes**, at 0.5 in **4**, and at 0.25 in **10**.
+That is the intended shape: a mismatch is over quickly, and two strong players, whose grades differ
+less, play longer. Two players a steady 0.1 apart would need 29 tapes, which is why there is a limit
+at ten.
+
+**What the curve gives up.** §21.2 withdrew the old escalating multiplier because it made *round
+order* decide duels. The curve does not: it is the same function every round, so the same rounds in a
+different order deal the same damage, until a knockout ends the duel early. What it does give up, on
+purpose, is that the winner is always the player with the higher total grade — one decisive round
+outweighs several narrow ones. How often that overturns the total will be measured against two
+random players before it ships, as §21.2 measured the multiplier, and k moves if the answer is
+unreasonable.
+
+**No per-round cap.** §21.3 capped damage at 15 of 40 so that one chart could not end a duel. Here a
+one-tape knockout needs a gap of 1.0 — one player took the best trade the tape allowed and the other
+the worst — and the curve already makes the near misses cost far less: a gap of 0.9 deals 790.
+
+### 23.7 Against a school
+
+A duel whose opponent is a school (§23.8), under §23.6's rules, with three differences:
+
+- **The school reads first, once, offline.** Each school's read of each tape is made before any
+  player is dealt it, and stored. Every player who meets that school on that tape meets the same
+  read, and the school never sees anyone's trade.
+- **Its trade plays live.** Once the player locks in, the school's entry, stop and target go on the
+  chart beside the player's, and both play out on the tape together.
+- **Its working opens when the tape ends**: the levels it drew, what it saw, why it took the trade,
+  where it put its stop and target and why, and its grade.
+
+A duel against a school is dealt from tapes on which **that school traded**, because a round against
+an opponent who sat out is a round against sitting out's grade. That tells the player the tape held a
+setup in the school's playbook — not which way it pointed — and it is stated on screen rather than
+hidden.
+
+### 23.8 What a school must be
+
+§14's engines were built as an experiment. Each coded a published method literally and froze its
+thresholds, to ask whether that method had an edge on this corpus, and the answer stands: none picks
+trades better than a coin flip on the tapes it chooses, and the only thing on the roster that beats a
+coin flip is not trading (§14.7). Together they sit out 66.9% of tapes, and Geometry never fired at
+all (§14.5). That is the right way to test a book and the wrong way to build an opponent or a teacher.
+
+So **the seven schools are retired as opponents.** Their measurements stay in §14 as the record, and
+Engine Zero stays as a yardstick. A school that replaces them has to clear three bars:
+
+1. **It speaks.** It trades on at least half the tapes it is shown — ours — and when it sits out, it
+   says why.
+2. **It shows its working.** Every trade carries a thesis in words, the levels it drew, a stop and a
+   target placed at those levels, and a size. A read that would not pass §23.1's order checks is
+   recorded as a sit-out with the rejection, never repaired.
+3. **It beats sitting out on tapes it has never seen.** The corpus is split **by symbol** into
+   development and held-out tapes, because two windows of one instrument are not independent draws
+   (§14.7). A school is built and tuned on the first and graded once on the second. On the held-out
+   tapes it trades, its grade must beat what sitting out grades on those same tapes — paired per
+   tape, bootstrapped by symbol, one-sided, as §14.7 measures. Every version tried is counted, as
+   §14.7 counts Sweep's three specifications, and the deflation that implies applies.
+
+A coin flip is not the bar. §14.7 showed it loses money, so anything that trades less than it beats
+it, skill or no skill. Sitting out is the bar, because sitting out is what the player could have done
+instead.
+
+**The first school is a pilot, and it is written by a model.** Given one playbook — price action:
+trend structure, support and resistance, breakouts and retests — a language model reads the history
+up to the decision close, draws the levels it uses, and returns one §23.1 order or a sit-out, with its
+reasoning. It is graded on about 200 held-out tapes, a fifth of the symbols. If it clears the bars,
+more playbooks follow the same way; if it does not, that is published here as §14's results were.
+
+- **It reads what the player reads**: the same history, and nothing after the decision close (§8).
+- **It reads the tape blind.** Prices are indexed to 100 as the corpus stores them (§22.1), with no
+  symbol and no date, so the model cannot recall what that market did next. The chart is **not
+  mirrored** for it, as stored charts sometimes are: a mirrored read would put its "support" under the
+  player's resistance.
+- **Its writing names levels, never prices.** Levels come back as data and are converted to real
+  prices for the screen; prose that quoted an indexed price would contradict the chart beside it.
+- **A stored read is final.** Changing the playbook, the prompt or the model makes a new school
+  version with new reads, as `BOT_VERSION` did for §22.10's bots. Old reads are kept, never
+  rewritten.
+
+### 23.9 What survives from §22
+
+| §22 | in the game |
+| --- | --- |
+| 22.1 The market | **kept**: a round's tape is a §22.1 market |
+| 22.2 The clock | **kept for watching only**: speed and step are display, because the result was settled at lock-in |
+| 22.3 Orders | **one entry** with its take-profit and stop-loss; no modify, reduce-only, close-position or end-session |
+| 22.4 Fills | **kept** unchanged, and the source of §23.2's best and worst |
+| 22.5 Costs | **kept** unchanged; the liquidation fee has nothing to apply to |
+| 22.6 Margin and liquidation | **gone**: no leverage |
+| 22.7 Profit and loss | **the result** is the round's end value; session figures and benchmarks give way to the grade and to §23.2 |
+| 22.8 Accounts and sessions | **gone**: no accounts, no $100,000, no money that carries, no Main or Practice, no reset, no bankruptcy |
+| 22.9 Integrity | **kept**, plus two rules: no opponent's trade before lock-in, and nothing about a resolved round is sent before the replay reaches it |
+| 22.10 The schools as traders | **gone**: a school plays rounds, not an account (§23.7, §23.8) |
+| 22.11 Leaderboards | **gone**: they ranked money |
+
+### 23.10 Not decided
+
+Recorded so that nothing here is mistaken for settled.
+
+- **Ratings and boards.** Whether duels or the training grounds feed a rating or a leaderboard, and
+  what a player's record shows. §12 rated percentiles; nothing rates a grade yet.
+- **A daily.** Whether there is a shared tape of the day, as §10.5 and §22.1 each had.
+- **The drawing tools** a player has while reading.
+- **Every number marked ours**: the $500 stake (cosmetic, since the grade divides it out), the 3%
+  minimum move, k = 2, the ten-tape limit, and a school's half-the-tapes coverage. The minimum is
+  measured against the corpus, and k and the limit against simulated duels, before any of them ships.
+- **The pilot school's model and playbook**, which are named and hashed here when it is built.
