@@ -69,7 +69,7 @@ export function schoolSystemPrompt(school: SchoolSpec): string {
     'Your playbook:',
     school.playbook,
     '',
-    'Answer in the JSON schema you are given. In the reasoning, refer to your levels by their names, never by price.',
+    'Answer in the JSON schema you are given. In the thesis and the reasoning, refer to levels by their names and never write a price or any number from the index scale, not even a round one like "the 100 area": the player sees the real instrument at its real prices, so an index number would contradict the chart beside your words. Prices belong only in the levels and the trade.',
   ].join('\n');
 }
 
