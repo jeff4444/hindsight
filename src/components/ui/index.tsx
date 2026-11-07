@@ -36,15 +36,15 @@ function stagger(index?: number): CSSProperties | undefined {
 
 /**
  * The semantic vocabulary. `long`/`short` are directions; `gain`/`loss` are outcomes. They resolve
- * to the same hues, and keeping both names means a call site says which one it meant.
+ * to the same hues, and keeping both names means a call site says which one it meant. `accent` is
+ * the pen: the best outcome and the one thing to look at.
  *
- * `brand` is not in here on purpose. It is the one non-semantic hue in the system and it is
- * restricted to atmosphere: 18% alpha or less, 32px or larger, or inside the mark. A `Tone` is
- * what small opaque things are painted with, so admitting brand to this union is exactly how the
- * two categories would start to collide.
+ * `brand` is not in here on purpose. It aliases the pen for the mark and nothing else, and a
+ * `Tone` is what small opaque things are painted with, so admitting brand to this union is exactly
+ * how the two categories would start to collide.
  */
 export type Tone =
-  "neutral" | "long" | "short" | "info" | "attention" | "restraint" | "gold";
+  "neutral" | "long" | "short" | "info" | "attention" | "restraint" | "accent";
 
 const TONE_CHIP: Record<Tone, string> = {
   neutral: "bg-fill-2 text-ink ring-line",
@@ -53,7 +53,7 @@ const TONE_CHIP: Record<Tone, string> = {
   info: "bg-info-bg text-info-ink ring-info-line",
   attention: "bg-attention-bg text-attention-ink ring-attention-line",
   restraint: "bg-restraint-bg text-restraint-ink ring-restraint-line",
-  gold: "bg-gold-bg text-gold-ink ring-gold-line",
+  accent: "bg-accent-bg text-accent-ink ring-accent-line",
 };
 
 const TONE_INK: Record<Tone, string> = {
@@ -63,7 +63,7 @@ const TONE_INK: Record<Tone, string> = {
   info: "text-info-ink",
   attention: "text-attention-ink",
   restraint: "text-restraint-ink",
-  gold: "text-gold-ink",
+  accent: "text-accent-ink",
 };
 
 const TONE_FILL: Record<Tone, string> = {
@@ -73,7 +73,7 @@ const TONE_FILL: Record<Tone, string> = {
   info: "bg-info",
   attention: "bg-attention",
   restraint: "bg-restraint",
-  gold: "bg-gold",
+  accent: "bg-accent",
 };
 
 /** The glow colour for `Panel glow`, and for `--shadow-glow` anywhere else. */
@@ -84,7 +84,7 @@ const TONE_GLOW: Record<Tone | "brand", string> = {
   info: "var(--color-info-glow)",
   attention: "var(--color-attention-glow)",
   restraint: "var(--color-restraint-glow)",
-  gold: "var(--color-gold-glow)",
+  accent: "var(--color-accent-glow)",
   brand: "var(--color-brand-glow)",
 };
 
@@ -130,7 +130,7 @@ export function Kbd({
     <kbd
       className={cx(
         "kbd-hint font-mono text-micro",
-        muted ? "text-on-gold/60" : "text-ink-dim",
+        muted ? "text-on-accent/70" : "text-ink-dim",
       )}
     >
       {children}
@@ -151,24 +151,26 @@ type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "subtle";
  * the thing that silently kills the drag rails. Removing the property removes the class of bug.
  */
 const BUTTON_VARIANT: Record<ButtonVariant, string> = {
-  // Gold is the best outcome, and the one thing to do next on a screen is the same promise. One
-  // primary per view; everything beside it is secondary or ghost.
-  primary: "bg-gold text-on-gold hover:bg-gold-hover shadow-key",
+  // The pen is the one thing to do next on a screen. It is printed as a block — ink outline, hard
+  // shadow — and stamps into the shadow when pressed (`.btn-key`). One primary per view; everything
+  // beside it is secondary or ghost.
+  primary: "btn-key bg-accent text-on-accent border border-rule hover:bg-accent-hover",
+  // Paper with an ink rule: the same block, unprinted.
   secondary:
-    "bg-fill-2 text-ink-hi ring-1 ring-line hover:bg-fill-3 hover:ring-line-strong",
-  ghost: "text-ink-lo hover:text-ink-hi hover:bg-fill-2",
-  danger: "bg-short-bg text-short-ink ring-1 ring-short-line hover:bg-short/25",
+    "bg-surface-2 text-ink-max ring-1 ring-inset ring-line-strong hover:ring-rule hover:bg-surface-3",
+  ghost: "text-ink-lo hover:text-ink-max hover:bg-fill-2",
+  danger: "bg-short-bg text-short-ink ring-1 ring-inset ring-short-line hover:bg-short/20",
   subtle:
-    "text-ink-lo ring-1 ring-line-faint hover:text-ink-hi hover:ring-line",
+    "text-ink-lo ring-1 ring-inset ring-line hover:text-ink-hi hover:ring-line-strong",
 };
 
 const BUTTON_SIZE = {
   xs: "h-7 px-2.5 text-mini rounded-sm gap-1.5",
-  sm: "h-8 px-3 text-xs rounded-md gap-1.5",
+  sm: "h-8 px-3 text-xs rounded-sm gap-1.5",
   md: "h-10 px-4 text-sm rounded-md gap-2",
   // 44px: the touch-target floor. §16 requires the interaction to work on a phone from the start.
-  lg: "h-12 px-6 text-base rounded-full gap-2",
-  xl: "h-14 px-8 text-lg rounded-full gap-2.5",
+  lg: "h-12 px-6 text-base rounded-md gap-2",
+  xl: "h-14 px-8 text-lg rounded-md gap-2.5",
 } as const;
 
 type ButtonOwnProps = {
@@ -206,7 +208,7 @@ export function Button({
   ...rest
 }: ButtonOwnProps & React.ButtonHTMLAttributes<HTMLButtonElement>) {
   const className_ = cx(
-    "press relative inline-flex items-center justify-center font-medium whitespace-nowrap transition-colors",
+    "press relative inline-flex items-center justify-center font-semibold whitespace-nowrap transition-colors",
     "disabled:cursor-not-allowed disabled:opacity-45",
     BUTTON_VARIANT[variant],
     BUTTON_SIZE[size],
@@ -350,14 +352,15 @@ export function Panel({
   className?: string;
   children: ReactNode;
 } & React.HTMLAttributes<HTMLDivElement>) {
-  // The top-edge gradient is what makes a panel read as a lit face rather than a lighter
-  // rectangle. It is a background-image, so it creates no stacking context and is legal anywhere.
+  // A raised panel is a sheet laid on the page: lighter paper and a hairline rule. A hero panel is
+  // printed as a block — an ink outline and the hard e2 offset — so the one thing a screen is about
+  // sits visibly above everything else on it.
   const tones = {
     raised: "bg-surface-2 border border-line rounded-xl",
     inset: "bg-surface-1 border border-line-faint rounded-xl",
     "over-chart": "bg-scrim border border-line rounded-lg",
     flush: "bg-transparent rounded-xl",
-    hero: "bg-surface-2 border border-line rounded-2xl",
+    hero: "bg-surface-2 border border-rule rounded-2xl",
   } as const;
 
   const shadow = {
@@ -383,7 +386,7 @@ export function Panel({
         shadow,
         PAD[pad],
         glow && "shadow-glow",
-        interactive && "press lift hover:border-line-strong hover:bg-surface-3/40 transition-colors",
+        interactive && "press lift transition-colors",
         className,
       )}
     >
@@ -418,8 +421,8 @@ export function Chip({
     <span
       title={title}
       className={cx(
-        "inline-flex items-center gap-1.5 rounded-full ring-1 whitespace-nowrap",
-        size === "md" ? "px-2.5 py-1.5 text-xs" : "px-2 py-1 text-mini",
+        "inline-flex items-center gap-1.5 rounded-xs font-medium ring-1 ring-inset whitespace-nowrap",
+        size === "md" ? "px-2.5 py-1 text-xs" : "px-1.5 py-0.5 text-mini",
         mono && "font-mono tabular-nums",
         TONE_CHIP[tone],
         className,
@@ -427,7 +430,7 @@ export function Chip({
     >
       {dot && (
         <span
-          className={cx("h-1.5 w-1.5 shrink-0 rounded-full", TONE_FILL[tone])}
+          className={cx("h-1.5 w-1.5 shrink-0", TONE_FILL[tone])}
           aria-hidden
         />
       )}
@@ -550,7 +553,7 @@ export function Meter({
         <span
           key={i}
           className={cx(
-            "flex-1 rounded-full transition-colors duration-(--dur-4)",
+            "flex-1 transition-colors duration-(--dur-4)",
             h,
             i < value ? TONE_FILL[tone] : "bg-fill-2",
           )}
@@ -589,7 +592,7 @@ export function ProgressBar({
   const pct = max > 0 ? Math.min(Math.max(value / max, 0), 1) * 100 : 0;
   return (
     <div
-      className={cx("bg-fill-2 overflow-hidden rounded-full", h, className)}
+      className={cx("bg-fill-2 overflow-hidden", h, className)}
       role="progressbar"
       aria-valuenow={value}
       aria-valuemin={0}
@@ -598,7 +601,7 @@ export function ProgressBar({
     >
       <div
         className={cx(
-          "h-full rounded-full transition-[width,background-color]",
+          "h-full transition-[width,background-color]",
           pace === "live"
             ? "duration-100 ease-linear"
             : "bar-in duration-(--dur-6) ease-(--ease-entrance)",
@@ -647,7 +650,7 @@ export function ProgressArc({
     info: "var(--color-info)",
     attention: "var(--color-attention)",
     restraint: "var(--color-restraint)",
-    gold: "var(--color-gold)",
+    accent: "var(--color-accent)",
   }[tone];
 
   return (
@@ -681,7 +684,7 @@ export function ProgressArc({
           fill="none"
           stroke={stroke}
           strokeWidth={thickness}
-          strokeLinecap="round"
+          strokeLinecap="butt"
           strokeDasharray={circumference}
           strokeDashoffset={circumference * (1 - fraction)}
           // Fills from empty on mount, then eases between values after that.
@@ -816,13 +819,13 @@ export function Segmented<T extends string | number>({
       role="radiogroup"
       aria-label={label}
       className={cx(
-        "bg-fill-2 ring-line-faint relative isolate rounded-full p-1 ring-1",
+        "bg-surface-1 ring-line-strong relative isolate rounded-md p-0.5 ring-1 ring-inset",
         block ? "flex" : "inline-flex",
         className,
       )}
     >
       {/* The thumb slides between segments; until it has measured, the checked one draws its own. */}
-      <Indicator match="[aria-checked=true]" className="bg-thumb shadow-e1 rounded-full" />
+      <Indicator match="[aria-checked=true]" className="bg-thumb rounded-sm" />
       {options.map((option) => {
         const active = option.value === value;
         return (
@@ -835,12 +838,12 @@ export function Segmented<T extends string | number>({
             aria-checked={active}
             onClick={() => onChange(option.value)}
             className={cx(
-              "press rounded-full font-medium whitespace-nowrap transition-colors disabled:opacity-35",
+              "press rounded-sm font-medium whitespace-nowrap transition-colors disabled:opacity-35",
               size === "sm" ? "h-7 px-3 text-xs" : size === "md" ? "h-9 px-4 text-sm" : "h-11 px-5 text-sm",
               block && "flex-1",
               active
-                ? "bg-thumb text-ink-max shadow-e1 in-data-[indicator=ready]:bg-transparent in-data-[indicator=ready]:shadow-none"
-                : "text-ink-lo hover:text-ink-hi",
+                ? "bg-thumb text-on-thumb in-data-[indicator=ready]:bg-transparent"
+                : "text-ink-lo hover:text-ink-max",
             )}
           >
             {option.label}
@@ -922,7 +925,7 @@ export function EmptyState({
       )}
     >
       {icon && (
-        <span className="bg-surface-2 text-ink-lo ring-line grid h-12 w-12 place-items-center rounded-full ring-1">
+        <span className="bg-surface-2 text-ink-lo ring-line-strong grid h-12 w-12 place-items-center rounded-md ring-1">
           <Icon name={icon} size={22} />
         </span>
       )}
@@ -950,7 +953,7 @@ export function SectionHeader({
     <div className={cx("flex items-end justify-between gap-4", className)}>
       <div>
         {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
-        <h2 className="text-ink-max mt-1.5 text-xl font-semibold tracking-tight md:text-2xl">
+        <h2 className="font-display text-ink-max mt-1 text-2xl md:text-[1.75rem]">
           {title}
         </h2>
       </div>
@@ -984,8 +987,8 @@ export function Divider({
 // The focus treatment is a 3px ring plus the border, not the border alone: a 1px colour change
 // was the only focus signal before, and on a dark field it was close to invisible.
 const INPUT_CLASS =
-  "bg-surface-1 border-line text-ink-hi placeholder:text-ink-dim h-12 w-full rounded-lg border px-3.5 text-base " +
-  "transition-[border-color,box-shadow] outline-none focus-visible:border-focus focus-visible:ring-3 focus-visible:ring-focus/30";
+  "bg-surface-2 border-line-strong text-ink-max placeholder:text-ink-dim h-12 w-full rounded-md border px-3.5 text-base " +
+  "transition-[border-color,box-shadow] outline-none focus-visible:border-focus focus-visible:ring-3 focus-visible:ring-focus/25";
 
 /**
  * A labelled control, with its hint and its error.
@@ -1101,7 +1104,7 @@ export function IconBadge({
   return (
     <span
       className={cx(
-        "grid place-items-center rounded-full ring-1",
+        "grid place-items-center rounded-md ring-1 ring-inset",
         box,
         TONE_CHIP[tone],
         className,
@@ -1145,7 +1148,7 @@ export function Alert({
     <div
       role={failure ? "alert" : undefined}
       className={cx(
-        "flex items-start gap-3 rounded-lg px-3.5 py-3 text-sm ring-1",
+        "flex items-start gap-3 rounded-lg px-3.5 py-3 text-sm ring-1 ring-inset",
         TONE_CHIP[tone],
         className,
       )}
@@ -1186,7 +1189,7 @@ export function TextLink({
   children: React.ReactNode;
 } & Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, "href">) {
   const classes = cx(
-    "text-ink-hi decoration-gold-line hover:decoration-gold rounded-xs underline decoration-from-font underline-offset-4 transition-colors",
+    "text-ink-hi decoration-accent-line hover:decoration-accent rounded-xs underline decoration-from-font underline-offset-4 transition-colors",
     className,
   );
   if (!external && href.startsWith("/")) {
@@ -1255,15 +1258,16 @@ export function Toggle({
       <span
         aria-hidden
         className={cx(
-          "relative h-5 w-9 shrink-0 rounded-full transition-colors",
-          on ? "bg-info" : "bg-fill-3 ring-1 ring-line ring-inset",
+          "relative h-5 w-9 shrink-0 rounded-sm transition-colors",
+          on ? "bg-thumb" : "bg-fill-2 ring-1 ring-line-strong ring-inset",
         )}
       >
         {/* The knob springs across, and stretches toward its far side while pressed, the way a
-            physical switch gives under a thumb before it flips. */}
+            physical switch gives under a thumb before it flips. On, it is the track's reverse. */}
         <span
           className={cx(
-            "bg-knob shadow-e1 absolute top-0.5 h-4 w-4 rounded-full",
+            "absolute top-0.5 h-4 w-4 rounded-[1px]",
+            on ? "bg-on-thumb" : "bg-surface-2 ring-1 ring-line-strong",
             "transition-[left,width] duration-(--dur-4) ease-(--ease-spring) group-enabled/toggle:group-active/toggle:w-5",
             on ? "left-[1.125rem] group-enabled/toggle:group-active/toggle:left-[0.875rem]" : "left-0.5",
           )}
@@ -1274,7 +1278,7 @@ export function Toggle({
           {swatch && (
             <span
               aria-hidden
-              className="h-2.5 w-2.5 shrink-0 rounded-full"
+              className="h-2.5 w-2.5 shrink-0"
               style={{ background: swatch }}
             />
           )}
@@ -1332,7 +1336,7 @@ export function Disclosure({
       open={defaultOpen}
       className={cx(
         "group",
-        tone === "panel" && "border-line rounded-lg border px-3 py-2.5",
+        tone === "panel" && "border-line bg-surface-2 rounded-lg border px-3 py-2.5",
         className,
       )}
     >
@@ -1416,7 +1420,7 @@ export function PersonaAvatar({
   const badge = Math.max(14, Math.round(size * 0.42));
   return (
     <span
-      className={cx("relative inline-grid shrink-0 place-items-center rounded-full", className)}
+      className={cx("relative inline-grid shrink-0 place-items-center rounded-md", className)}
       style={{
         width: size,
         height: size,
@@ -1441,11 +1445,11 @@ export function PersonaAvatar({
       {direction !== undefined && (
         <span
           className={cx(
-            "ring-surface-2 absolute -right-1 -bottom-1 grid place-items-center rounded-full ring-2",
+            "ring-surface-2 absolute -right-1 -bottom-1 grid place-items-center rounded-xs ring-2",
             direction === "long"
-              ? "bg-long text-on-gold"
+              ? "bg-long text-on-accent"
               : direction === "short"
-                ? "bg-short text-on-gold"
+                ? "bg-short text-on-accent"
                 : "bg-surface-3 text-ink-dim",
           )}
           style={{ width: badge, height: badge }}
@@ -1468,9 +1472,10 @@ export function PersonaAvatar({
 /* ------------------------------------------------------------ PageHeader */
 
 /**
- * The top of a destination: an eyebrow, a serif title, a lede, and room for actions. Every page in
- * the shell opens with one, so the eye always lands in the same place and the serif always means
- * "you are here".
+ * The top of a destination: a caption, a serif title, a lede, and room for actions, standing on a
+ * heavy rule the way a section of a paper opens under its own heading. Every page in the shell
+ * opens with one, so the eye always lands in the same place and the serif always means "you are
+ * here".
  */
 export function PageHeader({
   eyebrow,
@@ -1486,10 +1491,10 @@ export function PageHeader({
   className?: string;
 }) {
   return (
-    <header className={cx("flex flex-col gap-5 md:flex-row md:items-end md:justify-between", className)}>
+    <header className={cx("border-rule flex flex-col gap-5 border-b-2 pb-6 md:flex-row md:items-end md:justify-between", className)}>
       <div className="max-w-2xl">
         {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
-        <h1 className="font-display text-ink-max mt-2 text-[2.5rem] leading-[1.02] md:text-[3.25rem]">{title}</h1>
+        <h1 className="font-display text-ink-max mt-1.5 text-[2.5rem] leading-[1.02] md:text-[3.5rem]">{title}</h1>
         {lede && <p className="text-ink-lo mt-3 max-w-xl text-base leading-relaxed md:text-lg">{lede}</p>}
       </div>
       {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
@@ -1515,9 +1520,9 @@ export function LinkTabs({
   className?: string;
 }) {
   return (
-    <nav aria-label={label} className={cx("border-line-faint no-scrollbar relative isolate flex gap-1 overflow-x-auto border-b", className)}>
+    <nav aria-label={label} className={cx("border-line no-scrollbar relative isolate flex gap-1 overflow-x-auto border-b", className)}>
       {/* Moves on the click, before the server confirms the new tab, then settles on what it marks. */}
-      <Indicator match="[aria-current=page]" edge="bottom" optimistic="a" className="bg-gold rounded-full" />
+      <Indicator match="[aria-current=page]" edge="bottom" optimistic="a" className="bg-accent" />
       {tabs.map((tab) => {
         const on = tab.value === active;
         return (
@@ -1528,12 +1533,12 @@ export function LinkTabs({
             scroll={false}
             className={cx(
               "relative -mb-px flex h-11 shrink-0 items-center gap-2 border-b-2 px-3 text-sm font-medium transition-colors",
-              on ? "border-gold text-ink-max in-data-[indicator=ready]:border-transparent" : "text-ink-lo hover:text-ink-hi border-transparent",
+              on ? "border-accent text-ink-max in-data-[indicator=ready]:border-transparent" : "text-ink-lo hover:text-ink-hi border-transparent",
             )}
           >
             {tab.label}
             {tab.count !== undefined && (
-              <span className="numeral bg-fill-2 text-ink-dim rounded-full px-1.5 text-mini">{tab.count}</span>
+              <span className="numeral bg-fill-2 text-ink-dim rounded-xs px-1.5 text-mini">{tab.count}</span>
             )}
           </Link>
         );

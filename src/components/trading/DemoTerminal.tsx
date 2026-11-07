@@ -21,7 +21,7 @@ export function DemoTerminal({ seed = 7, exit, className }: { seed?: number; exi
 
   if (review) {
     return (
-      <div data-theme="dark" className="bg-surface-0 text-ink min-h-dvh">
+      <div className="bg-surface-0 text-ink min-h-dvh">
         <SessionReview
           review={review}
           actions={

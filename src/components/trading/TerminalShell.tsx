@@ -11,7 +11,7 @@ import { formatPrice, formatQty, formatUsd, priceInput } from '@/lib/trading/for
 import { overlaysFor } from '@/lib/toolOverlays';
 import { useStudySettings } from '@/lib/studySettings';
 import { useHotkeys } from '@/lib/useHotkeys';
-import { candlesFor } from '@/lib/palette';
+import { candlesFor, chromeFor, overlayInk } from '@/lib/palette';
 import { Button, EmptyState, cx } from '../ui';
 import { Dialog, useThemeSnapshot, useToast } from '../ui/client';
 import { Icon } from '../ui/icons';
@@ -81,27 +81,29 @@ export function TerminalShell({
   const [activeTools, setActiveTools] = useState<ToolCode[]>([]);
   const [studySettings, setStudySettings, resetStudySettings] = useStudySettings();
   const [logScale, setLogScale] = useState(false);
-  const { palette } = useThemeSnapshot();
+  const { palette, theme } = useThemeSnapshot();
   const nextDrawing = useRef(1);
 
   // Studies are recomputed from the candles on the chart whenever those change, which happens
   // outside React (a minute appended, a timeframe switched), so they are refreshed imperatively.
-  const studies = useRef({ activeTools, studySettings });
+  const studies = useRef({ activeTools, studySettings, theme });
   const refreshStudies = useCallback(() => {
     const api = chart.current;
     if (!api) return;
-    const { activeTools: tools, studySettings: settings } = studies.current;
+    const { activeTools: tools, studySettings: settings, theme: ink } = studies.current;
     if (tools.length === 0) {
       api.setStudies([]);
       return;
     }
     const bars = api.displayed();
-    api.setStudies(overlaysFor(tools, { bars, atr: atr(bars.slice(-80)) ?? 0, settings }));
+    // Overlays are authored for carbon; on paper each is printed a few steps darker, same hue.
+    const lines = overlaysFor(tools, { bars, atr: atr(bars.slice(-80)) ?? 0, settings });
+    api.setStudies(lines.map((line) => ({ ...line, color: overlayInk(line.color, ink) })));
   }, []);
   useEffect(() => {
-    studies.current = { activeTools, studySettings };
+    studies.current = { activeTools, studySettings, theme };
     refreshStudies();
-  }, [activeTools, studySettings, refreshStudies]);
+  }, [activeTools, studySettings, theme, refreshStudies]);
 
   const unitRef = useRef(1);
   const session = useTradeSession(driver, start, {
@@ -145,8 +147,9 @@ export function TerminalShell({
   }, [open, unit]);
 
   useEffect(() => {
-    chart.current?.setPalette(candlesFor(palette));
-  }, [palette]);
+    chart.current?.setPalette(candlesFor(palette, theme));
+    chart.current?.setChrome(chromeFor(theme));
+  }, [palette, theme]);
 
   useEffect(() => {
     chart.current?.setTimeframe(timeframe);
@@ -302,7 +305,7 @@ export function TerminalShell({
 
   if (session.error && !open) {
     return (
-      <div data-theme="dark" className="bg-surface-0 text-ink grid min-h-dvh place-items-center p-6">
+      <div className="bg-surface-0 text-ink grid min-h-dvh place-items-center p-6">
         <EmptyState icon="alert" title="That market did not open." body={session.error} action={exit} />
       </div>
     );
@@ -326,7 +329,7 @@ export function TerminalShell({
   const toolsGranted = TERMINAL_TOOLS;
 
   return (
-    <div data-theme="dark" className={cx('bg-surface-0 text-ink flex min-h-dvh flex-col lg:h-dvh lg:min-h-0', className)}>
+    <div className={cx('bg-surface-0 text-ink flex min-h-dvh flex-col lg:h-dvh lg:min-h-0', className)}>
       {open && delta && instrument ? (
         <MarketHeader
           instrument={instrument}
@@ -398,7 +401,7 @@ export function TerminalShell({
               )}
             </div>
 
-            <div className="relative h-[46dvh] min-h-[18rem] flex-1 lg:h-auto">
+            <div className="bg-surface-1 relative h-[46dvh] min-h-[18rem] flex-1 lg:h-auto">
               <TerminalChart ref={chart} className="absolute inset-0" />
               <OrderLinesOverlay chart={chart} lines={lines} snap={snap} />
               <DrawLayer
@@ -418,8 +421,8 @@ export function TerminalShell({
               />
               {closed && delta && (
                 <div className="absolute inset-0 z-30 grid place-items-center p-4">
-                  <div className="bg-surface-2 border-line shadow-e3 w-full max-w-sm rounded-2xl border p-5 text-center">
-                    <div className="eyebrow text-gold-ink">Market closed</div>
+                  <div className="bg-surface-2 border-rule shadow-e3 w-full max-w-sm rounded-2xl border p-5 text-center">
+                    <div className="eyebrow text-accent-ink">Market closed</div>
                     <div className={cx('numeral mt-2 text-3xl font-semibold', delta.account.sessionPnl >= 0 ? 'text-long-ink' : 'text-short-ink')}>
                       {formatUsd(delta.account.sessionPnl, { sign: true })}
                     </div>

@@ -42,7 +42,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
             style={{
               color: BRAND_HEX.ink,
               fontFamily: 'ui-serif, Georgia, serif',
-              fontWeight: 400,
+              fontWeight: 600,
               fontSize: '2rem',
               margin: '1.25rem 0 0',
               letterSpacing: '-0.01em',
@@ -57,10 +57,11 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
             onClick={reset}
             style={{
               marginTop: '1.75rem',
-              background: BRAND_HEX.gold,
-              color: BRAND_HEX.canvas,
-              border: 0,
-              borderRadius: '999px',
+              background: BRAND_HEX.accent,
+              color: '#ffffff',
+              border: `1px solid ${BRAND_HEX.ink}`,
+              boxShadow: `3px 3px 0 0 ${BRAND_HEX.ink}`,
+              borderRadius: '2px',
               padding: '0.75rem 1.75rem',
               font: 'inherit',
               fontWeight: 600,

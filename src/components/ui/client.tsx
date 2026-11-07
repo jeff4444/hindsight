@@ -141,7 +141,7 @@ function ToastViewport({ items, onDismiss }: { items: ToastItem[]; onDismiss: (i
             key={item.id}
             data-state={item.leaving ? 'closed' : 'open'}
             className={cx(
-              'toast bg-surface-3 shadow-e4 pointer-events-auto flex items-center gap-2.5 rounded-lg px-3.5 py-2.5 ring-1',
+              'toast bg-surface-2 shadow-e2 pointer-events-auto flex items-center gap-2.5 rounded-md px-3.5 py-2.5 ring-1 ring-inset',
               tone.ring,
             )}
           >
@@ -248,7 +248,7 @@ export function Dialog({
       // phone, the side panel slides in from the right on desktop, and a centred dialog settles.
       data-placement={placement}
       className={cx(
-        'hs-dialog bg-surface-2 text-ink shadow-e4 border-line m-0 border p-0',
+        'hs-dialog bg-surface-2 text-ink shadow-e4 border-rule m-0 border p-0',
         placement === 'side'
           ? 'fixed inset-x-0 bottom-0 top-auto max-h-[88dvh] w-full max-w-none overflow-y-auto rounded-t-2xl md:inset-y-0 md:left-auto md:right-0 md:max-h-none md:h-dvh md:w-[28rem] md:rounded-none md:rounded-l-2xl'
           : placement === 'bottom'
@@ -264,7 +264,7 @@ export function Dialog({
     >
       <div className="flex items-start justify-between gap-4 px-5 pt-5">
         <div>
-          <h2 id={titleId} className="text-ink-max text-lg font-semibold tracking-tight">
+          <h2 id={titleId} className="font-display text-ink-max text-2xl">
             {title}
           </h2>
           {description && (
@@ -417,7 +417,7 @@ export function Tooltip({
             role="tooltip"
             style={{ top: pos.top, left: pos.left }}
             className={cx(
-              'bg-surface-3 text-ink shadow-e3 ring-line animate-fade pointer-events-none fixed z-50 max-w-56 rounded-md px-2.5 py-1.5 text-xs ring-1',
+              'bg-surface-inv text-ink-inv animate-fade pointer-events-none fixed z-50 max-w-56 rounded-sm px-2.5 py-1.5 text-xs',
               placement === 'right' ? '-translate-y-1/2' : '-translate-x-1/2',
               placement === 'top' ? '-translate-y-full' : '',
             )}
@@ -595,7 +595,7 @@ export function Popover({
               if ((event.target as HTMLElement).closest('a')) close();
             }}
             className={cx(
-              'pop-panel bg-surface-3 text-ink shadow-e4 ring-line fixed z-50 -translate-x-1/2 rounded-xl p-4 text-sm ring-1',
+              'pop-panel bg-surface-2 text-ink shadow-e3 ring-rule fixed z-50 -translate-x-1/2 rounded-lg p-4 text-sm ring-1',
               placement === 'top' ? 'origin-bottom -translate-y-full' : 'origin-top',
               width,
             )}
@@ -625,7 +625,7 @@ export function Term({ id, children }: { id: TermId; children?: ReactNode }) {
       <p className="text-ink-max font-semibold">{term.label}</p>
       <p className="text-ink-lo mt-1.5 leading-relaxed">{term.body}</p>
       {term.more && (
-        <a href={term.more} className="text-ink-hi decoration-gold-line mt-2.5 inline-block text-xs underline underline-offset-4">
+        <a href={term.more} className="text-ink-hi decoration-accent-line mt-2.5 inline-block text-xs underline underline-offset-4">
           Read the full rule
         </a>
       )}
@@ -665,9 +665,9 @@ export function Tabs<T extends string>({
     <div
       role="tablist"
       aria-label={label}
-      className={cx('border-line-faint no-scrollbar relative isolate flex gap-1 overflow-x-auto border-b', className)}
+      className={cx('border-line no-scrollbar relative isolate flex gap-1 overflow-x-auto border-b', className)}
     >
-      <Indicator match="[aria-selected=true]" edge="bottom" className="bg-gold rounded-full" />
+      <Indicator match="[aria-selected=true]" edge="bottom" className="bg-accent" />
       {tabs.map((tab, index) => {
         const active = tab.value === value;
         return (
@@ -684,12 +684,12 @@ export function Tabs<T extends string>({
             onKeyDown={(event) => onKey(event, index)}
             className={cx(
               'relative -mb-px flex h-11 shrink-0 items-center gap-2 border-b-2 px-3 text-sm font-medium transition-colors',
-              active ? 'border-gold text-ink-max in-data-[indicator=ready]:border-transparent' : 'text-ink-lo hover:text-ink-hi border-transparent',
+              active ? 'border-accent text-ink-max in-data-[indicator=ready]:border-transparent' : 'text-ink-lo hover:text-ink-hi border-transparent',
             )}
           >
             {tab.label}
             {tab.count !== undefined && (
-              <span className="numeral bg-fill-2 text-ink-dim rounded-full px-1.5 text-mini">{tab.count}</span>
+              <span className="numeral bg-fill-2 text-ink-dim rounded-xs px-1.5 text-mini">{tab.count}</span>
             )}
           </button>
         );
@@ -701,9 +701,9 @@ export function Tabs<T extends string>({
 /* --------------------------------------------------------- ThemePreference */
 
 const THEME_OPTIONS: { value: ThemeSnapshot['pref']; label: string; hint: string }[] = [
-  { value: 'system', label: 'System', hint: 'Follow your device' },
-  { value: 'light', label: 'Daylight', hint: 'Warm paper. The terminal stays dark.' },
-  { value: 'dark', label: 'Afterglow', hint: 'Ink and gold, everywhere' },
+  { value: 'light', label: 'Paper', hint: 'Newsprint and carbon ink, the terminal included. The default.' },
+  { value: 'dark', label: 'Night', hint: 'The same pages printed in reverse: cream ink on carbon.' },
+  { value: 'system', label: 'System', hint: 'Paper or Night, following your device.' },
 ];
 
 /**
@@ -761,8 +761,8 @@ export function PalettePreference({ className }: { className?: string }) {
           label: (
             <span className="flex items-center gap-2">
               <span aria-hidden className="flex gap-0.5">
-                <span className="h-2.5 w-2.5 rounded-full" style={{ background: candlesFor(option.value).up }} />
-                <span className="h-2.5 w-2.5 rounded-full" style={{ background: candlesFor(option.value).down }} />
+                <span className="h-2.5 w-2.5" style={{ background: candlesFor(option.value, snap.theme).up }} />
+                <span className="h-2.5 w-2.5" style={{ background: candlesFor(option.value, snap.theme).down }} />
               </span>
               {option.label}
             </span>

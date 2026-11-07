@@ -26,7 +26,7 @@ const SWATCHES = [
   'ink',
   'ink-lo',
   'ink-dim',
-  'gold',
+  'accent',
   'long',
   'short',
   'restraint',
@@ -64,7 +64,7 @@ export function DesignLab() {
         <Eyebrow>Type</Eyebrow>
         <h1 className="font-display text-ink-max text-5xl md:text-6xl">Trade the past like it is live.</h1>
         <p className="font-display text-ink-hi text-3xl italic">A clean session.</p>
-        <h2 className="text-ink-max text-2xl font-semibold tracking-tight">Section heading in Inter</h2>
+        <h2 className="text-ink-max text-2xl font-semibold tracking-tight">Section heading in Fraunces</h2>
         <p className="text-ink max-w-prose text-base">
           Body copy. Read the market, place the order, watch it fill. Your <Term id="equity" /> is what
           the account is worth, and <Term id="buyingPower" /> is how much more it can take on.
@@ -87,7 +87,7 @@ export function DesignLab() {
           <Chip tone="long" dot>Long</Chip>
           <Chip tone="short" dot>Short</Chip>
           <Chip tone="info">Practice</Chip>
-          <Chip tone="gold">Ranked</Chip>
+          <Chip tone="accent">Ranked</Chip>
           <Chip tone="info" mono>15m/s</Chip>
         </div>
         <Segmented

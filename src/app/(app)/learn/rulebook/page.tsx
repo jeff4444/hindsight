@@ -93,7 +93,7 @@ export default async function RulesPage() {
           <p className="text-ink-lo mt-2 text-sm leading-relaxed">
             Every rule the game enforces, written for whoever wants to check it — including the measurements and the
             parts that do not flatter us. For the short version, read{' '}
-            <Link href={routes.learn.index} className="text-ink-hi underline decoration-gold-line underline-offset-4">
+            <Link href={routes.learn.index} className="text-ink-hi underline decoration-accent-line underline-offset-4">
               how it works
             </Link>
             .

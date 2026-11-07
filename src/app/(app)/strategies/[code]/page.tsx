@@ -72,7 +72,7 @@ export default async function StrategyPage({ params }: { params: Promise<{ code:
 function Rule({ title, body }: { title: string; body: string }) {
   return (
     <div>
-      <div className="eyebrow text-gold-ink">{title}</div>
+      <div className="eyebrow text-accent-ink">{title}</div>
       <p className="text-ink-hi mt-1.5 text-sm leading-relaxed">{body}</p>
     </div>
   );

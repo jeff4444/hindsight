@@ -17,7 +17,7 @@ const eslintConfig = defineConfig([
           selector:
             "Literal[value=/\\\\b(?:bg|text|border|ring|from|via|to|fill|stroke|decoration|outline|shadow|divide|accent|caret|placeholder)-(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-\\\\d{2,3}\\\\b/]",
           message:
-            "Raw Tailwind palette colour. Use a semantic token from the @theme block in globals.css (surface-*, ink-*, long/short, info, attention, restraint, gold).",
+            "Raw Tailwind palette colour. Use a semantic token from the @theme block in globals.css (surface-*, ink-*, long/short, info, attention, restraint, accent).",
         },
       ],
     },

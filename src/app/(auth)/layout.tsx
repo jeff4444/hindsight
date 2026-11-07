@@ -4,31 +4,27 @@ import { Wordmark } from '@/components/ui/icons';
 
 /**
  * The sign-in surface: the form on the right, and on the left the product in one picture — a chart
- * running into fog — with the promise that playing first costs nothing. The left panel is dark in
- * either theme, like the stage it previews.
+ * running into fog — with the promise that playing first costs nothing. The left panel is printed
+ * in reverse in either theme, carbon with cream ink, so the page reads as a spread: the cover on
+ * the left, the form on the right.
  */
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[minmax(0,44%)_minmax(0,1fr)]">
-      <aside data-theme="dark" className="bg-surface-1 border-line-faint text-ink relative hidden flex-col justify-between overflow-hidden border-r p-10 lg:flex">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0"
-          style={{ background: 'radial-gradient(110% 70% at 10% 0%, oklch(0.815 0.14 78 / 0.10), transparent 60%)' }}
-        />
-        <Link href="/" aria-label="Hindsight home" className="relative">
+      <aside data-theme="dark" className="bg-surface-1 text-ink relative hidden flex-col justify-between overflow-hidden p-10 lg:flex">
+        <Link href="/" aria-label="Hindsight home" className="rule-double relative pb-5">
           <Wordmark size="lg" />
         </Link>
 
         <div className="relative">
-          <p className="font-display text-ink-max max-w-md text-5xl leading-[1.05]">Trade the past like it is live.</p>
+          <p className="font-display text-ink-max max-w-md text-6xl leading-[1.0]">Trade the past like it is live.</p>
           <p className="text-ink-lo mt-4 max-w-sm text-base leading-relaxed">
             Real markets replayed minute by minute at real prices — and a $100,000 paper account to trade them with.
           </p>
         </div>
 
-        <div className="border-line relative overflow-hidden rounded-2xl border">
-          <ChartArt seed={20261024} width={520} height={140} fog={0} />
+        <div className="border-rule bg-surface-0 relative overflow-hidden rounded-2xl border p-2">
+          <ChartArt seed={20261024} width={520} height={140} fog={0.24} />
         </div>
       </aside>
 

@@ -118,7 +118,7 @@ export default function LearnPage() {
             <Link
               key={spec.code}
               href={routes.strategies.show(spec.code)}
-              className="border-line bg-surface-2 hover:border-line-strong flex items-center gap-2 rounded-full border py-1 pr-3 pl-1 transition-colors"
+              className="border-line bg-surface-2 hover:border-rule flex items-center gap-2 rounded-sm border py-1 pr-3 pl-1 transition-colors"
             >
               <PersonaAvatar persona={persona} size={26} />
               <span className="text-ink-hi text-sm">{persona.name}</span>
@@ -128,7 +128,7 @@ export default function LearnPage() {
       </Section>
 
       <section className="space-y-4">
-        <h2 className="text-ink-max text-xl font-semibold">Words you will meet</h2>
+        <h2 className="font-display text-ink-max text-2xl">Words you will meet</h2>
         <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-2">
           {(Object.keys(GLOSSARY) as TermId[]).map((id) => (
             <div key={id} id={`term-${id}`} className="scroll-mt-6">
@@ -164,7 +164,7 @@ function Section({ n, icon, title, lede, children }: { n: number; icon: IconName
           </span>
           <span className="numeral text-ink-dim text-sm">0{n}</span>
         </div>
-        <h2 className="text-ink-max mt-3 text-xl font-semibold">{title}</h2>
+        <h2 className="font-display text-ink-max mt-3 text-2xl">{title}</h2>
         <p className="font-display text-ink-lo mt-1 text-lg italic">{lede}</p>
       </div>
       <div className="text-ink space-y-4 text-base leading-relaxed [&_strong]:text-ink-max [&_strong]:font-semibold">{children}</div>
@@ -196,7 +196,7 @@ function Row({ label, value, note }: { label: string; value: string; note: strin
 function Door({ href, icon, title, body }: { href: string; icon: IconName; title: string; body: string }) {
   return (
     <Link href={href} className="press lift border-line bg-surface-2 hover:border-line-strong rounded-2xl border p-6 transition-colors">
-      <Icon name={icon} size={22} className="text-gold-ink" />
+      <Icon name={icon} size={22} className="text-accent-ink" />
       <h2 className="text-ink-max mt-4 text-lg font-semibold">{title}</h2>
       <p className="text-ink-lo mt-1.5 text-sm leading-relaxed">{body}</p>
     </Link>
