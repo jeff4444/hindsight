@@ -48,7 +48,7 @@ export default async function MarketsPage({ searchParams }: { searchParams: Prom
         title="Trade the real thing, again."
         lede="Real Binance markets, replayed minute by minute. Real prices, real volume, real fees — and the date stays hidden until the bell, so the only way to know what happens next is to read it."
         actions={
-          <Button variant="primary" size="lg" glow="gold" href={routes.trade.open({ kind: 'random' })}>
+          <Button variant="primary" size="lg" glow="accent" href={routes.trade.open({ kind: 'random' })}>
             <Icon name="shuffle" size={17} />
             Random market
           </Button>
@@ -68,9 +68,9 @@ export default async function MarketsPage({ searchParams }: { searchParams: Prom
       )}
 
       {open && (
-        <Panel tone="raised" glow="gold" className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
+        <Panel tone="raised" glow="accent" className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
           <div className="flex items-center gap-3">
-            <span className="bg-gold h-2.5 w-2.5 animate-pulse rounded-full" aria-hidden />
+            <span className="bg-accent h-2.5 w-2.5 animate-pulse rounded-full" aria-hidden />
             <div>
               <div className="text-ink-max font-semibold">{open.symbol.replace(/USDT$/, '/USDT')} is open</div>
               <div className="text-ink-dim text-sm">Your session is paused where you left it.</div>
@@ -86,8 +86,8 @@ export default async function MarketsPage({ searchParams }: { searchParams: Prom
         <Panel tone="hero" pad="md" className="flex flex-col gap-4">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <div className="eyebrow text-gold-ink">Today’s market · #{day}</div>
-              <h2 className="text-ink-max mt-1 text-2xl font-semibold tracking-tight">Same market, everyone, once.</h2>
+              <div className="eyebrow text-accent-ink">Today’s market · #{day}</div>
+              <h2 className="font-display text-ink-max mt-1 text-3xl">Same market, everyone, once.</h2>
             </div>
             <Chip mono size="md">
               <Icon name="clock" size={13} /> <Countdown to={nextResetAt()} />
@@ -185,7 +185,7 @@ export default async function MarketsPage({ searchParams }: { searchParams: Prom
                 aria-current={scenario.slug === wanted ? 'true' : undefined}
                 className={cx(
                   'press bg-surface-2 border-line hover:border-line-strong group flex flex-col gap-2 rounded-xl border p-4 transition-colors',
-                  scenario.slug === wanted && 'ring-gold border-gold-line ring-2',
+                  scenario.slug === wanted && 'ring-accent border-accent-line ring-2',
                 )}
               >
                 <div className="flex items-center justify-between">

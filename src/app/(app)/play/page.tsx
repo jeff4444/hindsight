@@ -50,8 +50,8 @@ export default async function PlayPage() {
       </div>
 
       {duels.length > 0 && (
-        <section className="flex flex-col gap-3">
-          <h2 className="eyebrow text-ink-dim">Your duels</h2>
+        <section className="border-rule flex flex-col gap-4 border-t-2 pt-4">
+          <h2 className="font-display text-ink-max text-2xl">Your duels</h2>
           <div className="grid gap-2 md:grid-cols-2">
             {duels.map((duel) => {
               const state =
@@ -70,7 +70,7 @@ export default async function PlayPage() {
                 <Link
                   key={duel.code}
                   href={routes.duel(duel.code)}
-                  className="press bg-surface-2 border-line hover:border-line-strong flex items-center justify-between gap-3 rounded-xl border p-4 transition-colors"
+                  className="press lift bg-surface-2 border-line hover:border-rule flex items-center justify-between gap-3 border p-4 transition-colors"
                 >
                   <div className="min-w-0">
                     <div className="text-ink-hi truncate font-medium">vs {duel.opponent?.name ?? 'nobody yet'}</div>
@@ -88,9 +88,9 @@ export default async function PlayPage() {
         </section>
       )}
 
-      <section className="flex flex-col gap-3">
+      <section className="border-rule flex flex-col gap-4 border-t-2 pt-4">
         <div className="flex items-baseline justify-between">
-          <h2 className="eyebrow text-ink-dim">Your rounds</h2>
+          <h2 className="font-display text-ink-max text-2xl">Your rounds</h2>
           {record.meanGrade !== null && (
             <span className="text-ink-lo text-sm">
               {record.rounds} played · average grade <span className="numeral text-ink-hi font-semibold">{record.meanGrade}</span>
@@ -100,9 +100,9 @@ export default async function PlayPage() {
         {record.recent.length === 0 ? (
           <p className="text-ink-lo text-sm">Nothing yet. Deal a tape: the first one takes a few minutes, most of which is reading.</p>
         ) : (
-          <div className="bg-surface-2 border-line divide-line-faint divide-y overflow-hidden rounded-xl border">
+          <div className="divide-line divide-y">
             {record.recent.map((round) => (
-              <Link key={round.id} href={routes.play.round(round.id)} className="hover:bg-fill-1 flex items-center justify-between gap-3 px-4 py-3 transition-colors">
+              <Link key={round.id} href={routes.play.round(round.id)} className="hover:bg-fill-1 flex items-center justify-between gap-3 px-1 py-3 transition-colors">
                 <div className="flex min-w-0 items-center gap-2">
                   <span className="text-ink-hi truncate text-sm">{round.display ?? 'A tape you are reading'}</span>
                   {round.mode === 'duel' && <Chip size="sm">Duel</Chip>}
@@ -124,10 +124,10 @@ export default async function PlayPage() {
 
 function Card({ eyebrow, title, body, children }: { eyebrow: string; title: string; body: string; children: React.ReactNode }) {
   return (
-    <div className="bg-surface-2 border-line flex flex-col gap-4 rounded-2xl border p-5">
+    <div className="bg-surface-2 border-rule flex flex-col gap-4 border p-5">
       <div className="flex-1">
-        <div className="eyebrow text-gold-ink">{eyebrow}</div>
-        <h2 className="text-ink-max mt-2 text-xl font-semibold">{title}</h2>
+        <div className="eyebrow text-accent-ink">{eyebrow}</div>
+        <h2 className="font-display text-ink-max mt-2 text-2xl">{title}</h2>
         <p className="text-ink-lo mt-1 text-sm">{body}</p>
       </div>
       <div>{children}</div>

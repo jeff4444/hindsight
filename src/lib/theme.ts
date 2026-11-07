@@ -8,8 +8,9 @@ import { PALETTE_KEY, THEME_KEY } from './theme-script';
  * Same shape as `motion.ts`, for the same reasons. `<html data-theme>` always carries the
  * *resolved* theme — `light` or `dark`, never `system` — so CSS needs no media query and the chart
  * can read one attribute. The stored preference is what may be `system`, and the blocking script
- * in layout.tsx resolves it before first paint. While the preference is `system` this module keeps
- * the attribute in step with the OS.
+ * in layout.tsx resolves it before first paint. Nothing stored means paper: `system` is opted into
+ * like the others. While the preference is `system` this module keeps the attribute in step with
+ * the OS.
  *
  * `data-palette="cb"` is the colour-blind palette: blue for long, orange for short.
  */
@@ -28,27 +29,27 @@ export interface ThemeSnapshot {
 type Listener = () => void;
 const listeners = new Set<Listener>();
 
-let snapshot: ThemeSnapshot = { pref: 'system', theme: 'dark', palette: 'standard' };
+let snapshot: ThemeSnapshot = { pref: 'light', theme: 'light', palette: 'standard' };
 let started = false;
 let initialised = false;
 
 function storedPref(): ThemePref {
   try {
     const value = localStorage.getItem(THEME_KEY);
-    return value === 'light' || value === 'dark' ? value : 'system';
+    return value === 'system' || value === 'dark' ? value : 'light';
   } catch {
-    return 'system';
+    return 'light';
   }
 }
 
 function osTheme(): Theme {
-  return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
 function read(): ThemeSnapshot {
   const root = document.documentElement;
   const pref = storedPref();
-  const theme: Theme = root.dataset.theme === 'light' ? 'light' : 'dark';
+  const theme: Theme = root.dataset.theme === 'dark' ? 'dark' : 'light';
   const palette: Palette = root.dataset.palette === 'cb' ? 'cb' : 'standard';
   return { pref, theme, palette };
 }
@@ -71,7 +72,7 @@ function start() {
   started = true;
   ensureInitialised();
 
-  window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
     if (storedPref() === 'system') document.documentElement.dataset.theme = osTheme();
   });
   new MutationObserver(publish).observe(document.documentElement, {
@@ -93,12 +94,12 @@ export function getThemeSnapshot(): ThemeSnapshot {
   return snapshot;
 }
 
-export const SERVER_THEME: ThemeSnapshot = { pref: 'system', theme: 'dark', palette: 'standard' };
+export const SERVER_THEME: ThemeSnapshot = { pref: 'light', theme: 'light', palette: 'standard' };
 
 export function setThemePref(next: ThemePref): void {
   const root = document.documentElement;
   try {
-    if (next === 'system') localStorage.removeItem(THEME_KEY);
+    if (next === 'light') localStorage.removeItem(THEME_KEY);
     else localStorage.setItem(THEME_KEY, next);
   } catch {
     // Private windows can refuse storage; the attribute still changes for this page.

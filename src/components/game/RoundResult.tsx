@@ -30,12 +30,12 @@ function exitText(trade: TradeLine): string {
   }
 }
 
-function TradeRow({ label, trade, played, tone }: { label: string; trade: TradeLine | null; played: RoundPlayed; tone?: 'gold' | 'dim' }) {
+function TradeRow({ label, trade, played, tone }: { label: string; trade: TradeLine | null; played: RoundPlayed; tone?: 'accent' | 'dim' }) {
   const fmt = (price: number) => formatPrice(price, played.instrument);
   return (
     <div className="flex items-baseline justify-between gap-3 py-1.5">
       <div className="min-w-0">
-        <div className={cx('text-sm font-medium', tone === 'gold' ? 'text-gold-ink' : tone === 'dim' ? 'text-ink-lo' : 'text-ink-hi')}>{label}</div>
+        <div className={cx('text-sm font-semibold', tone === 'accent' ? 'text-accent-ink' : tone === 'dim' ? 'text-ink-lo' : 'text-ink-hi')}>{label}</div>
         <div className="text-ink-dim text-mini truncate">
           {trade
             ? trade.entry
@@ -57,13 +57,18 @@ export function RoundResult({ played, onClose, actions }: { played: RoundPlayed;
   const opponent = played.opponent;
 
   return (
-    <div className="bg-surface-2 border-line shadow-e3 relative w-full max-w-lg rounded-2xl border p-5">
-      <button type="button" onClick={onClose} aria-label="Hide the result to look at the chart" className="text-ink-dim hover:text-ink-hi absolute right-3 top-3 grid h-8 w-8 place-items-center rounded-md">
+    <div className="bg-surface-2 border-rule shadow-e3 relative w-full max-w-lg border px-6 pt-5 pb-5">
+      <div className="rule-double flex items-baseline justify-between gap-3 pb-3 pr-8">
+        <span className="font-display text-ink-max text-xl">Graded</span>
+        <span className="text-ink-dim truncate text-xs">
+          {played.duel ? `Tape ${played.duel.index + 1} of ${played.duel.tapes} · vs ${played.duel.opponent.name}` : 'Training grounds'}
+        </span>
+      </div>
+      <button type="button" onClick={onClose} aria-label="Hide the result to look at the chart" className="text-ink-dim hover:text-ink-max absolute right-3 top-3.5 grid h-8 w-8 place-items-center">
         <Icon name="x" size={16} />
       </button>
 
-      <div className="eyebrow text-gold-ink">Graded</div>
-      <div className="mt-1 flex items-end gap-3">
+      <div className="mt-4 flex items-end gap-3">
         <div className="numeral text-ink-max text-6xl font-semibold leading-none">{played.grade}</div>
         <div className="text-ink-dim pb-1 text-sm">/ 1000</div>
         <div className="ml-auto pb-1 text-right">
@@ -72,25 +77,25 @@ export function RoundResult({ played, onClose, actions }: { played: RoundPlayed;
         </div>
       </div>
 
-      <div className="bg-fill-2 relative mt-4 h-2 overflow-hidden rounded-full">
-        <div className="bg-ink-dim absolute top-0 h-full w-0.5" style={{ left: `${played.sitOutGrade / 10}%` }} title={`Sitting out: ${played.sitOutGrade}`} />
-        <div className="bg-gold h-full rounded-full" style={{ width: `${played.grade / 10}%` }} />
+      <div className="bg-fill-2 relative mt-5 h-2">
+        <div className="bg-accent h-full" style={{ width: `${played.grade / 10}%` }} />
+        <div className="bg-rule absolute top-[-3px] h-[14px] w-0.5" style={{ left: `${played.sitOutGrade / 10}%` }} title={`Sitting out: ${played.sitOutGrade}`} />
       </div>
-      <div className="text-ink-dim text-mini mt-1 flex justify-between">
+      <div className="text-ink-dim text-mini mt-1.5 flex justify-between">
         <span>Worst the tape allowed</span>
         <span>Sitting out: {played.sitOutGrade}</span>
         <span>Best</span>
       </div>
 
-      <div className="divide-line-faint mt-4 divide-y">
+      <div className="divide-line mt-3 divide-y">
         <TradeRow label="You" trade={played.mine} played={played} />
-        <TradeRow label="Best in hindsight" trade={played.best} played={played} tone="gold" />
+        <TradeRow label="Best in hindsight" trade={played.best} played={played} tone="accent" />
         <TradeRow label="Worst in hindsight" trade={played.worst} played={played} tone="dim" />
       </div>
 
       {opponent && (
-        <div className="border-line-faint mt-4 border-t pt-3">
-          <div className="eyebrow text-ink-dim mb-1">{opponent.label.name}</div>
+        <div className="border-rule mt-4 border-t pt-3">
+          <div className="font-display text-ink-max mb-1 text-lg">{opponent.label.name}</div>
           {opponent.played ? (
             <>
               <div className="flex items-baseline justify-between">
@@ -103,8 +108,8 @@ export function RoundResult({ played, onClose, actions }: { played: RoundPlayed;
               </div>
               <TradeRow label="Their trade" trade={opponent.trade} played={played} />
               {opponent.read && (
-                <div className="bg-surface-1 border-line-faint mt-2 rounded-lg border p-3">
-                  <div className="text-ink-hi text-sm font-medium">{opponent.read.thesis}</div>
+                <div className="bg-surface-1 border-line mt-2 border p-3">
+                  <div className="font-display text-ink-max text-base italic">{opponent.read.thesis}</div>
                   <p className="text-ink-lo mt-1 whitespace-pre-line text-xs leading-relaxed">{opponent.read.reasoning}</p>
                   {opponent.read.sitOutReason && <p className="text-ink-lo mt-1 text-xs">Sat out: {opponent.read.sitOutReason}</p>}
                   {opponent.read.levels.length > 0 && (

@@ -6,9 +6,11 @@ import { Skeleton } from '../ui';
 import { Icon } from '../ui/icons';
 
 /**
- * The one thing to do next, from anywhere in the app: back to a round left half-read, or a fresh
- * tape — with the record so far underneath (docs/rules.md §23). Streamed rather than awaited in the
- * layout, so the rail paints before the query lands.
+ * The record, from anywhere in the app, and the one thing to do next (docs/rules.md §23).
+ *
+ * Set in the masthead like a paper's price box: the average grade and the rounds behind it as a
+ * small ledger readout, then the pen's button — back to a round left half-read, or a fresh tape.
+ * Streamed rather than awaited in the layout, so the masthead paints before the query lands.
  */
 export async function AccountChip() {
   const viewer = await currentViewer();
@@ -16,26 +18,26 @@ export async function AccountChip() {
   const { openRoundId, rounds, meanGrade } = await getChipState(owner);
 
   return (
-    <Link
-      href={openRoundId ? routes.play.round(openRoundId) : routes.play.new}
-      className="press bg-gold text-on-gold shadow-key hover:bg-gold-hover flex flex-col items-center gap-1.5 rounded-xl px-2 py-2.5 transition-colors lg:items-stretch lg:px-3.5 lg:py-3"
-    >
-      <span className="flex items-center justify-center gap-2 lg:justify-between">
-        <span className="flex items-center gap-2">
-          <Icon name={openRoundId ? 'play' : 'candle'} size={15} />
-          <span className="hidden text-sm font-semibold lg:inline">{openRoundId ? 'Back to your tape' : 'Deal a tape'}</span>
+    <div className="flex items-center gap-4">
+      <div className="hidden flex-col items-end leading-tight xl:flex">
+        <span className="eyebrow text-ink-dim">Average grade</span>
+        <span className="flex items-baseline gap-2">
+          <span className="numeral text-ink-max text-sm font-semibold">{meanGrade ?? '—'}</span>
+          <span className="numeral text-mini text-ink-dim font-medium">{rounds === 1 ? '1 round' : `${rounds} rounds`}</span>
         </span>
-        <Icon name="chevron-right" size={14} className="hidden opacity-70 lg:block" />
-      </span>
-      <span className="text-micro font-semibold lg:hidden">{openRoundId ? 'Resume' : 'Play'}</span>
-      <span className="hidden items-baseline justify-between gap-2 lg:flex">
-        <span className="numeral text-xs font-semibold">{rounds === 1 ? '1 round' : `${rounds} rounds`}</span>
-        <span className="numeral text-mini font-medium opacity-80">{meanGrade !== null ? `avg ${meanGrade}` : 'no grade yet'}</span>
-      </span>
-    </Link>
+      </div>
+      <Link
+        href={openRoundId ? routes.play.round(openRoundId) : routes.play.new}
+        className="btn-key bg-accent text-on-accent border-rule hover:bg-accent-hover flex h-10 items-center gap-2 rounded-md border px-3.5 text-sm font-semibold whitespace-nowrap"
+      >
+        <Icon name={openRoundId ? 'play' : 'candle'} size={15} />
+        <span className="hidden xl:inline">{openRoundId ? 'Back to your tape' : 'Deal a tape'}</span>
+        <span className="xl:hidden">{openRoundId ? 'Resume' : 'Play'}</span>
+      </Link>
+    </div>
   );
 }
 
 export function AccountChipSkeleton() {
-  return <Skeleton className="h-[3.75rem] w-full rounded-xl lg:h-[4.25rem]" />;
+  return <Skeleton className="h-10 w-32 rounded-md xl:w-64" />;
 }

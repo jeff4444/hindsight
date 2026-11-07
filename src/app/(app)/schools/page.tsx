@@ -29,14 +29,15 @@ export default async function SchoolsPage() {
           const spec = GAME_SCHOOLS.find((s) => s.code === school.code);
           const beats = school.meanGrade !== null && school.sitOutMean !== null ? school.meanGrade > school.sitOutMean : null;
           return (
-            <div key={school.code} className="bg-surface-2 border-line flex flex-col gap-4 rounded-2xl border p-5 md:flex-row md:items-start md:justify-between">
+            <div key={school.code} className="border-rule flex flex-col gap-6 border-t-2 pt-5 md:flex-row md:items-start md:justify-between">
               <div className="max-w-2xl">
-                <div className="eyebrow text-gold-ink">{school.version}</div>
-                <h2 className="text-ink-max mt-1 text-2xl font-semibold">{school.name}</h2>
+                <div className="eyebrow text-accent-ink">{school.version}</div>
+                <h2 className="font-display text-ink-max mt-1 text-4xl">{school.name}</h2>
                 <p className="text-ink-lo mt-1">{school.playbook}</p>
-                {spec && <pre className="text-ink-lo bg-surface-1 border-line-faint mt-3 whitespace-pre-wrap rounded-lg border p-3 font-sans text-xs leading-relaxed">{spec.playbook}</pre>}
+                {spec && <pre className="text-ink-lo bg-surface-2 border-line mt-4 border p-4 font-sans text-sm leading-relaxed whitespace-pre-wrap">{spec.playbook}</pre>}
               </div>
-              <div className="flex shrink-0 flex-col gap-3 md:w-64">
+              <div className="border-rule bg-surface-2 shadow-e3 flex shrink-0 flex-col gap-3 border p-5 md:w-72">
+                <div className="rule-double font-display text-ink-max pb-2 text-lg">The record</div>
                 <dl className="text-mini grid grid-cols-2 gap-x-3 gap-y-1">
                   <dt className="text-ink-dim">Tapes read</dt>
                   <dd className="numeral text-ink-hi text-right">{school.reads}</dd>

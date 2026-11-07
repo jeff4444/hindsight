@@ -31,7 +31,7 @@ export default async function CheckEmail({
     <div className="animate-rise">
       <IconBadge icon="check" tone="info" />
       <Eyebrow className="mt-5">Check your inbox</Eyebrow>
-      <h1 className="text-ink-max mt-2 text-2xl font-semibold">
+      <h1 className="font-display text-ink-max mt-2 text-3xl">
         {reset ? 'A password link is on its way' : 'A link is on its way'}
       </h1>
       <p className="text-ink-lo mt-3 text-base leading-relaxed">

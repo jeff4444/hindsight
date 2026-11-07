@@ -11,6 +11,7 @@ import {
   clampPeriod,
   type StudySettings,
 } from "@/lib/toolOverlays";
+import { overlayInk } from "@/lib/palette";
 import {
   Alert,
   Button,
@@ -21,7 +22,7 @@ import {
   Toggle,
   cx,
 } from "../ui";
-import { Dialog } from "../ui/client";
+import { Dialog, useThemeSnapshot } from "../ui/client";
 import { Icon } from "../ui/icons";
 
 /**
@@ -158,6 +159,7 @@ export function StudiesPanel({
   onSettings: (next: Partial<StudySettings>) => void;
   onResetSettings: () => void;
 }) {
+  const { theme } = useThemeSnapshot();
   const studies = TOOLS.filter(
     (t) => t.kind === "indicator" || t.kind === "overlay",
   );
@@ -207,7 +209,7 @@ export function StudiesPanel({
                       on={on && !locked}
                       disabled={locked}
                       onChange={() => onToggle(study.code)}
-                      swatch={SWATCH[study.code]}
+                      swatch={SWATCH[study.code] && overlayInk(SWATCH[study.code]!, theme)}
                       label={
                         <>
                           {study.name}

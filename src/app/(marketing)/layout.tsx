@@ -7,8 +7,9 @@ import { Wordmark } from '@/components/ui/icons';
 export const dynamic = 'force-dynamic';
 
 /**
- * The front door's frame: the mark, two links, and one call to action that changes with who is
- * looking. A returning player goes straight to Play; a visitor gets "Deal a tape".
+ * The front door's frame: a masthead with the mark, two links, and one call to action that changes
+ * with who is looking — a returning player goes straight to Play, a visitor gets "Deal a tape" — and
+ * a colophon at the foot.
  */
 export default async function MarketingLayout({ children }: { children: React.ReactNode }) {
   const viewer = await currentViewer();
@@ -16,16 +17,16 @@ export default async function MarketingLayout({ children }: { children: React.Re
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <header className="border-line-faint bg-surface-0/90 sticky top-0 z-40 border-b">
+      <header className="bg-surface-0 rule-double sticky top-0 z-40">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5">
           <Link href="/" aria-label="Hindsight home">
             <Wordmark size="md" />
           </Link>
           <nav aria-label="Primary" className="flex items-center gap-1">
-            <Link href={routes.learn.index} className="text-ink-lo hover:text-ink-hi hidden h-10 items-center px-3 text-sm font-medium transition-colors sm:inline-flex">
+            <Link href={routes.learn.index} className="text-ink-lo hover:text-ink-max hidden h-10 items-center px-3 text-sm font-semibold transition-colors sm:inline-flex">
               How it works
             </Link>
-            <Link href={routes.schools} className="text-ink-lo hover:text-ink-hi hidden h-10 items-center px-3 text-sm font-medium transition-colors md:inline-flex">
+            <Link href={routes.schools} className="text-ink-lo hover:text-ink-max hidden h-10 items-center px-3 text-sm font-semibold transition-colors md:inline-flex">
               Schools
             </Link>
             {signedIn ? (
@@ -34,7 +35,7 @@ export default async function MarketingLayout({ children }: { children: React.Re
               </Button>
             ) : (
               <>
-                <Button href={routes.signIn()} variant="ghost">
+                <Button href={routes.signIn()} variant="ghost" className="mr-2">
                   Sign in
                 </Button>
                 <Button href={routes.play.new} variant="primary">
@@ -48,8 +49,8 @@ export default async function MarketingLayout({ children }: { children: React.Re
 
       <main className="flex-1">{children}</main>
 
-      <footer className="border-line-faint border-t">
-        <div className="mx-auto grid max-w-6xl gap-8 px-5 py-12 md:grid-cols-[1fr_auto]">
+      <footer data-theme="dark" className="bg-surface-1 text-ink border-rule border-t-2">
+        <div className="mx-auto grid max-w-6xl gap-8 px-5 py-14 md:grid-cols-[1fr_auto]">
           <div>
             <Wordmark size="md" />
             <p className="text-ink-dim mt-3 max-w-sm text-sm leading-relaxed">
@@ -65,7 +66,7 @@ export default async function MarketingLayout({ children }: { children: React.Re
             <Link href={routes.learn.rulebook()} className="text-ink-lo hover:text-ink-hi">Rulebook</Link>
           </nav>
         </div>
-        <div className="border-line-faint text-ink-dim mx-auto max-w-6xl border-t px-5 py-5 text-xs">
+        <div className="border-line text-ink-dim mx-auto max-w-6xl border-t px-5 py-5 text-xs">
           Historical price data from the public Binance archive.
         </div>
       </footer>

@@ -32,7 +32,7 @@ export function OpenMarket({ request }: { request: OpenRequest }) {
   }, [request, router]);
 
   return (
-    <div data-theme="dark" className="bg-surface-0 text-ink grid min-h-dvh place-items-center p-6">
+    <div className="bg-surface-0 text-ink grid min-h-dvh place-items-center p-6">
       {error ? (
         <EmptyState
           icon="alert"
@@ -42,7 +42,7 @@ export function OpenMarket({ request }: { request: OpenRequest }) {
         />
       ) : (
         <div className="text-ink-dim flex flex-col items-center gap-3 text-sm">
-          <span className="bg-gold h-2 w-2 animate-pulse rounded-full" />
+          <span className="bg-accent h-2 w-2 animate-pulse rounded-full" />
           Opening the market…
         </div>
       )}

@@ -1,5 +1,4 @@
 import { ACCENT_HEX, signatureFor, type Accent } from '@/lib/avatar';
-import { CANDLE } from '@/lib/palette';
 
 /**
  * A player's generative avatar, drawn as inline SVG.
@@ -22,8 +21,8 @@ export function MarketSignature({
   seed: number;
   accent: Accent;
   size?: number;
-  /** `gold` marks §10.3's perfect streak. Nothing else earns it. */
-  ring?: 'none' | 'accent' | 'gold';
+  /** `highlight` marks §10.3's perfect streak. Nothing else earns it. */
+  ring?: 'none' | 'accent' | 'highlight';
   className?: string;
   animate?: boolean;
 }) {
@@ -37,7 +36,7 @@ export function MarketSignature({
   const y = (v: number) => H - v * H;
   const line = path.map((p, i) => `${i === 0 ? 'M' : 'L'}${(p.x * W).toFixed(2)},${y(p.y).toFixed(2)}`).join(' ');
 
-  const ringColour = ring === 'gold' ? 'var(--color-gold)' : stroke;
+  const ringColour = ring === 'highlight' ? 'var(--color-accent)' : stroke;
 
   return (
     <span
@@ -46,7 +45,7 @@ export function MarketSignature({
         display: 'inline-flex',
         width: size,
         height: size,
-        borderRadius: '50%',
+        borderRadius: 2,
         padding: ring === 'none' ? 0 : Math.max(2, size * 0.055),
         boxShadow: ring === 'none' ? undefined : `inset 0 0 0 1.5px ${ringColour}`,
         background: 'var(--color-surface-1)',
@@ -59,14 +58,15 @@ export function MarketSignature({
         height="100%"
         role="img"
         aria-label="Market signature"
-        style={{ borderRadius: '50%', display: 'block' }}
+        style={{ borderRadius: 1, display: 'block' }}
       >
         <rect width={W} height={H} fill="var(--color-surface-1)" />
         {candles.map((c, i) => {
           const cx = slot * (i + 0.5);
           const top = y(Math.max(c.open, c.close));
           const bottom = y(Math.min(c.open, c.close));
-          const colour = c.up ? CANDLE.up : CANDLE.down;
+          // The page's own direction colours, so a signature follows the theme and the palette.
+          const colour = c.up ? 'var(--color-long)' : 'var(--color-short)';
           return (
             <g key={i} opacity={0.92}>
               <line x1={cx} x2={cx} y1={y(c.high)} y2={y(c.low)} stroke={colour} strokeWidth={1.4} />
@@ -76,7 +76,6 @@ export function MarketSignature({
                 width={bodyW}
                 height={Math.max(bottom - top, 2)}
                 fill={colour}
-                rx={0.8}
               />
             </g>
           );
@@ -86,8 +85,8 @@ export function MarketSignature({
           fill="none"
           stroke={stroke}
           strokeWidth={2.4}
-          strokeLinecap="round"
-          strokeLinejoin="round"
+          strokeLinecap="square"
+          strokeLinejoin="miter"
           opacity={0.95}
           style={
             animate

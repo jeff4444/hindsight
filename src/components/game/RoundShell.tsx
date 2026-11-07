@@ -12,7 +12,7 @@ import { TIMEFRAMES } from '@/lib/timeframe';
 import { overlaysFor } from '@/lib/toolOverlays';
 import { useStudySettings } from '@/lib/studySettings';
 import { useHotkeys } from '@/lib/useHotkeys';
-import { candlesFor } from '@/lib/palette';
+import { HINDSIGHT_ACCENT, candlesFor, chromeFor, overlayInk, type ChartTheme } from '@/lib/palette';
 import { Button, Chip, EmptyState, IconButton, Segmented, cx } from '../ui';
 import { Select, useThemeSnapshot, useToast } from '../ui/client';
 import { Icon } from '../ui/icons';
@@ -44,8 +44,8 @@ const SPEEDS = [15, 60, 240, 960];
 const SPEED_LABEL: Record<number, string> = { 15: '15m/s', 60: '1h/s', 240: '4h/s', 960: '16h/s' };
 const FRAME_MS = 50;
 
-const GOLD = '#d4a72c';
-const WORST = '#8b8f98';
+/** The best trade is drawn in the pen; the worst in the axis ink, on whichever stock is printing. */
+const BEST_INK: Record<ChartTheme, string> = { light: HINDSIGHT_ACCENT, dark: '#8f97f2' };
 
 function toBars(wire: readonly WireBar[], unit: number): Bar[] {
   return wire.map(([o, h, l, c, v]) => ({ o: o * unit, h: h * unit, l: l * unit, c: c * unit, v }));
@@ -96,7 +96,7 @@ export function RoundShell({
   const [activeTools, setActiveTools] = useState<ToolCode[]>([]);
   const [studySettings, setStudySettings, resetStudySettings] = useStudySettings();
   const [logScale, setLogScale] = useState(false);
-  const { palette } = useThemeSnapshot();
+  const { palette, theme } = useThemeSnapshot();
   const nextDrawing = useRef(1);
 
   // The replay: how many tape minutes are on the chart, and whether more are coming.
@@ -106,22 +106,24 @@ export function RoundShell({
   const [resultOpen, setResultOpen] = useState(true);
   const shownRef = useRef(0);
 
-  const studies = useRef({ activeTools, studySettings });
+  const studies = useRef({ activeTools, studySettings, theme });
   const refreshStudies = useCallback(() => {
     const api = chart.current;
     if (!api) return;
-    const { activeTools: tools, studySettings: settings } = studies.current;
+    const { activeTools: tools, studySettings: settings, theme: ink } = studies.current;
     if (tools.length === 0) {
       api.setStudies([]);
       return;
     }
     const bars = api.displayed();
-    api.setStudies(overlaysFor(tools, { bars, atr: atr(bars.slice(-80)) ?? 0, settings }));
+    // Overlays are authored for carbon; on paper each is printed a few steps darker, same hue.
+    const lines = overlaysFor(tools, { bars, atr: atr(bars.slice(-80)) ?? 0, settings });
+    api.setStudies(lines.map((line) => ({ ...line, color: overlayInk(line.color, ink) })));
   }, []);
   useEffect(() => {
-    studies.current = { activeTools, studySettings };
+    studies.current = { activeTools, studySettings, theme };
     refreshStudies();
-  }, [activeTools, studySettings, refreshStudies]);
+  }, [activeTools, studySettings, theme, refreshStudies]);
 
   // Load the round. Dealing happens once, even under a development double render.
   const started = useRef(false);
@@ -169,8 +171,9 @@ export function RoundShell({
   }, [view, unit]);
 
   useEffect(() => {
-    chart.current?.setPalette(candlesFor(palette));
-  }, [palette]);
+    chart.current?.setPalette(candlesFor(palette, theme));
+    chart.current?.setChrome(chromeFor(theme));
+  }, [palette, theme]);
   useEffect(() => {
     chart.current?.setTimeframe(timeframe);
     refreshStudies();
@@ -226,12 +229,12 @@ export function RoundShell({
     }
     const markers = [...tradeMarkers(played.mine, shown, '')];
     if (done) {
-      markers.push(...tradeMarkers(played.best, total, 'Best ', GOLD));
-      markers.push(...tradeMarkers(played.worst, total, 'Worst ', WORST));
+      markers.push(...tradeMarkers(played.best, total, 'Best ', BEST_INK[theme]));
+      markers.push(...tradeMarkers(played.worst, total, 'Worst ', chromeFor(theme).axis));
       if (played.opponent?.trade) markers.push(...tradeMarkers(played.opponent.trade, total, `${played.opponent.label.name}: `));
     }
     chart.current?.setMarkers(markers.sort((a, b) => a.at - b.at));
-  }, [played, shown, done, total]);
+  }, [played, shown, done, total, theme]);
 
   const lock = useCallback(
     (intent: RoundIntent) => {
@@ -344,7 +347,7 @@ export function RoundShell({
 
   if (error && !view) {
     return (
-      <div data-theme="dark" className="bg-surface-0 text-ink grid min-h-dvh place-items-center p-6">
+      <div className="bg-surface-0 text-ink grid min-h-dvh place-items-center p-6">
         <EmptyState icon="alert" title="That round did not open." body={error} action={exit} />
       </div>
     );
@@ -353,7 +356,7 @@ export function RoundShell({
   const timeLabel = view ? formatReplayTime(view.time, played ? Math.max(-1, shown - 1) : -1) : '';
 
   return (
-    <div data-theme="dark" className={cx('bg-surface-0 text-ink flex min-h-dvh flex-col lg:h-dvh lg:min-h-0', className)}>
+    <div className={cx('bg-surface-0 text-ink flex min-h-dvh flex-col lg:h-dvh lg:min-h-0', className)}>
       <header className="border-line-faint flex flex-wrap items-center gap-x-4 gap-y-2 border-b px-3 py-2 lg:px-4">
         <div className="flex min-w-0 items-center gap-3">
           {exit}
@@ -362,7 +365,7 @@ export function RoundShell({
               <div className="flex items-center gap-2">
                 <span className="text-ink-max text-base font-semibold tracking-tight">{instrument.display}</span>
                 {view.duel ? (
-                  <Chip size="sm" tone="gold">
+                  <Chip size="sm" tone="accent">
                     Tape {view.duel.index + 1} of {view.duel.tapes} · vs {view.duel.opponent.name}
                   </Chip>
                 ) : (
@@ -405,7 +408,7 @@ export function RoundShell({
           {played && (
             <div className="hidden w-28 items-center gap-2 md:flex" title={`${shown} of ${total} minutes`}>
               <div className="bg-fill-2 h-1.5 flex-1 overflow-hidden">
-                <div className="bg-gold h-full" style={{ width: `${total > 0 ? (shown / total) * 100 : 0}%` }} />
+                <div className="bg-accent h-full" style={{ width: `${total > 0 ? (shown / total) * 100 : 0}%` }} />
               </div>
               <span className="numeral text-ink-dim text-mini">{total > 0 ? Math.round((shown / total) * 100) : 0}%</span>
             </div>
@@ -459,7 +462,7 @@ export function RoundShell({
             )}
           </div>
 
-          <div className="relative h-[52dvh] min-h-[18rem] flex-1 lg:h-auto">
+          <div className="bg-surface-1 relative h-[52dvh] min-h-[18rem] flex-1 lg:h-auto">
             <TerminalChart ref={chart} className="absolute inset-0" />
             <OrderLinesOverlay chart={chart} lines={lines} snap={snap} />
             <DrawLayer
@@ -475,7 +478,7 @@ export function RoundShell({
               indexPerBar={timeframe}
             />
             {played && done && resultOpen && (
-              <div className="absolute inset-0 z-30 grid place-items-center overflow-y-auto bg-black/30 p-4">
+              <div className="absolute inset-0 z-30 grid place-items-center overflow-y-auto p-4">
                 <RoundResult played={played} onClose={() => setResultOpen(false)} actions={actions?.(played)} />
               </div>
             )}

@@ -66,7 +66,7 @@ export function RulesNav({ sections }: { sections: RulesSection[] }) {
     <ol className="relative isolate flex flex-col gap-0.5">
       {/* As you scroll, the highlight follows the section you are reading. */}
       <Indicator match="[aria-current=true]" className="bg-fill-1 rounded-md" />
-      <Indicator match="[aria-current=true]" edge="left" className="bg-info rounded-full" />
+      <Indicator match="[aria-current=true]" edge="left" thickness={3} className="bg-accent" />
       {sections.map((section) => (
         <li key={section.id}>
           <a

@@ -31,9 +31,9 @@ function HealthBar({ label, value, max, tone }: { label: string; value: number; 
           <span className="text-ink-dim text-xs font-normal"> / {max}</span>
         </span>
       </div>
-      <div className="bg-fill-2 mt-1.5 h-3 overflow-hidden rounded-full">
+      <div className="bg-fill-2 mt-1.5 h-3 overflow-hidden">
         <div
-          className={cx('h-full rounded-full transition-[width] duration-700', tone === 'me' ? 'bg-long' : 'bg-short')}
+          className={cx('h-full transition-[width] duration-700', tone === 'me' ? 'bg-long' : 'bg-short')}
           style={{ width: `${(value / max) * 100}%` }}
         />
       </div>
@@ -101,7 +101,7 @@ export function DuelScreen({ code }: { code: string }) {
     return (
       <div className="mx-auto flex max-w-xl flex-col gap-6 py-6">
         <div>
-          <div className="eyebrow text-gold-ink">A duel</div>
+          <div className="eyebrow text-accent-ink">A duel</div>
           <h1 className="font-display text-ink-max mt-2 text-4xl leading-tight">
             {duel.status === 'waiting' ? `${duel.me.name} wants to duel.` : 'This duel already has two players.'}
           </h1>
@@ -140,8 +140,8 @@ export function DuelScreen({ code }: { code: string }) {
     <div className="flex flex-col gap-8">
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-2">
-          <span className="eyebrow text-gold-ink">Duel</span>
-          {duel.kind === 'school' && <Chip size="sm" tone="info">School</Chip>}
+          <span className="eyebrow text-accent-ink">Duel</span>
+          {duel.kind === 'school' && <Chip size="sm" tone="accent">School</Chip>}
           {duel.status === 'over' && <Chip size="sm">Over</Chip>}
         </div>
         <h1 className="font-display text-ink-max text-4xl leading-tight md:text-5xl">
@@ -149,16 +149,16 @@ export function DuelScreen({ code }: { code: string }) {
         </h1>
       </div>
 
-      <div className="bg-surface-2 border-line flex flex-col gap-4 rounded-2xl border p-5 sm:flex-row sm:gap-8">
+      <div className="bg-surface-2 border-rule shadow-e2 flex flex-col gap-4 border p-5 sm:flex-row sm:gap-8">
         <HealthBar label={`You · ${duel.me.name}`} value={duel.health.me} max={duel.maxHealth} tone="me" />
         <HealthBar label={opponentName} value={duel.health.them} max={duel.maxHealth} tone="them" />
       </div>
 
       {duel.status === 'waiting' && (
-        <div className="bg-surface-2 border-line flex flex-col gap-3 rounded-2xl border p-5">
+        <div className="border-rule flex flex-col gap-3 border-t-2 pt-4">
           <p className="text-ink-hi">Send this link to whoever you want to duel. The tapes are dealt when they open it: ten that neither of you has played.</p>
           <div className="flex flex-col gap-2 sm:flex-row">
-            <code className="bg-surface-1 border-line-faint text-ink-hi flex-1 truncate rounded-lg border px-3 py-2 text-sm">{link}</code>
+            <code className="bg-surface-1 border-line-strong text-ink-max numeral flex-1 truncate border px-3 py-2 text-sm">{link}</code>
             <Button
               variant="secondary"
               onClick={() => {
@@ -203,10 +203,10 @@ export function DuelScreen({ code }: { code: string }) {
       )}
 
       {duel.status !== 'waiting' && (
-        <div className="bg-surface-2 border-line overflow-hidden rounded-2xl border">
+        <div className="border-rule border-t-2">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-ink-dim text-mini border-line-faint border-b text-left">
+              <tr className="text-ink-dim text-mini rule-double text-left">
                 <th className="px-4 py-2 font-medium">Tape</th>
                 <th className="px-4 py-2 font-medium">Market</th>
                 <th className="px-4 py-2 text-right font-medium">You</th>
@@ -216,7 +216,7 @@ export function DuelScreen({ code }: { code: string }) {
             </thead>
             <tbody>
               {duel.tapes.map((tape) => (
-                <tr key={tape.index} className="border-line-faint border-b last:border-b-0">
+                <tr key={tape.index} className="border-line border-b last:border-b-0">
                   <td className="numeral text-ink-dim px-4 py-2.5">{tape.index + 1}</td>
                   <td className="text-ink-hi px-4 py-2.5">
                     {tape.roundId && tape.mine !== null ? (
@@ -224,7 +224,7 @@ export function DuelScreen({ code }: { code: string }) {
                         {tape.display ?? 'Review'}
                       </Link>
                     ) : tape.roundId ? (
-                      <Link href={routes.play.round(tape.roundId)} className="text-gold-ink">
+                      <Link href={routes.play.round(tape.roundId)} className="text-accent-ink font-semibold">
                         In progress
                       </Link>
                     ) : (

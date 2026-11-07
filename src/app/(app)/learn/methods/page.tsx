@@ -37,7 +37,7 @@ export default async function MethodsPage() {
       </header>
 
       <section className="space-y-5">
-        <h2 className="text-ink-max text-2xl font-semibold tracking-tight">The schools</h2>
+        <h2 className="font-display text-ink-max text-3xl">The schools</h2>
         <p className="text-ink-lo max-w-2xl leading-relaxed">
           Each school is an engine that reads the market by one published system&rsquo;s rules, written down so any two
           people implementing it would get the same answer. Where a school publishes no rule precise enough, the rule is
@@ -75,13 +75,13 @@ export default async function MethodsPage() {
             );
           })}
         </div>
-        <div className="border-gold-line bg-gold-bg rounded-2xl border p-5">
+        <div className="border-accent-line bg-accent-bg rounded-2xl border p-5">
           <p className="text-ink-max font-semibold">In the first measurement, none of them could be told apart from a coin flip.</p>
           <p className="text-ink-lo mt-1.5 text-sm leading-relaxed">
             Before they had accounts, every school&rsquo;s trades were compared with a coin flip on the same charts, and one test
             across all of them returned p = 0.85. The accounts are the second test, in dollars and with each school&rsquo;s own
             exit. They are here to show how competent methods disagree, not to tell you the answer.{' '}
-            <Link href={routes.learn.rulebook('147-does-any-of-it-work-the-leaderboard-corrected')} className="text-ink-hi underline decoration-gold-line underline-offset-4">
+            <Link href={routes.learn.rulebook('147-does-any-of-it-work-the-leaderboard-corrected')} className="text-ink-hi underline decoration-accent-line underline-offset-4">
               The first measurement
             </Link>
           </p>
@@ -89,7 +89,7 @@ export default async function MethodsPage() {
       </section>
 
       <section className="space-y-5">
-        <h2 className="text-ink-max text-2xl font-semibold tracking-tight">Why the results are fair</h2>
+        <h2 className="font-display text-ink-max text-3xl">Why the results are fair</h2>
         <div className="grid gap-3 sm:grid-cols-2">
           <Point title="No future data on your device" body="The server keeps the replay clock and only ever sends minutes that have printed. A test checks every response for leaks." href={routes.learn.rulebook('229-integrity')} />
           <Point title="Filled against the real minutes" body="Every order fills against the one-minute bars of the real market, and a minute that could have gone either way goes against you." href={routes.learn.rulebook('224-fills')} />
@@ -101,7 +101,7 @@ export default async function MethodsPage() {
       </section>
 
       <section className="space-y-5">
-        <h2 className="text-ink-max text-2xl font-semibold tracking-tight">What is not known</h2>
+        <h2 className="font-display text-ink-max text-3xl">What is not known</h2>
         <div className="space-y-4">
           <Open title="Whether any school has an edge in dollars." href={routes.strategies.index}>
             Each account runs the school&rsquo;s rules unchanged across the whole library, whatever the result. A school that
@@ -121,7 +121,7 @@ export default async function MethodsPage() {
           <div className="text-ink-max font-semibold">Read every rule, in full</div>
           <p className="text-ink-lo mt-1 text-sm">The same document the platform is built from, including the parts that do not flatter it.</p>
         </div>
-        <Link href={routes.learn.rulebook()} className="press bg-fill-2 text-ink-hi ring-line hover:bg-fill-3 rounded-full px-5 py-2.5 text-sm font-medium ring-1">
+        <Link href={routes.learn.rulebook()} className="press bg-surface-2 text-ink-max ring-line-strong hover:ring-rule rounded-md px-5 py-2.5 text-sm font-semibold ring-inset ring-1">
           Open the rulebook
         </Link>
       </section>

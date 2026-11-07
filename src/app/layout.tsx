@@ -1,49 +1,46 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter, Geist_Mono, Instrument_Serif } from 'next/font/google';
+import { Fraunces, Red_Hat_Mono, Schibsted_Grotesk } from 'next/font/google';
 import { THEME_SCRIPT } from '@/lib/theme-script';
 import { InlineScript } from '@/components/InlineScript';
 import './globals.css';
 
 /*
- * Inter for the interface, Geist Mono for numbers, Instrument Serif for the moments.
+ * Schibsted Grotesk for the interface, Red Hat Mono for numbers, Fraunces for the voice.
  *
- * The serif is the redesign's voice: a verdict after a round, a page headline, the landing hero.
- * It is only ever set at 28px or larger, where its contrast reads as editorial rather than as a
- * body face that lost its way.
+ * Fraunces is the Ledger redesign's headline face: an old-style serif cut for display, set
+ * semibold and soft-cornered (the SOFT axis) so a page title reads like a broadsheet headline
+ * rather than a fashion magazine's. Its italic is the caption voice — the eyebrow over a figure —
+ * which is why the italic is loaded too. `opsz` lets the 13px caption and the 72px headline each
+ * get letterforms drawn for their size.
  *
- * Inter is deliberately the face with the least voice available. The register the scope document
- * writes in is austere and declarative, and that is not served by a typeface with opinions — it is
- * served by numbers that carry the voice and a UI face that gets out of their way.
+ * Schibsted Grotesk was drawn for a newsroom, which is the register: sturdy, plain, legible at 13px
+ * in a table and unremarkable at 17px in a paragraph, so the numbers and the headlines carry the
+ * character and the interface face gets out of their way.
  *
  * The mono choice is a jitter argument rather than a taste one. This product animates numbers: the
- * R-multiple counts up over 620ms, the reveal counter changes every 78ms at 1x, and the R:R readout
- * updates on every pointer-move during a rail drag. `tabular-nums` on a proportional face fixes
- * advance width but not rhythm — the decimal point still lands in a slightly different optical
- * position row to row. A mono face fixes both.
- *
- * `axes: ['opsz']` is new and it is most of what makes the display sizes look bought rather than
- * scaled. Inter v4 carries an optical-size axis; globals.css has always set
- * `font-optical-sizing: auto`, but that did nothing while next/font requested only the weight axis,
- * so the 92px R-multiple was being drawn with letterforms cut for body copy.
+ * P&L ticks every replayed minute and the order ticket's readouts update on every keystroke and
+ * every drag of a price line. `tabular-nums` on a proportional face fixes advance width but not
+ * rhythm — the decimal point still lands in a slightly different optical position row to row. A
+ * mono face fixes both, and Red Hat Mono's open, slightly humanist figures keep a column of them
+ * readable rather than mechanical.
  */
-const inter = Inter({
+const sans = Schibsted_Grotesk({
   subsets: ['latin'],
-  axes: ['opsz'],
-  variable: '--font-inter',
+  variable: '--font-schibsted',
   display: 'swap',
 });
 
-const mono = Geist_Mono({
+const mono = Red_Hat_Mono({
   subsets: ['latin'],
-  variable: '--font-geist-mono',
+  variable: '--font-redhat-mono',
   display: 'swap',
 });
 
-const serif = Instrument_Serif({
+const serif = Fraunces({
   subsets: ['latin'],
-  weight: '400',
   style: ['normal', 'italic'],
-  variable: '--font-instrument-serif',
+  axes: ['opsz', 'SOFT'],
+  variable: '--font-fraunces',
   display: 'swap',
 });
 
@@ -83,11 +80,9 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  // Both match --color-surface-0 in their theme, so the browser chrome and the page are one colour.
-  themeColor: [
-    { media: '(prefers-color-scheme: dark)', color: '#0e0d11' },
-    { media: '(prefers-color-scheme: light)', color: '#f7f3ec' },
-  ],
+  // Paper's --color-surface-0, so the browser chrome and the page are one sheet. Paper is the
+  // default whatever the OS prefers, so there is one colour rather than one per scheme.
+  themeColor: '#f5efe2',
   // No maximumScale. Pinch-zoom is an accessibility floor; the chart and the rails already opt out
   // of page gestures with `touch-action: none`, so zooming the page cannot fight a rail drag.
 };
@@ -101,7 +96,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${inter.variable} ${mono.variable} ${serif.variable}`}
+      className={`${sans.variable} ${mono.variable} ${serif.variable}`}
     >
       <body className="bg-surface-0 text-ink min-h-dvh font-sans antialiased">
         <InlineScript html={THEME_SCRIPT + MOTION_SCRIPT} />

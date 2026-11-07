@@ -18,7 +18,7 @@ import {
 } from 'lightweight-charts';
 import type { Bar } from '@/core/bars';
 import { formatClock, formatTick } from '@/lib/clock';
-import { CANDLE, CHART_CHROME, type CandleColours } from '@/lib/palette';
+import { candlesFor, chromeFor, type CandleColours, type ChartChrome } from '@/lib/palette';
 import type { SessionTime } from '@/lib/trading/types';
 import { tapeSeconds } from '@/lib/trading/format';
 import type { ChartSurface } from '../chart/surface';
@@ -91,6 +91,8 @@ export interface TerminalChartHandle extends ChartSurface {
   setLogScale(enabled: boolean): void;
   scrollToNow(): void;
   setPalette(colours: CandleColours): void;
+  /** Axis, grid and crosshair for the theme the chart is printed on. */
+  setChrome(chrome: ChartChrome): void;
 }
 
 interface Stamped extends Bar {
@@ -101,6 +103,29 @@ interface Stamped extends Bar {
 function monoStack(el: HTMLElement): string {
   const resolved = getComputedStyle(el).getPropertyValue('--font-mono').trim();
   return resolved || 'ui-monospace, SFMono-Regular, Menlo, monospace';
+}
+
+/** The theme and palette already on `<html>`, so the first frame is drawn in the right ink. */
+function documentInks(): { candles: CandleColours; chrome: ChartChrome } {
+  const root = document.documentElement;
+  const theme = root.dataset.theme === 'dark' ? 'dark' : 'light';
+  return {
+    candles: candlesFor(root.dataset.palette === 'cb' ? 'cb' : 'standard', theme),
+    chrome: chromeFor(theme),
+  };
+}
+
+function chromeOptions(chrome: ChartChrome) {
+  return {
+    layout: { textColor: chrome.axis },
+    grid: { vertLines: { color: chrome.grid }, horzLines: { color: chrome.grid } },
+    rightPriceScale: { borderColor: chrome.border },
+    timeScale: { borderColor: chrome.border },
+    crosshair: {
+      vertLine: { color: chrome.crosshair, labelBackgroundColor: chrome.label },
+      horzLine: { color: chrome.crosshair, labelBackgroundColor: chrome.label },
+    },
+  };
 }
 
 function merge(into: Stamped, bar: Bar): void {
@@ -127,7 +152,7 @@ export const TerminalChart = forwardRef<TerminalChartHandle, { className?: strin
   const volume = useRef<ISeriesApi<'Histogram'> | null>(null);
   const markerApi = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
   const studies = useRef<ISeriesApi<'Line'>[]>([]);
-  const colours = useRef<CandleColours>(CANDLE);
+  const colours = useRef<CandleColours | null>(null);
 
   const hours = useRef<Stamped[]>([]);
   const minutes = useRef<Stamped[]>([]);
@@ -169,7 +194,7 @@ export const TerminalChart = forwardRef<TerminalChartHandle, { className?: strin
   const volumePoint = (bar: Stamped) => ({
     time: bar.t as UTCTimestamp,
     value: bar.v,
-    color: bar.c >= bar.o ? colours.current.upVolume : colours.current.downVolume,
+    color: bar.c >= bar.o ? colours.current!.upVolume : colours.current!.downVolume,
   });
 
   const draw = () => {
@@ -188,7 +213,7 @@ export const TerminalChart = forwardRef<TerminalChartHandle, { className?: strin
           time: Math.max(first, t) as UTCTimestamp,
           position: marker.side === 'buy' ? ('belowBar' as const) : ('aboveBar' as const),
           shape: marker.side === 'buy' ? ('arrowUp' as const) : ('arrowDown' as const),
-          color: marker.color ?? (marker.side === 'buy' ? colours.current.up : colours.current.down),
+          color: marker.color ?? (marker.side === 'buy' ? colours.current!.up : colours.current!.down),
           text: marker.text,
         };
       })
@@ -221,21 +246,24 @@ export const TerminalChart = forwardRef<TerminalChartHandle, { className?: strin
 
   useEffect(() => {
     if (!container.current) return;
+    const inks = documentInks();
+    colours.current = inks.candles;
+    const chrome = inks.chrome;
     const api = createChart(container.current, {
       autoSize: true,
       layout: {
         background: { color: 'transparent' },
-        textColor: CHART_CHROME.axis,
+        textColor: chrome.axis,
         fontFamily: monoStack(container.current),
         attributionLogo: false,
       },
       grid: {
-        vertLines: { color: CHART_CHROME.grid },
-        horzLines: { color: CHART_CHROME.grid },
+        vertLines: { color: chrome.grid },
+        horzLines: { color: chrome.grid },
       },
-      rightPriceScale: { borderColor: CHART_CHROME.border, scaleMargins: { top: 0.08, bottom: 0.22 } },
+      rightPriceScale: { borderColor: chrome.border, scaleMargins: { top: 0.08, bottom: 0.22 } },
       timeScale: {
-        borderColor: CHART_CHROME.border,
+        borderColor: chrome.border,
         rightOffset: 12,
         barSpacing: 7,
         minBarSpacing: 0.5,
@@ -245,18 +273,18 @@ export const TerminalChart = forwardRef<TerminalChartHandle, { className?: strin
       },
       crosshair: {
         mode: 0,
-        vertLine: { color: CHART_CHROME.crosshair, width: 1, style: 3 },
-        horzLine: { color: CHART_CHROME.crosshair, width: 1, style: 3 },
+        vertLine: { color: chrome.crosshair, width: 1, style: 3, labelBackgroundColor: chrome.label },
+        horzLine: { color: chrome.crosshair, width: 1, style: 3, labelBackgroundColor: chrome.label },
       },
     });
 
     const candleSeries = api.addSeries(CandlestickSeries, {
-      upColor: colours.current.up,
-      downColor: colours.current.down,
-      borderUpColor: colours.current.up,
-      borderDownColor: colours.current.down,
-      wickUpColor: colours.current.up,
-      wickDownColor: colours.current.down,
+      upColor: inks.candles.up,
+      downColor: inks.candles.down,
+      borderUpColor: inks.candles.up,
+      borderDownColor: inks.candles.down,
+      wickUpColor: inks.candles.up,
+      wickDownColor: inks.candles.down,
       priceLineVisible: true,
       lastValueVisible: true,
     });
@@ -481,6 +509,10 @@ export const TerminalChart = forwardRef<TerminalChartHandle, { className?: strin
         wickDownColor: next.down,
       });
       draw();
+    },
+
+    setChrome(next) {
+      chart.current?.applyOptions(chromeOptions(next));
     },
   }));
 
