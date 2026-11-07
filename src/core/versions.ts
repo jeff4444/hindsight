@@ -148,3 +148,13 @@ export const INSTRUMENT_VERSION = 'instrument-1';
  * did not earn it.
  */
 export const BOT_VERSION = 'bots-1';
+
+/**
+ * The game (docs/rules.md §23): a round's stake and margin, how the best and worst trade a tape
+ * allowed are found, the grade, the minimum move a dealt tape needs, and the duel's damage curve,
+ * health and tape limit (`src/core/game/`).
+ *
+ * Every stored round records it, so a grade can always be re-derived under the rules it was
+ * played at. Changing any constant in `src/core/game/rules.ts` bumps it.
+ */
+export const GAME_VERSION = 'game-1';

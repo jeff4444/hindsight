@@ -1,8 +1,11 @@
 /**
  * Every route a trader can be sent to, built in one place, so a rename is one edit.
  *
- * The game's routes (`/today`, `/play/*`, `/tapes`, `/versus`, `/ranks`, `/you`) are retired;
- * next.config.ts redirects each of them to the page that does its job now.
+ * Hindsight is a game again (docs/rules.md §23): `/play`, `/duel/*` and `/schools` are its pages.
+ * The trading platform's pages — Markets, Portfolio, Strategies, Leaderboard and the terminal — are
+ * retired with its accounts, and next.config.ts redirects each of them, and the older game's
+ * routes before them, to the page that does its job now. Their builders below stay until those
+ * pages are removed.
  */
 
 const q = (params: Record<string, string | undefined | false>) => {
@@ -39,6 +42,16 @@ export const routes = {
         dates: showDates && '1',
       })}`,
   },
+
+  play: {
+    /** The hub: training grounds, duels, schools, and what you have played. */
+    index: '/play',
+    /** Deal a training round and play it. */
+    new: '/play/new',
+    round: (id: string) => `/play/${encodeURIComponent(id)}`,
+  },
+  duel: (code: string) => `/duel/${encodeURIComponent(code)}`,
+  schools: '/schools',
 
   learn: {
     index: '/learn',

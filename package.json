@@ -28,7 +28,8 @@
     "synthesise": "tsx --env-file-if-exists=.env.local scripts/synthesise.ts",
     "manage": "tsx --env-file-if-exists=.env.local scripts/backfill-manage.ts",
     "tape-filters": "tsx --env-file-if-exists=.env.local scripts/backfill-tape-filters.ts",
-    "bots": "tsx --env-file-if-exists=.env.local scripts/bots.ts"
+    "bots": "tsx --env-file-if-exists=.env.local scripts/bots.ts",
+    "school": "tsx --env-file-if-exists=.env.local scripts/school.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",
@@ -43,6 +44,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@anthropic-ai/sdk": "^1.6.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

@@ -38,18 +38,16 @@ export interface ViewerChip {
 }
 
 const DESTINATIONS: { href: string; label: string; icon: IconName; match: string[] }[] = [
-  { href: routes.markets(), label: 'Markets', icon: 'candle', match: ['/markets', '/trade'] },
-  { href: routes.portfolio(), label: 'Portfolio', icon: 'wallet', match: ['/portfolio'] },
-  { href: routes.strategies.index, label: 'Strategies', icon: 'bot', match: ['/strategies'] },
-  { href: routes.leaderboard(), label: 'Leaderboard', icon: 'trophy', match: ['/leaderboard'] },
+  { href: routes.play.index, label: 'Play', icon: 'candle', match: ['/play', '/duel'] },
+  { href: routes.schools, label: 'Schools', icon: 'bot', match: ['/schools'] },
 ];
 
 /**
- * Routes that render on the full-bleed stage with no shell around them: the trading terminal (a
- * session, or a market being opened). A session's review is a page and keeps the shell.
+ * Routes that render on the full-bleed stage with no shell around them: a round, being dealt or
+ * played (docs/rules.md §23.1).
  */
 export function isStage(pathname: string): boolean {
-  return /^\/trade\/[^/]+\/?$/.test(pathname);
+  return /^\/play\/[^/]+\/?$/.test(pathname);
 }
 
 export function AppShell({
@@ -81,7 +79,7 @@ export function AppShell({
 
       {/* Phone top bar */}
       <header className="border-line-faint bg-surface-0/95 sticky top-0 z-30 flex h-14 items-center justify-between border-b px-4 md:hidden">
-        <Link href={routes.markets()} aria-label="Hindsight, markets">
+        <Link href={routes.play.index} aria-label="Hindsight, play">
           <Wordmark size="sm" />
         </Link>
         <div className="flex items-center gap-2">
@@ -111,8 +109,8 @@ export function AppShell({
         className="border-line-faint bg-surface-1 sticky top-0 hidden h-dvh w-[4.75rem] shrink-0 flex-col border-r px-2 py-5 md:flex lg:w-60 lg:px-4"
       >
         <Link
-          href={routes.markets()}
-          aria-label="Hindsight, markets"
+          href={routes.play.index}
+          aria-label="Hindsight, play"
           className="mb-6 flex h-9 items-center justify-center lg:justify-start lg:px-2"
         >
           <Mark size={24} tone="duo" className="text-ink-max lg:hidden" />
@@ -179,7 +177,7 @@ export function AppShell({
               <span className="text-micro text-ink-lo font-medium lg:hidden">Sign in</span>
               <span className="text-ink-hi hidden text-sm font-semibold lg:block">Keep your account</span>
               <span className="text-ink-dim hidden text-xs leading-relaxed lg:block">
-                Sign in to keep your balance and history on any device, and to appear on the leaderboard.
+                Sign in to keep your rounds and duels on any device, and to put your name on your duels.
               </span>
             </Link>
           )}
@@ -286,8 +284,7 @@ function AccountMenu({ viewer, compact, active }: { viewer: ViewerChip; compact?
         </div>
       </div>
       <nav className="-mx-2 flex flex-col" aria-label="Account">
-        <MenuLink href={routes.portfolio()} icon="wallet">Portfolio</MenuLink>
-        <MenuLink href={routes.profile(viewer.handle)} icon="user">Public profile</MenuLink>
+                <MenuLink href={routes.profile(viewer.handle)} icon="user">Public profile</MenuLink>
         <MenuLink href={routes.settings} icon="settings">Settings</MenuLink>
         <MenuLink href={routes.learn.index} icon="book">Learn</MenuLink>
         <form action="/auth/sign-out" method="post" className="border-line-faint mt-1.5 border-t pt-1.5">

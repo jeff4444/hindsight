@@ -2,7 +2,11 @@
  * Seed a scratch database (never the live project) with a handful of synthetic-but-realistic
  * charts, for running the whole server path locally against PostgREST:
  *
- *   NEXT_PUBLIC_SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… npx tsx tests/trading/seedLocal.ts
+ *   NEXT_PUBLIC_SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… npx tsx tests/trading/seedLocal.ts [count]
+ *
+ * Five charts by default. A duel deals ten tapes neither player has seen (docs/rules.md §23.6), so
+ * playing duels locally wants more: a count cycles the five instruments over later weeks and
+ * fresh seeds.
  */
 import { createClient } from '@supabase/supabase-js';
 import { fakeChart } from './fakeSupabase';
@@ -23,8 +27,12 @@ const specs = [
 
 async function main() {
   const supabase = createClient(url!, key!, { auth: { persistSession: false } });
-  const rows = specs.map(([symbol, price, decision, mirrored], i) => {
-    const chart = fakeChart(`aaaaaaaa-0000-4000-8000-00000000000${i + 1}`, symbol, 100 + i, decision, price, mirrored);
+  const count = Math.max(1, Number.parseInt(process.argv[2] ?? '', 10) || specs.length);
+  const rows = Array.from({ length: count }, (_, i) => {
+    const [symbol, price, start, mirrored] = specs[i % specs.length];
+    const decision = new Date(Date.parse(start) + Math.floor(i / specs.length) * 7 * 86_400_000).toISOString();
+    const id = `aaaaaaaa-0000-4000-8000-${String(i + 1).padStart(12, '0')}`;
+    const chart = fakeChart(id, symbol, 100 + i, decision, price, mirrored);
     return {
       ...chart.row,
       window_start: new Date(Date.parse(decision) - 79 * 3_600_000).toISOString(),

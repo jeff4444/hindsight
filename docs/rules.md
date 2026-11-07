@@ -2,8 +2,9 @@
 
 > **Hindsight is a game again, and §23 is its rulebook.** Nobody holds money: a round is one tape
 > and a fresh $500, graded from 0 to 1000 against the best and worst trade that tape allowed, and
-> the training grounds, duels and duels against a school are three ways of using that grade. §23 is
-> written ahead of the code that will enforce it; until it ships, what runs is §22.
+> the training grounds, duels and duels against a school are three ways of using that grade. It is
+> built in [`src/core/game/`](../src/core/game/) and pinned to `GAME_VERSION`; §22's pages redirect to
+> it.
 >
 > Two products came before it. Sections 1–21 describe the chart game — the bracket, the R-multiple,
 > the percentile, the ladder, the rating and the modes. That game is retired: its pages redirect,
@@ -24,8 +25,7 @@ This is that document. It began at Phase 0 size and has grown with the ladder ra
 rewritten; it covers what the game actually implements, and §15 lists what it does not.
 
 Every rule here is enforced in code and pinned to a version constant in
-[`src/core/versions.ts`](../src/core/versions.ts) — except §23's, which are written first and
-pinned as they ship. Every stored result records the versions it
+[`src/core/versions.ts`](../src/core/versions.ts). Every stored result records the versions it
 was produced under, so a result can always be re-derived from the rules that were in force
 when it was played.
 
@@ -2488,7 +2488,7 @@ reward exactly the guessing the rest of this scoring model exists to discourage.
 ## 22. Trading
 
 > **§23 keeps this section's exchange and retires its accounts.** §23.9 says which rules survive
-> into a round. Until §23 ships, this section is what runs.
+> into a round. The platform's pages redirect to the game's and its API is gone.
 
 The platform that replaced the game. A trader gets a $100,000 paper account, a real market from the
 Binance archive replayed minute by minute, and an exchange that fills orders against the real
@@ -2733,12 +2733,12 @@ rates still describe the same rules. What a bot adds is pinned by `BOT_SPEC_HASH
 
 ## 23. The game
 
-> **Written before the code.** Everything else in this document describes something that runs.
-> This section does not yet: it is the rulebook the game will be built to, written first so its
-> edge cases are decided before anyone plays them — the argument this document opens with. Nothing
-> in §23 is pinned to a version constant yet; each rule gets one when it ships, and this note comes
-> out when the last of them does. Every number marked **ours** is a first setting, not a
-> measurement, and §23.10 lists them.
+> **Written before the code, then built to it.** This section was written first, so its edge cases
+> were decided before anyone played them — the argument this document opens with — and the game was
+> then built in [`src/core/game/`](../src/core/game/) and [`src/lib/game/`](../src/lib/game/), pinned
+> to `GAME_VERSION`. Where building it showed a rule could not stand as first written, the rule was
+> changed here and says so. Every number marked **ours** is a first setting, not a measurement, and
+> §23.10 lists them.
 
 Hindsight is a game again, and nobody holds money in it. **A round is one tape and a fresh $500.**
 The player reads the history, draws on it, places one trade with its take-profit and stop-loss, and
@@ -2772,17 +2772,24 @@ everything that made money persistent, and §23.9 lists it rule by rule.
   | | |
   | --- | --- |
   | **side** | buy, or sell to open a short |
-  | **size** | a dollar amount, at least $5 (§22.1's minimum) and at most **$500**. The quantity is worked out at the fill price, so a resting entry that fills higher buys less and the notional never exceeds the stake |
+  | **size** | a dollar amount, at least $5 (§22.1's minimum) and at most **$500**. The quantity is worked out at the price the entry expects to trade at — the ask or bid for a market entry, its own price for a limit or a stop — and rounded down, so a market or limit entry never costs more than the size. A stop that fills worse than its trigger can carry a little more, by its slippage or by a gap |
   | **entry** | market, filled at the decision close; or a limit or a stop that rests on the tape from its first minute |
   | **take-profit / stop-loss** | optional, attached to the entry, one cancels the other — exactly §22.3 |
 
 - **Sitting out is a move**, not an absence. The round ends at $500 and is graded like any other.
 - **An entry that never fills** leaves the round flat at $500: the same result as sitting out, and
   the same grade.
-- **No leverage.** §22.6's buying power, maintenance margin and liquidation do not exist in a round.
-  One consequence is kept on purpose: **a short with no stop can lose more than the stake**, if the
-  price more than doubles. The grade handles it, because the worst trade the tape allowed includes
-  that short (§23.2).
+- **No leverage, and a round cannot lose more than its stake.** §22.6's buying power and
+  maintenance margin do not apply. A position whose losses reach $500 is closed there, with no
+  liquidation fee — only a short can get that far, by the price doubling — and the round ends at $0.
+  Ours.
+
+  > **This changed while it was built.** It first read that a short with no stop could lose more than
+  > the stake. The exchange closes a position whose equity reaches zero rather than carry it below,
+  > and keeping that is both simpler to explain and what a player would expect of a $500 stake.
+- **The liquidity guard is off.** §22.3 refuses an order larger than 5% of the trailing day's
+  volume. No $500 order comes near that on a real pair; the guard would only fire on a tape whose
+  volume was badly recorded, and there it would refuse every order, the best and worst included.
 - **A round locks in once**, and after that nothing changes: no modify, no cancel, no closing early.
   §22.3's modify, reduce-only, close-position and end-session are not available in a round.
 - **The result** is the round's value when the tape ends: $500 plus its net profit or loss after
@@ -2792,8 +2799,10 @@ everything that made money persistent, and §23.9 lists it rule by rule.
 **Why set and forget.** A trade that can be managed while the tape plays turns "the best trade the
 tape allowed" into a question about every decision a player could have made at every minute, and it
 makes a duel depend on both players watching at once. Locked in, a round is decided the moment it is
-placed: the server resolves it at lock-in and the replay only shows it. Managing a live trade is a
-different skill, and §17 kept it on its own ladder for the same reason.
+placed: the server resolves it at lock-in and the replay only shows it. So the whole tape is sent
+once the round is locked in, and the replay runs in the browser at whatever speed the player likes;
+before lock-in not one minute of it leaves the server. Managing a live trade is a different skill,
+and §17 kept it on its own ladder for the same reason.
 
 ### 23.2 The best and worst the tape allowed
 
@@ -2994,19 +3003,34 @@ more playbooks follow the same way; if it does not, that is published here as §
   version with new reads, as `BOT_VERSION` did for §22.10's bots. Old reads are kept, never
   rewritten.
 
+**As built.** The pilot is **Price Action**, version `price-action-1`; its playbook is printed word
+for word on the Schools page and lives in [`src/lib/game/schools.ts`](../src/lib/game/schools.ts).
+`npm run school` reads each tape once with `claude-opus-5-5` at high effort, asking for a structured
+answer: a thesis, its reasoning, up to six named levels, and one order or a sit-out with the reason.
+A request the model declines on safety grounds is re-run server-side on Anthropic's recommended
+fallback model, and every read records which model answered. A trade the exchange would refuse is
+stored as a sit-out with the refusal. `npm run school -- --report` prints the third bar on the
+held-out fifth of the symbols: the paired difference against sitting out, a 95% interval
+bootstrapped by symbol, a one-sided p, and how many versions of the school are stored, for the
+deflation §14.7 demands.
+
+A fixture reader — follow the last day's direction, stop beyond its extreme, target twice the risk —
+exists so a school duel can be played on a local database without a model. It labels every read it
+writes as a fixture, and the script refuses to store it anywhere else.
+
 ### 23.9 What survives from §22
 
 | §22 | in the game |
 | --- | --- |
 | 22.1 The market | **kept**: a round's tape is a §22.1 market |
-| 22.2 The clock | **kept for watching only**: speed and step are display, because the result was settled at lock-in |
-| 22.3 Orders | **one entry** with its take-profit and stop-loss; no modify, reduce-only, close-position or end-session |
+| 22.2 The clock | **gone**: the result is settled at lock-in, so the replay runs in the browser on a tape the server sends only then |
+| 22.3 Orders | **one entry** with its take-profit and stop-loss; no modify, reduce-only, close-position or end-session, and no liquidity guard (§23.1) |
 | 22.4 Fills | **kept** unchanged, and the source of §23.2's best and worst |
 | 22.5 Costs | **kept** unchanged; the liquidation fee has nothing to apply to |
-| 22.6 Margin and liquidation | **gone**: no leverage |
+| 22.6 Margin and liquidation | **gone**: no leverage; a position is closed only when its losses reach the stake (§23.1) |
 | 22.7 Profit and loss | **the result** is the round's end value; session figures and benchmarks give way to the grade and to §23.2 |
 | 22.8 Accounts and sessions | **gone**: no accounts, no $100,000, no money that carries, no Main or Practice, no reset, no bankruptcy |
-| 22.9 Integrity | **kept**, plus two rules: no opponent's trade before lock-in, and nothing about a resolved round is sent before the replay reaches it |
+| 22.9 Integrity | **kept**, plus two rules: not one minute of the tape before the round is locked in, and no opponent's trade or grade on a tape before yours is |
 | 22.10 The schools as traders | **gone**: a school plays rounds, not an account (§23.7, §23.8) |
 | 22.11 Leaderboards | **gone**: they ranked money |
 
@@ -3021,4 +3045,6 @@ Recorded so that nothing here is mistaken for settled.
 - **Every number marked ours**: the $500 stake (cosmetic, since the grade divides it out), the 3%
   minimum move, k = 2, the ten-tape limit, and a school's half-the-tapes coverage. The minimum is
   measured against the corpus, and k and the limit against simulated duels, before any of them ships.
-- **The pilot school's model and playbook**, which are named and hashed here when it is built.
+- **Whether the pilot clears the bar.** It has not been run over the library: no reads exist on the
+  live project, so no school has a record yet, and a school duel deals nothing until `npm run school`
+  has read enough tapes the player has not seen.

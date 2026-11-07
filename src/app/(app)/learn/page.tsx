@@ -1,11 +1,10 @@
 import Link from 'next/link';
 import { GLOSSARY, type TermId } from '@/lib/glossary';
-import { SCHOOLS } from '@/lib/trading/schools';
 import { routes } from '@/lib/routes';
-import { FEE_SCHEDULE, MARGIN, STARTING_BALANCE_USDT } from '@/core/trading/costs';
-import { REPLAY_SPEEDS } from '@/core/trading/clock';
+import { FEE_SCHEDULE } from '@/core/trading/costs';
+import { DAMAGE_K, DUEL_HEALTH, DUEL_TAPES, MIN_MOVE, ROUND_STAKE_USDT, damage } from '@/core/game';
 import { formatUsd } from '@/lib/trading/format';
-import { Button, PersonaAvatar } from '@/components/ui';
+import { Button } from '@/components/ui';
 import { Icon, type IconName } from '@/components/ui/icons';
 
 export const metadata = { title: 'How it works' };
@@ -13,73 +12,58 @@ export const metadata = { title: 'How it works' };
 const pct = (bps: number) => `${(bps / 100).toFixed(2)}%`;
 
 /**
- * How it works, in six short sections: the plain-language version of the rulebook's §22.
- * Everything a trader needs to read the terminal, place an order, and understand what it cost, with
- * a door to the full rules and to the methods behind the schools. Every number on the page comes
- * from the constants the simulator charges, so the explanation cannot drift from the behaviour.
+ * How it works, in six short sections: the plain-language version of the rulebook's §23. Every
+ * number on the page comes from the constants the game is played by, so the explanation cannot
+ * drift from the behaviour.
  */
 export default function LearnPage() {
-  const starting = formatUsd(STARTING_BALANCE_USDT, { decimals: 0 });
+  const stake = formatUsd(ROUND_STAKE_USDT, { decimals: 0 });
   return (
     <div className="mx-auto max-w-4xl space-y-14">
       <header>
         <div className="eyebrow text-ink-dim">Learn</div>
         <h1 className="font-display text-ink-max mt-2 text-[2.75rem] leading-none md:text-6xl">How Hindsight works</h1>
         <p className="text-ink-lo mt-4 max-w-2xl text-lg leading-relaxed">
-          A real market from the past, replayed minute by minute. A {starting} paper account. Orders that fill and cost what
-          they would on an exchange. Trade it, then see what the market was and what you made of it.
+          A real market from the past. One trade on a fresh {stake}, locked in before the next sixty hours play. Then a grade
+          out of 1000, against the best and the worst trade that stretch of market allowed. Play it alone, against a friend,
+          or against a school that shows its working.
         </p>
       </header>
 
-      <Section n={1} icon="candle" title="The market" lede="Real pair, real prices, no date.">
+      <Section n={1} icon="candle" title="The tape" lede="Real pair, real prices, no date.">
         <p>
-          Every session is a real stretch of a real Binance spot market, including coins that were later delisted, so the
-          library is not only the survivors. You see the pair, its real prices and volume, and about two weeks of history
-          before the replay starts.
+          Every round is a real stretch of a real Binance spot market, including coins that were later delisted. You see the
+          pair, its prices and volume, and about two weeks of history before the moment you decide. You never get a tape you
+          have already played, and only tapes that moved at least {MIN_MOVE * 100}% one way or the other are dealt.
         </p>
         <p>
-          What you do not see is the date. The weekday and time of day are real, but the calendar date stays hidden until
-          the session ends — otherwise anyone could look up what happens next. The <strong>Practice</strong> account may show
-          dates; it never reaches a leaderboard.
-        </p>
-      </Section>
-
-      <Section n={2} icon="play" title="The replay" lede="Sixty hours, at the speed you choose.">
-        <p>
-          Press play and the market moves on, one minute at a time, at{' '}
-          {REPLAY_SPEEDS.map((speed) => `${speed}`).join(', ')} market-minutes per second. Pause to think, step one candle at
-          a time, or end the session early. Leave the page and the replay pauses itself where you left it.
-        </p>
-        <p>
-          The server keeps the clock. Your browser only ever has the minutes that have already printed, so there is nothing
-          ahead to scroll to or inspect. When the tape ends, anything still open is closed at the last price.
+          What you do not see is the date. The weekday and time of day are real; the calendar date is revealed with your
+          grade, so nobody can look up what happens next.
         </p>
       </Section>
 
-      <Section n={3} icon="wallet" title="Orders" lede="Market, limit and stop, long or short.">
+      <Section n={2} icon="lock" title="One trade" lede={`${stake}, every round. Nothing carries over.`}>
         <ul className="grid gap-3 sm:grid-cols-3">
-          <Fact term="market" body="Fills now, at the price on offer." />
-          <Fact term="limit" body="Rests at your price, fills when the market trades through it." />
-          <Fact term="stop" body="Waits beyond the market, then fills at whatever the market gives." />
+          <Fact term="market" body="Enter at the bell: the last close, at the price on offer." />
+          <Fact term="limit" body="Rests at your price, and fills if the tape trades through it." />
+          <Fact term="stop" body="Waits beyond the market, and fills when the tape breaks out to it." />
         </ul>
         <p>
-          Size an order in coins, in dollars, or as a share of your buying power — or set a stop-loss and pick how much of
-          your equity to risk on it, and the ticket works out the size. Attach a <strong>take-profit</strong> and a{' '}
-          <strong>stop-loss</strong> to any order: they arm when it fills, and when one of them fills the other is cancelled.
-          Drag any working order on the chart to move it.
+          Draw your levels, then size the trade in dollars up to {stake}, long or short, and attach a{' '}
+          <strong>take-profit</strong> and a <strong>stop-loss</strong> if you want them. Or <strong>sit out</strong>: that is
+          a move too, and it is graded like any other.
         </p>
         <p>
-          Sell with no position and you are short. Buy more to scale in, sell part to scale out, or sell more than you hold
-          to flip. One position per market, as on a real account.
+          When you lock in, nothing can be changed. Then the tape plays, at whatever speed you like, and you watch your trade
+          live. There is no leverage, and a round can never lose more than its {stake}.
         </p>
       </Section>
 
-      <Section n={4} icon="activity" title="Fills and costs" lede="Filled against the real minute bars.">
+      <Section n={3} icon="activity" title="Fills and costs" lede="Filled against the real minute bars.">
         <p>
-          Limits fill when the minute&rsquo;s range reaches them — at your price, or better if the market opened through it.
-          Stops fill at the trigger plus slippage, or at the open if the market gapped past them. When one minute could have
-          hit both your stop and your target, nobody can know which came first, so the stop is taken and the fill is marked{' '}
-          <em>ambiguous</em> in your review.
+          Limits fill when the minute&rsquo;s range reaches them. Stops fill at the trigger plus slippage, or at the open if the
+          market gapped past them. When one minute could have hit both your stop and your target, nobody can know which came
+          first, so the worse one is taken.
         </p>
         <dl className="border-line bg-surface-2 divide-line-faint divide-y overflow-hidden rounded-2xl border">
           <Row label="Maker fee (limit orders)" value={pct(FEE_SCHEDULE.makerBps)} note="Binance spot, published" />
@@ -89,42 +73,41 @@ export default function LearnPage() {
         </dl>
       </Section>
 
-      <Section n={5} icon="shield" title="Margin" lede={`Up to ${MARGIN.maxGrossLeverage}× your equity.`}>
+      <Section n={4} icon="oracle" title="The grade" lede="Out of 1000, against what was possible.">
         <p>
-          Your position and your resting orders together may be worth up to {MARGIN.maxGrossLeverage}× your equity, long or
-          short. That is your <strong>buying power</strong>, and the ticket checks it before an order is accepted and again
-          when it fills.
+          Once the tape has played, Hindsight finds the <strong>best</strong> trade it allowed — buying the bottom of its
+          biggest rise and selling the top, or shorting the top of its biggest fall — and the <strong>worst</strong>, the
+          same moves the wrong way round. Both are real orders, filled and charged like yours.
         </p>
         <p>
-          If losses take equity below {MARGIN.maintenanceRatio * 100}% of what the position is worth, it is{' '}
-          <strong>liquidated</strong>: closed for you at the market, with a {pct(MARGIN.liquidationFeeBps)} fee. If equity
-          reaches zero, the account is finished until you reset it.
+          Your grade is where your result falls between them: 1000 is the best trade, 0 the worst. Sitting out scores a
+          little over 500, because it pays no fees. That is the bar a trade has to clear to have been worth taking. A quiet
+          tape and a wild one both run from 0 to 1000, so every round counts the same.
         </p>
       </Section>
 
-      <Section n={6} icon="trophy" title="Accounts and rankings" lede="Your money carries from session to session.">
+      <Section n={5} icon="swords" title="Duels" lede={`${DUEL_HEALTH} points each, ${DUEL_TAPES} tapes.`}>
         <p>
-          Your <strong>main</strong> account starts with {starting} and carries every session&rsquo;s result into the next,
-          like a real account. After ten sessions it appears on the leaderboard, ranked by return, win rate or drawdown.
-          Today&rsquo;s market is the same for everyone; its board opens when you finish it.
+          Send a friend a link. You both play the same {DUEL_TAPES} tapes, in your own time. On each one, whoever graded lower
+          loses points, and the bigger the gap the harder it hits: a gap of 250 costs {damage(0, 250, DAMAGE_K)}, a gap of 500
+          costs {damage(0, 500, DAMAGE_K)}, a gap of 750 costs {damage(0, 750, DAMAGE_K)}.
         </p>
         <p>
-          The schools trade too: seven published trading systems and a coin flip, each on its own {starting} account, on
-          every market in the library, with the same fees and fills as you. After every session, the review shows what each
-          of them did on the market you just traded.
+          Knock them to zero, or have more points left after {DUEL_TAPES} tapes. You never see their trade on a tape until you
+          have locked in your own.
         </p>
-        <div className="flex flex-wrap gap-2">
-          {SCHOOLS.map(({ persona, spec }) => (
-            <Link
-              key={spec.code}
-              href={routes.strategies.show(spec.code)}
-              className="border-line bg-surface-2 hover:border-line-strong flex items-center gap-2 rounded-full border py-1 pr-3 pl-1 transition-colors"
-            >
-              <PersonaAvatar persona={persona} size={26} />
-              <span className="text-ink-hi text-sm">{persona.name}</span>
-            </Link>
-          ))}
-        </div>
+      </Section>
+
+      <Section n={6} icon="bot" title="Schools" lede="Opponents that show their working.">
+        <p>
+          A school reads every tape once, before you meet it there, under a published playbook: it draws its levels, then
+          places one trade or sits out. In a duel its trade plays live beside yours, and when the tape ends you can read what
+          it saw, why it traded, and where it put its stop and target.
+        </p>
+        <p>
+          A school earns its place only by beating sitting out on tapes it was never built on, and its record is printed
+          whichever way that goes.
+        </p>
       </Section>
 
       <section className="space-y-4">
@@ -140,14 +123,14 @@ export default function LearnPage() {
       </section>
 
       <section className="grid gap-3 md:grid-cols-2">
-        <Door href={routes.learn.rulebook('22-trading')} icon="rules" title="The rulebook" body="Every rule the exchange enforces, in full — how markets are chosen, how orders fill, what is charged and when an account is liquidated." />
-        <Door href={routes.learn.methods} icon="book" title="Methods" body="The schools one by one, with their sources, how each one trades, and what was measured about whether any of them has an edge." />
+        <Door href={routes.learn.rulebook('23-the-game')} icon="rules" title="The rulebook" body="Every rule the game is played by, in full — how tapes are dealt, how a round fills, how it is graded, and how a duel is scored." />
+        <Door href={routes.schools} icon="bot" title="Schools" body="The schools you can duel, their playbooks word for word, and their record against sitting out." />
       </section>
 
       <div className="flex justify-center pb-6">
-        <Button href={routes.trade.open({ kind: 'random' })} variant="primary" size="lg">
+        <Button href={routes.play.new} variant="primary" size="lg">
           <Icon name="candle" size={15} />
-          Start trading
+          Deal a tape
         </Button>
       </div>
     </div>

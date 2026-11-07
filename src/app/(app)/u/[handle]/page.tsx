@@ -7,9 +7,7 @@ import { Icon } from '@/components/ui/icons';
 import { isAccent } from '@/lib/avatar';
 import { currentViewer } from '@/lib/viewer';
 import { routes } from '@/lib/routes';
-import { formatPct, formatUsd } from '@/lib/trading/format';
-import { MIN_BOARD_SESSIONS, getAccount, getEquityCurve } from '@/lib/trading/server/queries';
-import { EquityCurve } from '@/components/trading/EquityCurve';
+import { getPublicRecord } from '@/lib/game/server/queries';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,12 +17,11 @@ export async function generateMetadata({ params }: { params: Promise<{ handle: s
 }
 
 /**
- * A trader, in public: who they are and what their main account has done.
+ * A player, in public: who they are and what they have played (docs/rules.md §23).
  *
- * Aggregates only. The sessions behind them — which pairs, on which days — stay on the trader's own
- * Portfolio, because a list of someone's markets and results is a list of hints about markets other
- * people have not traded yet. Practice is never shown: it is where a trader is allowed to look at
- * dates, and it is nobody's record.
+ * Aggregates only. The rounds behind them — which pairs, on which days — stay on the player's own
+ * Play page, because a list of someone's tapes is a list of hints about tapes other people have not
+ * played yet.
  */
 export default async function ProfilePage({ params }: { params: Promise<{ handle: string }> }) {
   const { handle } = await params;
@@ -39,13 +36,11 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
 
   if (!profile) notFound();
 
-  const account = await getAccount(profile.user_id as string, 'main');
-  const curve = account ? await getEquityCurve(account.id, account.starting) : [];
+  const record = await getPublicRecord(profile.user_id as string);
   const accent = isAccent(profile.avatar_accent) ? profile.avatar_accent : 'ember';
   const isSelf = viewer.userId === profile.user_id;
   const name = profile.display_name ?? profile.handle_display ?? profile.handle;
-  const traded = account !== null && account.sessions > 0;
-  const tone = (value: number) => (value > 0 ? 'long' : value < 0 ? 'short' : 'neutral');
+  const played = record.rounds > 0;
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -59,7 +54,7 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
             <div className="text-ink-dim mt-1.5 text-base">@{profile.handle}</div>
             <div className="mt-3 flex flex-wrap items-center gap-3">
               <span className="text-ink-dim text-sm">
-                Trading since{' '}
+                Playing since{' '}
                 {new Date(profile.created_at as string).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}
               </span>
               {isSelf && (
@@ -76,52 +71,27 @@ export default async function ProfilePage({ params }: { params: Promise<{ handle
         </div>
       </Panel>
 
-      {!traded || !account ? (
+      {!played ? (
         <div className="mt-6">
           <EmptyState
             icon="candle"
-            title={isSelf ? 'You have not traded a market yet' : `${name} has not traded a market yet`}
-            body={isSelf ? 'Close a session and your record starts here.' : 'Nothing to show until they close a session.'}
+            title={isSelf ? 'You have not played a tape yet' : `${name} has not played a tape yet`}
+            body={isSelf ? 'Lock in a round and your record starts here.' : 'Nothing to show until they play a round.'}
             action={
               isSelf ? (
-                <Button href={routes.markets()} variant="primary" size="lg">
-                  Trade your first market
+                <Button href={routes.play.new} variant="primary" size="lg">
+                  Deal your first tape
                 </Button>
               ) : undefined
             }
           />
         </div>
       ) : (
-        <>
-          <Panel tone="raised" pad="md" className="mt-6 grid grid-cols-2 gap-5 sm:grid-cols-3">
-            <Stat label="Equity" value={formatUsd(account.equity)} />
-            <Stat label="Return" value={formatPct(account.returnPct, { sign: true })} tone={tone(account.returnPct)} />
-            <Stat label="Max drawdown" value={formatPct(account.maxDrawdown)} />
-            <Stat label="Sessions" value={String(account.sessions)} />
-            <Stat label="Win rate" value={account.winRate === null ? '—' : formatPct(account.winRate, { decimals: 0 })} />
-            <Stat label="Profit factor" value={account.profitFactor === null ? '—' : account.profitFactor.toFixed(2)} />
-          </Panel>
-
-          <Panel pad="md" className="mt-3">
-            <div className="flex items-baseline justify-between gap-3">
-              <span className="text-ink-hi text-sm font-medium">Equity, session by session</span>
-              <span className="text-ink-dim text-xs">
-                {account.sessions >= MIN_BOARD_SESSIONS
-                  ? 'On the leaderboard'
-                  : `${MIN_BOARD_SESSIONS - account.sessions} more sessions to be ranked`}
-              </span>
-            </div>
-            <EquityCurve values={curve} baseline={account.starting} height={176} className="mt-4" label={`${name}’s equity, session by session`} />
-          </Panel>
-
-          {isSelf && (
-            <div className="mt-4 flex justify-end">
-              <Button href={routes.portfolio()} variant="secondary">
-                Every session, in Portfolio
-              </Button>
-            </div>
-          )}
-        </>
+        <Panel tone="raised" pad="md" className="mt-6 grid grid-cols-2 gap-5 sm:grid-cols-3">
+          <Stat label="Rounds" value={String(record.rounds)} />
+          <Stat label="Average grade" value={record.meanGrade === null ? '—' : String(record.meanGrade)} />
+          <Stat label="Duels" value={`${record.won}–${record.lost}${record.drawn > 0 ? `–${record.drawn}` : ''}`} />
+        </Panel>
       )}
     </div>
   );
