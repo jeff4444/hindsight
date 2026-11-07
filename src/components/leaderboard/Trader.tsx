@@ -35,7 +35,7 @@ export function Trader({
   }
   return (
     <Link href={handle ? routes.profile(handle) : '#'} className="flex items-center gap-2.5 hover:underline">
-      <MarketSignature seed={avatarSeed ?? 0} accent={avatarAccent} size={28} ring={highlight ? 'gold' : 'accent'} />
+      <MarketSignature seed={avatarSeed ?? 0} accent={avatarAccent} size={28} ring={highlight ? 'highlight' : 'accent'} />
       <span className="text-ink-hi font-medium">{displayName ?? `@${handle}`}</span>
     </Link>
   );

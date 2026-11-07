@@ -12,12 +12,12 @@ import { Skeleton } from '../ui';
  * block on Supabase rendered nothing at all until the query returned.
  */
 
-/** Eyebrow, title, and optionally a paragraph of lede — the header every inner page opens with. */
+/** Caption, title, and optionally a paragraph of lede, on the rule — the header every inner page opens with. */
 export function PageHeadSkeleton({ lede = true }: { lede?: boolean }) {
   return (
-    <div>
+    <div className="border-rule border-b-2 pb-6">
       <Skeleton className="h-3 w-28 rounded" />
-      <Skeleton className="mt-2.5 h-8 w-40" />
+      <Skeleton className="mt-2.5 h-10 w-56" />
       {lede && (
         <div className="mt-3 max-w-prose">
           <Skeleton variant="text" lines={2} />

@@ -82,7 +82,7 @@ export function SignaturePicker({
           {/* The selection ring travels from swatch to swatch. */}
           <Indicator
             match="[aria-pressed=true]"
-            className="ring-ink-hi rounded-full ring-2 ring-offset-2 ring-offset-(--color-surface-2)"
+            className="ring-ink-hi rounded-xs ring-2 ring-offset-2 ring-offset-(--color-surface-2)"
           />
           {ACCENTS.map((option) => (
             <button
@@ -92,7 +92,7 @@ export function SignaturePicker({
               title={ACCENT_LABEL[option]}
               onClick={() => setAccent(option)}
               className={cx(
-                'press h-8 w-8 rounded-full transition-shadow',
+                'press h-8 w-8 rounded-xs transition-shadow',
                 option === accent
                   ? 'ring-ink-hi ring-2 ring-offset-2 ring-offset-(--color-surface-2) in-data-[indicator=ready]:ring-0 in-data-[indicator=ready]:ring-offset-0'
                   : 'ring-line ring-1',

@@ -2,8 +2,9 @@
  * The mark, as data.
  *
  * Two candle bodies form the stems of an H and the bar between them is the entry line. The left
- * body is solid — the past, revealed. The right body is gold and hatched — the future, still fog.
- * You commit at the line between them, which is the whole game in one glyph.
+ * body is solid ink — the past, printed. The right body is drawn in the pen and hatched — the
+ * future, still fog. You commit at the line between them, which is the whole game in one glyph.
+ * Square-cornered, like everything else set in Ledger.
  *
  * This file is the only place the geometry lives. `Mark` renders it as JSX; `markSvg` renders it as
  * a string for the favicon, the OG image and the global error page, none of which can import a
@@ -14,9 +15,9 @@
 
 export const MARK = {
   viewBox: 32,
-  past: { x: 5.5, y: 4, width: 6, height: 24, rx: 2 },
-  future: { x: 20.5, y: 4, width: 6, height: 24, rx: 2, stroke: 2 },
-  bar: { x: 10.5, y: 13.9, width: 11, height: 3.2, rx: 1.6 },
+  past: { x: 5.5, y: 4, width: 6, height: 24, rx: 0.5 },
+  future: { x: 20.5, y: 4, width: 6, height: 24, rx: 0.5, stroke: 2 },
+  bar: { x: 10.5, y: 13.9, width: 11, height: 3.2, rx: 0 },
   /** Hatch lines inside the future candle, as segments clipped to its body. */
   hatch: [
     [20.5, 9.5, 26.5, 3.5],
@@ -27,14 +28,15 @@ export const MARK = {
   ] as const,
 } as const;
 
-/** Literal colours for contexts with no CSS: the dark stage's ink, gold and canvas. */
+/** Literal colours for contexts with no CSS: paper, carbon ink and the pen. */
 export const BRAND_HEX = {
-  canvas: '#0e0d11',
-  ink: '#f7f3ec',
-  inkLo: '#aba49a',
-  gold: '#f2b544',
-  long: '#3fd49b',
-  short: '#ff6b57',
+  canvas: '#f5efe2',
+  ink: '#17140f',
+  inkLo: '#5e584e',
+  inkDim: '#857d70',
+  accent: '#2f3fd8',
+  long: '#17915b',
+  short: '#d6432a',
 } as const;
 
 export interface MarkColours {
@@ -47,7 +49,7 @@ export interface MarkColours {
 
 export const FAVICON: MarkColours = {
   past: BRAND_HEX.ink,
-  future: BRAND_HEX.gold,
+  future: BRAND_HEX.accent,
   bar: BRAND_HEX.ink,
   tile: BRAND_HEX.canvas,
 };
@@ -56,7 +58,7 @@ export const FAVICON: MarkColours = {
 export function markSvg(colours: MarkColours, size = 32): string {
   const { past, future, bar, hatch } = MARK;
   const tile = colours.tile
-    ? `<rect width="32" height="32" rx="7.5" fill="${colours.tile}"/><g transform="translate(16 16) scale(0.82) translate(-16 -16)">`
+    ? `<rect x="0.75" y="0.75" width="30.5" height="30.5" rx="2" fill="${colours.tile}" stroke="${colours.past}" stroke-width="1.5"/><g transform="translate(16 16) scale(0.74) translate(-16 -16)">`
     : '<g>';
   const lines = hatch
     .map(([x1, y1, x2, y2]) => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>`)

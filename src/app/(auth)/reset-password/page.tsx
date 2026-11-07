@@ -30,7 +30,7 @@ export default async function ResetPasswordPage({
     <div data-stagger>
       <div style={{ '--i': 0 } as React.CSSProperties}>
         <Eyebrow>Password</Eyebrow>
-        <h1 className="text-ink-max mt-2 text-2xl font-semibold">Choose a new one</h1>
+        <h1 className="font-display text-ink-max mt-2 text-3xl">Choose a new one</h1>
         <p className="text-ink-lo mt-3 text-base leading-relaxed">
           For <span className="text-ink-hi numeral">{viewer.email}</span>. You are signed in on this
           browser already — this is so the next one works too.

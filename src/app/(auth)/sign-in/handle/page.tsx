@@ -22,8 +22,8 @@ export default async function ClaimHandlePage({ searchParams }: { searchParams: 
       <Eyebrow>One last thing</Eyebrow>
       <h1 className="font-display text-ink-max mt-2 text-4xl">Pick your signature.</h1>
       <p className="text-ink-lo mt-3 text-base leading-relaxed">
-        A little chart that is yours, generated rather than uploaded. Reroll until one feels right — it turns gold
-        while your streak is perfect.
+        A little chart that is yours, generated rather than uploaded. Reroll until one feels right — it wears a blue
+        ring while your streak is perfect.
       </p>
       <div className="mt-8">
         <SignaturePicker initialSeed={seed} action={saveProfile} submitLabel="Claim it" next={next} />

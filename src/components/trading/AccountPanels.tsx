@@ -51,9 +51,9 @@ export function AccountStrip({ account, className }: { account: AccountView; cla
           <Term id="margin" />
         </div>
         <div className="mt-1.5 flex items-center gap-2">
-          <div className="bg-fill-2 h-1.5 flex-1 overflow-hidden rounded-full">
+          <div className="bg-fill-2 h-1.5 flex-1 overflow-hidden">
             <div
-              className={cx('h-full rounded-full', account.marginUsed > 0.85 ? 'bg-short' : account.marginUsed > 0.6 ? 'bg-attention' : 'bg-info')}
+              className={cx('h-full', account.marginUsed > 0.85 ? 'bg-short' : account.marginUsed > 0.6 ? 'bg-attention' : 'bg-info')}
               style={{ width: `${Math.round(account.marginUsed * 100)}%` }}
             />
           </div>

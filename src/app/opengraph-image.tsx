@@ -19,8 +19,7 @@ export const contentType = 'image/png';
 export const alt = 'Hindsight — trade the past like it is live.';
 
 // Literal hex throughout: satori resolves no custom properties and no oklch.
-const { canvas: CANVAS, ink: INK, inkLo: INK_LO, gold: GOLD, long: LONG, short: SHORT } = BRAND_HEX;
-const INK_DIM = '#8a847b';
+const { canvas: CANVAS, ink: INK, inkLo: INK_LO, inkDim: INK_DIM, accent: ACCENT, long: LONG, short: SHORT } = BRAND_HEX;
 
 async function googleFont(family: string, weight: number): Promise<ArrayBuffer | null> {
   try {
@@ -65,7 +64,7 @@ function chartSvg(width: number, height: number): string {
       const h = Math.max(2, Math.abs(Number(y(k.o)) - Number(y(k.c))));
       return (
         `<line x1="${x}" x2="${x}" y1="${y(k.h)}" y2="${y(k.l)}" stroke="${colour}" stroke-width="1.5"/>` +
-        `<rect x="${x - body / 2}" y="${top}" width="${body}" height="${h}" rx="1.2" fill="${colour}"/>`
+        `<rect x="${x - body / 2}" y="${top}" width="${body}" height="${h}" fill="${colour}"/>`
       );
     })
     .join('');
@@ -73,10 +72,10 @@ function chartSvg(width: number, height: number): string {
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">` +
     `<defs><pattern id="fog" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">` +
-    `<line x1="0" y1="0" x2="0" y2="10" stroke="${INK}" stroke-opacity="0.14" stroke-width="2"/></pattern></defs>` +
+    `<line x1="0" y1="0" x2="0" y2="10" stroke="${INK}" stroke-opacity="0.12" stroke-width="1.5"/></pattern></defs>` +
     bars +
     `<rect x="${past}" y="0" width="${width - past}" height="${height}" fill="url(#fog)"/>` +
-    `<line x1="${past}" x2="${past}" y1="0" y2="${height}" stroke="${INK_DIM}" stroke-width="1.5" stroke-dasharray="3 5"/>` +
+    `<line x1="${past}" x2="${past}" y1="0" y2="${height}" stroke="${INK}" stroke-width="2"/>` +
     `</svg>`
   );
 }
@@ -85,16 +84,16 @@ const dataUri = (svg: string) => `data:image/svg+xml;base64,${Buffer.from(svg).t
 
 export default async function Image() {
   const [serif, regular, semibold] = await Promise.all([
-    googleFont('Instrument+Serif', 400),
-    googleFont('Inter', 400),
-    googleFont('Inter', 600),
+    googleFont('Fraunces', 600),
+    googleFont('Schibsted+Grotesk', 400),
+    googleFont('Schibsted+Grotesk', 600),
   ]);
   const fonts = [
-    serif && { name: 'Instrument Serif', data: serif, weight: 400 as const, style: 'normal' as const },
-    regular && { name: 'Inter', data: regular, weight: 400 as const, style: 'normal' as const },
-    semibold && { name: 'Inter', data: semibold, weight: 600 as const, style: 'normal' as const },
+    serif && { name: 'Fraunces', data: serif, weight: 600 as const, style: 'normal' as const },
+    regular && { name: 'Schibsted Grotesk', data: regular, weight: 400 as const, style: 'normal' as const },
+    semibold && { name: 'Schibsted Grotesk', data: semibold, weight: 600 as const, style: 'normal' as const },
   ].filter(Boolean) as { name: string; data: ArrayBuffer; weight: 400 | 600; style: 'normal' }[];
-  const display = serif ? 'Instrument Serif' : undefined;
+  const display = serif ? 'Fraunces' : undefined;
   const chartWidth = 1200;
   const chartHeight = 230;
 
@@ -108,16 +107,18 @@ export default async function Image() {
           flexDirection: 'column',
           position: 'relative',
           backgroundColor: CANVAS,
-          backgroundImage: `radial-gradient(900px 520px at 85% 110%, rgba(242,181,68,0.13), transparent)`,
-          fontFamily: regular ? 'Inter' : undefined,
+          fontFamily: regular ? 'Schibsted Grotesk' : undefined,
         }}
       >
-        <div style={{ display: 'flex', flexDirection: 'column', padding: '64px 72px 0' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', padding: '56px 72px 0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, paddingBottom: 18 }}>
             <img src={dataUri(markSvg({ ...FAVICON, tile: undefined }, 46))} width={46} height={46} alt="" />
-            <span style={{ color: INK, fontSize: 38, fontFamily: display, letterSpacing: -0.5 }}>Hindsight</span>
+            <span style={{ color: INK, fontSize: 40, fontFamily: display, fontWeight: 600, letterSpacing: -0.8 }}>Hindsight</span>
           </div>
-          <div style={{ color: INK, fontSize: 92, fontFamily: display, lineHeight: 1.0, letterSpacing: -1.5, marginTop: 44 }}>
+          {/* The masthead's double rule. Satori has no `double` border style, so it is two rules. */}
+          <div style={{ display: 'flex', height: 2, backgroundColor: INK }} />
+          <div style={{ display: 'flex', height: 2, marginTop: 3, backgroundColor: INK }} />
+          <div style={{ color: INK, fontSize: 76, fontFamily: display, fontWeight: 600, lineHeight: 1.0, letterSpacing: -2, marginTop: 36 }}>
             Trade the past like it is live.
           </div>
           <div style={{ color: INK_LO, fontSize: 28, lineHeight: 1.4, marginTop: 22, maxWidth: 860 }}>
@@ -130,7 +131,7 @@ export default async function Image() {
           <div style={{ position: 'absolute', left: chartWidth * 0.68 + 18, top: 14, display: 'flex', color: INK_DIM, fontSize: 20 }}>
             not yet printed
           </div>
-          <div style={{ position: 'absolute', right: 72, bottom: 30, display: 'flex', color: GOLD, fontSize: 22, fontWeight: 600 }}>
+          <div style={{ position: 'absolute', right: 72, bottom: 30, display: 'flex', color: ACCENT, fontSize: 22, fontWeight: 600 }}>
             A new market every day
           </div>
         </div>

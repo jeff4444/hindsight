@@ -23,13 +23,14 @@ export const ACCENTS = ['ember', 'signal', 'frost', 'moss', 'violet', 'slate'] a
 export type Accent = (typeof ACCENTS)[number];
 
 /** The accent only ever colours the sparkline and the ring — never a candle body. */
+/** Mid-lightness, so a signature prints on paper and still reads on carbon. */
 export const ACCENT_HEX: Record<Accent, string> = {
-  ember: '#f0883e',
-  signal: '#4ea3ff',
-  frost: '#5ad2e6',
-  moss: '#6fbf73',
-  violet: '#a980f0',
-  slate: '#9aa4b8',
+  ember: '#d9691f',
+  signal: '#2f7fd6',
+  frost: '#1b97ad',
+  moss: '#4f9a3c',
+  violet: '#8a5ad6',
+  slate: '#66748c',
 };
 
 export const ACCENT_LABEL: Record<Accent, string> = {

@@ -22,7 +22,7 @@ import type { TerminalChartHandle } from './TerminalChart';
  * every pixel.
  */
 
-export type LineTone = 'long' | 'short' | 'neutral' | 'gold' | 'info' | 'attention';
+export type LineTone = 'long' | 'short' | 'neutral' | 'accent' | 'info' | 'attention';
 
 export interface ChartLine {
   id: string;
@@ -58,7 +58,7 @@ const TONE: Record<LineTone, { line: string; pill: string; ink: string }> = {
   long: { line: 'bg-long', pill: 'bg-long-bg ring-long-line', ink: 'text-long-ink' },
   short: { line: 'bg-short', pill: 'bg-short-bg ring-short-line', ink: 'text-short-ink' },
   neutral: { line: 'bg-ink-dim', pill: 'bg-surface-2 ring-line-strong', ink: 'text-ink-hi' },
-  gold: { line: 'bg-gold', pill: 'bg-gold-bg ring-gold-line', ink: 'text-gold-ink' },
+  accent: { line: 'bg-accent', pill: 'bg-accent-bg ring-accent-line', ink: 'text-accent-ink' },
   info: { line: 'bg-info', pill: 'bg-info-bg ring-info-line', ink: 'text-info-ink' },
   attention: { line: 'bg-attention', pill: 'bg-attention-bg ring-attention-line', ink: 'text-attention-ink' },
 };

@@ -11,8 +11,9 @@
  * is ours rather than the school's, `ours` says so and the dossier prints it.
  *
  * Colours are hex because they are also drawn on the chart canvas (lightweight-charts cannot parse
- * oklch). Each sits around L 0.78 on the dark stage and away from the candle mint and coral and the
- * hindsight gold, so a persona's bracket never reads as the player's or the best one.
+ * oklch). Each sits at mid lightness, around L 0.6, so one value prints on paper and still reads on
+ * carbon; and each keeps its distance from the ledger green, the accounting red and the pen's
+ * ultramarine, so a persona's bracket never reads as a direction, the player's, or the best one.
  */
 
 import type { EngineCode } from '@/core/engines/contract';
@@ -53,7 +54,7 @@ export const PANEL: readonly Persona[] = [
     style: 'Buys the breakout of a 20-bar high, sells the breakdown of a 20-bar low.',
     source: 'Donchian channels, as traded by the Turtles — Dennis & Eckhardt, rules published by Curtis Faith.',
     ours: false,
-    colour: '#5cc8d8',
+    colour: '#1b8ea6',
     glyph: 'breakout',
   },
   {
@@ -63,7 +64,7 @@ export const PANEL: readonly Persona[] = [
     style: 'Buys sharp dips, but only while the long-term trend is up.',
     source: 'Connors & Alvarez, Short Term Trading Strategies That Work — the 2-period RSI with its 200-bar trend filter.',
     ours: false,
-    colour: '#a98bf5',
+    colour: '#8a4fcf',
     glyph: 'dip',
   },
   {
@@ -73,7 +74,7 @@ export const PANEL: readonly Persona[] = [
     style: 'The Contrarian without the trend filter: buys any sharp dip.',
     source: 'Our variant of Connors & Alvarez, with one rule removed, to test whether that rule matters on these charts.',
     ours: true,
-    colour: '#e08ad8',
+    colour: '#c2479c',
     glyph: 'v',
   },
   {
@@ -83,7 +84,7 @@ export const PANEL: readonly Persona[] = [
     style: 'Waits for price to run the stops above a swing, then fades it.',
     source: 'Written in the ICT idiom, with every threshold ours — the school publishes no rules precise enough to implement.',
     ours: true,
-    colour: '#f59a4a',
+    colour: '#cf761c',
     glyph: 'reticle',
   },
   {
@@ -93,7 +94,7 @@ export const PANEL: readonly Persona[] = [
     style: 'Trades completed classic patterns, with targets from their measured history.',
     source: 'Bulkowski, Encyclopedia of Chart Patterns, descending from Edwards & Magee (1948).',
     ours: false,
-    colour: '#6fa3ff',
+    colour: '#3b78c4',
     glyph: 'peaks',
   },
   {
@@ -103,7 +104,7 @@ export const PANEL: readonly Persona[] = [
     style: 'Fades moves that complete a Fibonacci pattern — Gartley, Bat, Butterfly, Crab.',
     source: 'Scott Carney, The Harmonic Trader and Harmonic Trading.',
     ours: false,
-    colour: '#f47fa0',
+    colour: '#d24d72',
     glyph: 'zigzag',
   },
   {
@@ -113,7 +114,7 @@ export const PANEL: readonly Persona[] = [
     style: 'Reads effort against result: wide bars on thin volume, narrow bars on heavy volume.',
     source: 'Volume Spread Analysis — Tom Williams, Master the Markets. Stop and target are ours.',
     ours: false,
-    colour: '#b8d860',
+    colour: '#7f9a1f',
     glyph: 'bars',
   },
   {
@@ -123,7 +124,7 @@ export const PANEL: readonly Persona[] = [
     style: 'Flips a coin for the side, with a stop 2 ATR away and a target twice as far. Always in the market.',
     source: 'The null hypothesis. If a school cannot beat this over thousands of markets, it has no measured edge.',
     ours: true,
-    colour: '#c9c2b6',
+    colour: '#8a8173',
     glyph: 'coin',
     isNull: true,
   },

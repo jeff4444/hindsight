@@ -432,7 +432,7 @@ export function Icon({
  * left — the past, revealed. Hatched on the right — the future, still fog. Geometry lives in
  * `brand.ts`, which also feeds the favicon, the OG image and the error page.
  *
- * `tone="mono"` inherits `currentColor` — nav, footers. `tone="duo"` paints the future candle gold.
+ * `tone="mono"` inherits `currentColor` — nav, footers. `tone="duo"` paints the future candle in the pen colour.
  */
 export function Mark({
   size = 24,
@@ -450,7 +450,7 @@ export function Mark({
   const id = `hs-mark-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
   const { past, future, bar, hatch } = MARK;
   const ink = 'currentColor';
-  const gold = tone === 'duo' ? 'var(--color-gold)' : 'currentColor';
+  const pen = tone === 'duo' ? 'var(--color-accent)' : 'currentColor';
 
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" className={className} aria-hidden>
@@ -458,7 +458,7 @@ export function Mark({
       <clipPath id={id}>
         <rect x={future.x} y={future.y} width={future.width} height={future.height} rx={future.rx} />
       </clipPath>
-      <g clipPath={`url(#${id})`} stroke={gold} strokeWidth="1.1" strokeLinecap="round" opacity="0.8">
+      <g clipPath={`url(#${id})`} stroke={pen} strokeWidth="1.1" strokeLinecap="round" opacity="0.8">
         {hatch.map(([x1, y1, x2, y2]) => (
           <line key={y1} x1={x1} y1={y1} x2={x2} y2={y2} />
         ))}
@@ -470,7 +470,7 @@ export function Mark({
         height={future.height}
         rx={future.rx}
         fill="none"
-        stroke={gold}
+        stroke={pen}
         strokeWidth={future.stroke}
         className={drawing ? 'animate-draw' : undefined}
         style={drawing ? ({ strokeDasharray: 58, '--len': 58 } as React.CSSProperties) : undefined}

@@ -10,8 +10,9 @@ import { Icon } from '../ui/icons';
 /**
  * The account, from anywhere in the app: what it is worth, and the one thing to do next.
  *
- * Gold while it leads somewhere — back to the session you have open, or into a market. Streamed
- * rather than awaited in the layout, so the rail paints before the account query lands.
+ * Set in the masthead like a paper's price box: the equity and its change as a small ledger
+ * readout, then the pen's button — back to the session you have open, or into a market. Streamed
+ * rather than awaited in the layout, so the masthead paints before the account query lands.
  */
 export async function AccountChip() {
   const viewer = await currentViewer();
@@ -21,26 +22,33 @@ export async function AccountChip() {
   const change = account?.returnPct ?? 0;
 
   return (
-    <Link
-      href={open ? routes.trade.session(open.id) : routes.trade.open({ kind: 'random' })}
-      className="press bg-gold text-on-gold shadow-key hover:bg-gold-hover flex flex-col items-center gap-1.5 rounded-xl px-2 py-2.5 transition-colors lg:items-stretch lg:px-3.5 lg:py-3"
-    >
-      <span className="flex items-center justify-center gap-2 lg:justify-between">
-        <span className="flex items-center gap-2">
-          <Icon name={open ? 'play' : 'candle'} size={15} />
-          <span className="hidden text-sm font-semibold lg:inline">{open ? `Resume ${open.symbol.replace(/USDT$/, '/USDT')}` : 'Start trading'}</span>
+    <div className="flex items-center gap-4">
+      <div className="hidden flex-col items-end leading-tight xl:flex">
+        <span className="eyebrow text-ink-dim">Equity</span>
+        <span className="flex items-baseline gap-2">
+          <span className="numeral text-ink-max text-sm font-semibold">{formatUsd(equity)}</span>
+          <span
+            className={cx(
+              'numeral text-mini font-medium',
+              change > 0 ? 'text-gain-ink' : change < 0 ? 'text-loss-ink' : 'text-ink-dim',
+            )}
+          >
+            {formatPct(change, { sign: true })}
+          </span>
         </span>
-        <Icon name="chevron-right" size={14} className="hidden opacity-70 lg:block" />
-      </span>
-      <span className="text-micro font-semibold lg:hidden">{open ? 'Resume' : 'Trade'}</span>
-      <span className="hidden items-baseline justify-between gap-2 lg:flex">
-        <span className="numeral text-xs font-semibold">{formatUsd(equity)}</span>
-        <span className={cx('numeral text-mini font-medium opacity-80')}>{formatPct(change, { sign: true })}</span>
-      </span>
-    </Link>
+      </div>
+      <Link
+        href={open ? routes.trade.session(open.id) : routes.trade.open({ kind: 'random' })}
+        className="btn-key bg-accent text-on-accent border-rule hover:bg-accent-hover flex h-10 items-center gap-2 rounded-md border px-3.5 text-sm font-semibold whitespace-nowrap"
+      >
+        <Icon name={open ? 'play' : 'candle'} size={15} />
+        <span className="hidden xl:inline">{open ? `Resume ${open.symbol.replace(/USDT$/, '/USDT')}` : 'Start trading'}</span>
+        <span className="xl:hidden">{open ? 'Resume' : 'Start trading'}</span>
+      </Link>
+    </div>
   );
 }
 
 export function AccountChipSkeleton() {
-  return <Skeleton className="h-[3.75rem] w-full rounded-xl lg:h-[4.25rem]" />;
+  return <Skeleton className="h-10 w-32 rounded-md xl:w-64" />;
 }

@@ -83,7 +83,7 @@ export function MarketHeader({
                 Practice
               </Chip>
             ) : ranked ? (
-              <Chip size="sm" tone="gold">
+              <Chip size="sm" tone="accent">
                 Ranked
               </Chip>
             ) : null}
@@ -137,7 +137,7 @@ export function MarketHeader({
           />
         </span>
 
-        <div className="bg-fill-1 ring-line-faint flex items-center gap-1 rounded-full p-1 ring-1">
+        <div className="ring-line flex items-center gap-1 rounded-md p-1 ring-1 ring-inset">
           <Tooltip label={playing ? 'Pause (Space)' : 'Play (Space)'}>
             <IconButton
               icon={playing ? 'pause' : 'play'}
@@ -166,8 +166,8 @@ export function MarketHeader({
         </div>
 
         <div className="hidden w-28 items-center gap-2 md:flex" title={`${clock.revealed} of ${clock.total} minutes`}>
-          <div className="bg-fill-2 h-1.5 flex-1 overflow-hidden rounded-full">
-            <div className="bg-gold h-full rounded-full" style={{ width: `${progress * 100}%` }} />
+          <div className="bg-fill-2 h-1.5 flex-1 overflow-hidden">
+            <div className="bg-accent h-full" style={{ width: `${progress * 100}%` }} />
           </div>
           <span className="numeral text-ink-dim text-mini">{Math.round(progress * 100)}%</span>
         </div>

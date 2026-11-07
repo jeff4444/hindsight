@@ -39,7 +39,7 @@ export default async function PortfolioPage({ searchParams }: { searchParams: Pr
       cell: (s) => (
         <span className="flex items-center gap-2">
           <span className="text-ink-max font-semibold">{s.symbol.replace(/USDT$/, '/USDT')}</span>
-          {s.source === 'daily' && <Chip size="sm" tone="gold">Daily</Chip>}
+          {s.source === 'daily' && <Chip size="sm" tone="accent">Daily</Chip>}
           {s.source === 'scenario' && s.scenario && <Chip size="sm">{s.scenario}</Chip>}
           {s.status === 'open' && <Chip size="sm" tone="info" dot>Open</Chip>}
         </span>

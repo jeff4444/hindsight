@@ -41,8 +41,8 @@ export default async function SettingsPage({
 
       <Panel pad="md" className="space-y-6 rounded-3xl md:p-6">
         <div>
-          <h2 className="text-ink-max text-lg font-semibold">Appearance</h2>
-          <p className="text-ink-lo mt-1 text-sm">The trading terminal is always dark — charts read best on ink.</p>
+          <h2 className="font-display text-ink-max text-2xl">Appearance</h2>
+          <p className="text-ink-lo mt-1 text-sm">Every screen follows the theme, the trading terminal included.</p>
         </div>
         <Setting label="Theme">
           <ThemePreference />
@@ -58,7 +58,7 @@ export default async function SettingsPage({
       {profile ? (
         <>
           <Panel pad="md" className="rounded-3xl md:p-6">
-            <h2 className="text-ink-max text-lg font-semibold">Profile</h2>
+            <h2 className="font-display text-ink-max text-2xl">Profile</h2>
             <p className="text-ink-lo mt-1 text-sm">Your signature, handle and the name other players see.</p>
             <div className="mt-6 max-w-md">
               <SignaturePicker
@@ -74,7 +74,7 @@ export default async function SettingsPage({
           </Panel>
 
           <Panel pad="md" className="rounded-3xl md:p-6">
-            <h2 className="text-ink-max text-lg font-semibold">Account</h2>
+            <h2 className="font-display text-ink-max text-2xl">Account</h2>
             <div className="text-ink-dim mt-3 text-xs font-medium">Signed in as</div>
             <div className="text-ink-hi mt-1 text-base">{viewer.email}</div>
             <p className="text-ink-lo mt-4 max-w-prose text-sm leading-relaxed">
@@ -94,7 +94,7 @@ export default async function SettingsPage({
         </>
       ) : (
         <Panel pad="md" className="rounded-3xl md:p-6">
-          <h2 className="text-ink-max text-lg font-semibold">Account</h2>
+          <h2 className="font-display text-ink-max text-2xl">Account</h2>
           <p className="text-ink-lo mt-1 text-sm">Sign in to keep your balance and history on any device, and to appear on the leaderboard.</p>
           <Button href={routes.signIn(routes.settings)} variant="primary" className="mt-4">
             Keep your account

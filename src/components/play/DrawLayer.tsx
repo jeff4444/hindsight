@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ChartSurface } from '../chart/surface';
 import { TOOL_COLOUR, measureReadout } from '@/lib/toolOverlays';
+import { CHART_CHROME } from '@/lib/palette';
 
 /**
  * The modal pointer layer: measuring and drawing.
@@ -390,15 +391,22 @@ export function DrawLayer({
             d.tool !== null,
         );
 
+        // The player's own marks are the page's ink: near-white on carbon, carbon on paper. Read per
+        // frame, so a theme switch mid-session repaints them with everything else.
+        const night = document.documentElement.dataset.theme === 'dark';
+        const markInk = night ? TOOL_COLOUR.mark : CHART_CHROME.label;
+        const liveInk = night ? TOOL_COLOUR.markLive : CHART_CHROME.label;
+        const handleGlyph = night ? '#17140f' : '#fdfbf6';
+
         for (const drawing of all) {
           const a = project(drawing.from);
           const b = project(drawing.to);
           if (!a || !b) continue;
-          // The player's own marks are near-white; every computed overlay is a hue. That is the
-          // whole legend: colour is the app talking, white is you.
+          // The player's own marks are neutral; every computed overlay is a hue. That is the whole
+          // legend: colour is the app talking, ink is you.
           const committed = drawing.id !== undefined;
           const lit = committed && drawing.id === hovered;
-          const colour = committed ? TOOL_COLOUR.mark : TOOL_COLOUR.markLive;
+          const colour = committed ? markInk : liveInk;
           const width = lit ? 2.5 : 1.5;
 
           if (drawing.tool === 'level') {
@@ -438,8 +446,8 @@ export function DrawLayer({
             const right = Math.max(a.x, b.x);
             const flip = right + 8 + estimated > frameWidth;
             parts.push(
-              `<rect x="${Math.min(a.x, b.x)}" y="${Math.min(a.y, b.y)}" width="${Math.abs(b.x - a.x)}" height="${Math.abs(b.y - a.y)}" fill="${TOOL_COLOUR.mark}" fill-opacity="0.10" stroke="${TOOL_COLOUR.mark}" stroke-width="1" />`,
-              `<text x="${flip ? Math.min(a.x, b.x) - 8 : right + 8}" y="${b.y}" text-anchor="${flip ? 'end' : 'start'}" fill="${TOOL_COLOUR.markLive}" font-size="11" font-family="var(--font-mono, ui-monospace), ui-monospace, monospace">${label}</text>`,
+              `<rect x="${Math.min(a.x, b.x)}" y="${Math.min(a.y, b.y)}" width="${Math.abs(b.x - a.x)}" height="${Math.abs(b.y - a.y)}" fill="${markInk}" fill-opacity="0.10" stroke="${markInk}" stroke-width="1" />`,
+              `<text x="${flip ? Math.min(a.x, b.x) - 8 : right + 8}" y="${b.y}" text-anchor="${flip ? 'end' : 'start'}" fill="${liveInk}" font-size="11" font-family="var(--font-mono, ui-monospace), ui-monospace, monospace">${label}</text>`,
             );
           } else {
             parts.push(
@@ -453,8 +461,8 @@ export function DrawLayer({
             const hy = drawing.tool === 'level' ? b.y : (a.y + b.y) / 2;
             parts.push(
               `<g data-delete="${drawing.id}" pointer-events="auto" style="cursor:pointer">` +
-                `<circle cx="${hx}" cy="${hy}" r="9" fill="${TOOL_COLOUR.markLive}" />` +
-                `<path d="M${hx - 3.2} ${hy - 3.2}L${hx + 3.2} ${hy + 3.2}M${hx + 3.2} ${hy - 3.2}L${hx - 3.2} ${hy + 3.2}" stroke="#0d0e14" stroke-width="1.8" stroke-linecap="round" />` +
+                `<circle cx="${hx}" cy="${hy}" r="9" fill="${liveInk}" />` +
+                `<path d="M${hx - 3.2} ${hy - 3.2}L${hx + 3.2} ${hy + 3.2}M${hx + 3.2} ${hy - 3.2}L${hx - 3.2} ${hy + 3.2}" stroke="${handleGlyph}" stroke-width="1.8" stroke-linecap="round" />` +
                 `</g>`,
             );
           }

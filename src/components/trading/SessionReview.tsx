@@ -98,8 +98,8 @@ export function SessionReview({ review, actions }: { review: Review; actions?: R
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-4 py-6 lg:px-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
-          <div className="eyebrow text-gold-ink">Session review</div>
-          <h1 className="text-ink-max mt-1 text-2xl font-semibold tracking-tight md:text-3xl">
+          <div className="eyebrow text-accent-ink">Session review</div>
+          <h1 className="font-display text-ink-max mt-1 text-3xl md:text-4xl">
             {review.identity.symbol} <span className="text-ink-dim text-lg font-normal">· {review.identity.venue}</span>
           </h1>
           <p className="text-ink-lo mt-1 text-sm">
@@ -151,7 +151,7 @@ export function SessionReview({ review, actions }: { review: Review; actions?: R
             </button>
           )}
         </div>
-        <div data-theme="dark" className="bg-surface-0 relative h-[22rem]">
+        <div className="bg-surface-1 relative h-[22rem]">
           <TerminalChart ref={chart} className="absolute inset-0" />
         </div>
       </Panel>
@@ -165,8 +165,8 @@ export function SessionReview({ review, actions }: { review: Review; actions?: R
           <div className="text-ink-hi text-sm font-medium">Against what was possible</div>
           <p className="text-ink-dim text-xs">At your size, {formatUsd(review.benchmarks.sizeBasis)}, with the same fees.</p>
           <BenchmarkRow label="Buy and hold" benchmark={review.benchmarks.buyAndHold} />
-          {review.benchmarks.bestLong && <BenchmarkRow label="Best long in hindsight" benchmark={review.benchmarks.bestLong} gold />}
-          {review.benchmarks.bestShort && <BenchmarkRow label="Best short in hindsight" benchmark={review.benchmarks.bestShort} gold />}
+          {review.benchmarks.bestLong && <BenchmarkRow label="Best long in hindsight" benchmark={review.benchmarks.bestLong} best />}
+          {review.benchmarks.bestShort && <BenchmarkRow label="Best short in hindsight" benchmark={review.benchmarks.bestShort} best />}
           {captured !== null && (
             <div className="border-line-faint border-t pt-3 text-sm">
               <span className="text-ink-lo">You took </span>
@@ -197,10 +197,10 @@ export function SessionReview({ review, actions }: { review: Review; actions?: R
   );
 }
 
-function BenchmarkRow({ label, benchmark, gold }: { label: string; benchmark: Benchmark; gold?: boolean }) {
+function BenchmarkRow({ label, benchmark, best }: { label: string; benchmark: Benchmark; best?: boolean }) {
   return (
     <div className="flex items-baseline justify-between gap-3">
-      <span className={cx('text-sm', gold ? 'text-gold-ink' : 'text-ink-lo')}>{label}</span>
+      <span className={cx('text-sm', best ? 'text-accent-ink' : 'text-ink-lo')}>{label}</span>
       <span className={cx('numeral text-sm font-semibold', ink(benchmark.pnl))}>
         {formatUsd(benchmark.pnl, { sign: true })} <span className="text-mini font-normal">({formatPct(benchmark.returnPct, { sign: true })})</span>
       </span>
