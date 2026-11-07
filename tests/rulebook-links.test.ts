@@ -8,7 +8,7 @@ import { GLOSSARY } from '@/lib/glossary';
  *
  * The rulebook page derives its anchors from the headings (`/learn/rulebook/page.tsx`), so renaming
  * a section silently breaks every link to it — the browser just stays at the top. The app links to
- * sections from Learn, Methods, the landing page and the glossary; this reads them all and checks
+ * sections from Learn, Schools, the landing page and the glossary; this reads them all and checks
  * each against the headings in docs/rules.md, slugged the way the page slugs them.
  */
 
@@ -51,7 +51,8 @@ describe('links into the rulebook', () => {
         }
       }
     }
-    expect(found).toBeGreaterThan(5);
+    // A floor, so a regex that silently matches nothing cannot pass.
+    expect(found).toBeGreaterThan(2);
     expect(missing).toEqual([]);
   });
 
@@ -62,6 +63,12 @@ describe('links into the rulebook', () => {
       .filter(([, more]) => !anchors.has(more!.slice('/learn/rulebook#'.length)))
       .map(([id, more]) => `${id}: ${more}`);
     expect(missing).toEqual([]);
+  });
+
+  it('§23 has the sections the game cites', () => {
+    for (const section of ['23-the-game', '231-a-round', '232-the-best-and-worst-the-tape-allowed', '233-the-grade', '236-duels', '237-against-a-school', '238-what-a-school-must-be']) {
+      expect(anchors.has(section), section).toBe(true);
+    }
   });
 
   it('§22 has the sections the code cites', () => {

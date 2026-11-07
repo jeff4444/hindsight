@@ -95,7 +95,7 @@ export default async function SettingsPage({
       ) : (
         <Panel pad="md" className="rounded-3xl md:p-6">
           <h2 className="font-display text-ink-max text-2xl">Account</h2>
-          <p className="text-ink-lo mt-1 text-sm">Sign in to keep your balance and history on any device, and to appear on the leaderboard.</p>
+          <p className="text-ink-lo mt-1 text-sm">Sign in to keep your rounds and duels on any device, and to put your name on your duels.</p>
           <Button href={routes.signIn(routes.settings)} variant="primary" className="mt-4">
             Keep your account
           </Button>

@@ -31,6 +31,8 @@ const RETIRED: [source: string, destination: string][] = [
   ["/leaderboard", "/play"],
   ["/trade/:path*", "/play"],
   ["/strategies/:path*", "/schools"],
+  // The retired schools' dossier; their measurements stay in the rulebook's §14.
+  ["/learn/methods", "/schools"],
 ];
 
 export const REDIRECTS = [

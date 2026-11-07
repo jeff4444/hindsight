@@ -1,41 +1,37 @@
 /**
- * Every term of art a trader meets, defined once, in plain words.
+ * Every term of art a player meets, defined once, in plain words.
  *
- * `<Term id="buyingPower">` renders the word with a dotted underline and opens this definition on
- * tap or focus — a popover rather than a `title`, because a phone has no hover. The rule the copy
- * follows everywhere else: the screen uses the plain word, and the precise one is one tap away.
+ * `<Term id="grade">` renders the word with a dotted underline and opens this definition on tap or
+ * focus — a popover rather than a `title`, because a phone has no hover. The rule the copy follows
+ * everywhere else: the screen uses the plain word, and the precise one is one tap away.
  *
- * Definitions are short on purpose. The full treatment of each lives in the rulebook's §22, and
- * `more` points at it. The numbers quoted here are the ones the simulator charges
- * (`src/core/trading/costs.ts`); a test keeps them in step.
+ * Definitions are short on purpose. The full treatment of each lives in the rulebook's §23, and
+ * `more` points at it. The numbers quoted here are the ones the game is played by
+ * (`src/core/game/rules.ts`, `src/core/trading/costs.ts`); a test keeps them in step.
  */
 
 export type TermId =
-  | 'equity'
-  | 'cash'
-  | 'buyingPower'
-  | 'margin'
-  | 'liquidation'
-  | 'unrealized'
-  | 'realized'
+  | 'tape'
+  | 'stake'
+  | 'lockIn'
+  | 'sitOut'
+  | 'grade'
+  | 'best'
+  | 'worst'
+  | 'duel'
+  | 'damage'
+  | 'schools'
   | 'market'
   | 'limit'
   | 'stop'
   | 'takeProfit'
   | 'stopLoss'
   | 'oco'
-  | 'reduceOnly'
   | 'maker'
   | 'taker'
   | 'spread'
   | 'slippage'
-  | 'drawdown'
-  | 'winRate'
-  | 'profitFactor'
-  | 'atr'
-  | 'replay'
-  | 'practice'
-  | 'schools';
+  | 'atr';
 
 export interface TermDefinition {
   label: string;
@@ -44,39 +40,57 @@ export interface TermDefinition {
   more?: string;
 }
 
-const RULES = '/learn/rulebook#22-trading';
 
 export const GLOSSARY: Record<TermId, TermDefinition> = {
-  equity: {
-    label: 'Equity',
-    body: 'What the account is worth right now: cash plus the open position valued at the last price. Every account starts with $100,000.',
-    more: RULES,
+  tape: {
+    label: 'Tape',
+    body: 'The next 60 hours of a real market, one candle a minute, after the moment you decide. You never see a minute of it before you lock in, and you are only dealt tapes that moved at least 3%.',
+    more: '/learn/rulebook#231-a-round',
   },
-  cash: {
-    label: 'Cash',
-    body: 'Money in the account, after every realized profit, loss and fee. It does not include the open position.',
+  stake: {
+    label: 'Stake',
+    body: 'The $500 every round starts with. Nothing carries from one round to the next, there is no leverage, and a round can never lose more than its stake.',
+    more: '/learn/rulebook#231-a-round',
   },
-  buyingPower: {
-    label: 'Buying power',
-    body: 'How much more you can buy or sell short. Positions and resting orders together may be worth up to 2× your equity.',
-    more: RULES,
+  lockIn: {
+    label: 'Lock in',
+    body: 'Commit your trade — or your decision to sit out. After it nothing can be changed: no moving the stop, no closing early. Then the tape plays.',
+    more: '/learn/rulebook#231-a-round',
   },
-  margin: {
-    label: 'Margin used',
-    body: 'How much of your buying power is taken by the open position and resting orders. At 100% you cannot add to either.',
+  sitOut: {
+    label: 'Sit out',
+    body: 'Lock in no trade at all. It is graded like any other move, a little above 500 because it pays no fees — the bar a trade has to clear.',
+    more: '/learn/rulebook#233-the-grade',
   },
-  liquidation: {
-    label: 'Liquidation',
-    body: 'If equity falls below 25% of what the position is worth, the position is closed for you at the market, with a 1% fee. Equity at zero ends the account until you reset it.',
-    more: RULES,
+  grade: {
+    label: 'Grade',
+    body: 'Where your result falls between the worst and the best trade the tape allowed, from 0 to 1000. A quiet tape and a wild one both run the full range.',
+    more: '/learn/rulebook#233-the-grade',
   },
-  unrealized: {
-    label: 'Unrealized P&L',
-    body: 'Profit or loss on the open position at the last price. It becomes realized when you close.',
+  best: {
+    label: 'Best in hindsight',
+    body: 'The best single trade the tape allowed: buying the bottom of its biggest rise and selling the top, or shorting the top of its biggest fall. A real order, filled and charged like yours.',
+    more: '/learn/rulebook#232-the-best-and-worst-the-tape-allowed',
   },
-  realized: {
-    label: 'Realized P&L',
-    body: 'Profit or loss locked in by closing all or part of a position, after fees.',
+  worst: {
+    label: 'Worst in hindsight',
+    body: 'The same moves taken the wrong way round, stopped out at the far end. It is what 0 on the grade means.',
+    more: '/learn/rulebook#232-the-best-and-worst-the-tape-allowed',
+  },
+  duel: {
+    label: 'Duel',
+    body: 'Two players on the same 10 tapes, each starting at 1000 points, played in their own time. It ends at a knockout, or after the last tape with whoever has more points.',
+    more: '/learn/rulebook#236-duels',
+  },
+  damage: {
+    label: 'Damage',
+    body: 'What the lower grade on a tape loses in a duel. It grows faster than the gap: a gap of 250 costs 102 points, a gap of 750 costs 545.',
+    more: '/learn/rulebook#236-duels',
+  },
+  schools: {
+    label: 'The schools',
+    body: 'Opponents that read every tape once, before you, under a published playbook, then play their trade live beside yours and show their working when the tape ends.',
+    more: '/learn/rulebook#237-against-a-school',
   },
   market: {
     label: 'Market order',
@@ -92,19 +106,15 @@ export const GLOSSARY: Record<TermId, TermDefinition> = {
   },
   takeProfit: {
     label: 'Take-profit',
-    body: 'A limit order attached to a position, waiting on the winning side to close it.',
+    body: 'A limit order that rides with your entry, waiting on the winning side to close the trade.',
   },
   stopLoss: {
     label: 'Stop-loss',
-    body: 'A stop order attached to a position, waiting on the losing side to close it before the loss grows.',
+    body: 'A stop order that rides with your entry, waiting on the losing side to close the trade before the loss grows.',
   },
   oco: {
     label: 'One cancels the other',
-    body: 'A take-profit and a stop-loss on the same position are linked: when one fills, the other is cancelled.',
-  },
-  reduceOnly: {
-    label: 'Reduce only',
-    body: 'The order may only shrink the position, never open or flip it. Attached take-profits and stop-losses are always reduce-only.',
+    body: 'Your take-profit and stop-loss are linked: when one fills, the other is cancelled.',
   },
   maker: {
     label: 'Maker',
@@ -122,34 +132,8 @@ export const GLOSSARY: Record<TermId, TermDefinition> = {
     label: 'Slippage',
     body: 'The difference between a stop price and the price it actually fills at, because a triggered stop is a market order in a moving market.',
   },
-  drawdown: {
-    label: 'Max drawdown',
-    body: 'The largest fall in equity from a peak before it recovered, as a share of that peak.',
-  },
-  winRate: {
-    label: 'Win rate',
-    body: 'The share of closed trades that made money after fees.',
-  },
-  profitFactor: {
-    label: 'Profit factor',
-    body: 'Money made on winning trades divided by money lost on losing ones. Above 1 the account made money.',
-  },
   atr: {
     label: 'ATR',
-    body: 'Average true range: how far this market typically moves in one candle. The schools place their stops in it.',
-  },
-  replay: {
-    label: 'Replay',
-    body: 'A real stretch of market history played back minute by minute. The server keeps the clock, so nobody can see a minute before it prints.',
-    more: RULES,
-  },
-  practice: {
-    label: 'Practice',
-    body: 'A second account that may show the real dates while you trade. It never reaches a leaderboard.',
-  },
-  schools: {
-    label: 'The schools',
-    body: 'Seven trading systems, each trading its published rules on its own $100,000 account, plus a coin flip. None of them is the answer.',
-    more: '/learn/methods',
+    body: 'Average true range: how far this market typically moves in one candle. The measuring tool reads distances in it.',
   },
 };

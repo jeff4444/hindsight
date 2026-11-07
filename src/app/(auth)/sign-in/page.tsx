@@ -39,9 +39,9 @@ export default async function SignInPage({
           Keep your account.
         </h1>
         <p className="text-ink-lo mt-3 text-base leading-relaxed">
-          Everything you have traded on this browser comes with you — your
-          balance, your sessions, today&rsquo;s market, all of it. Signing in
-          keeps it on any device and puts you on the leaderboard.
+          Everything you have played on this browser comes with you — your
+          rounds, your grades, your duels, all of it. Signing in keeps it on
+          any device and puts your name on your duels.
         </p>
       </div>
 

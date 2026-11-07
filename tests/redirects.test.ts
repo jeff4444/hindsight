@@ -53,6 +53,7 @@ describe('legacy URLs', () => {
     }
     expect(resolve('/strategies')).toBe('/schools');
     expect(resolve('/strategies/turtle')).toBe('/schools');
+    expect(resolve('/learn/methods')).toBe('/schools');
   });
 
   it('leaves the game’s own pages alone', () => {

@@ -14,18 +14,16 @@ import { routes } from '@/lib/routes';
 /**
  * The chrome.
  *
- * A masthead, the way a paper opens: the name on the left, the sections across the top — Markets,
- * Portfolio, Strategies, Leaderboard, Learn — and the account on the right, all standing on a
- * double rule. The identity block opens a menu with your portfolio, your profile, Settings, Learn
- * and Sign out.
+ * A masthead, the way a paper opens: the name on the left, the sections across the top — Play,
+ * Schools, Learn — and the record on the right, all standing on a double rule. The identity block
+ * opens a menu with your profile, Settings, Learn and Sign out.
  *
  * On a phone the masthead slims to the name and the account, and the sections move to a tab bar at
  * the bottom, clear of the home indicator. Nothing here animates its size: the chart re-applies its
  * range from a ResizeObserver, and a header that grew or shrank would fire that every frame.
  *
- * A trading session opts out entirely: the terminal owns the screen and the only navigation that
- * matters is the way out. Markets, where a session starts, is a destination like any other and
- * keeps the masthead.
+ * A round opts out entirely: the chart owns the screen and the only navigation that matters is the
+ * way out. Play, where a round starts, is a destination like any other and keeps the masthead.
  */
 
 export interface ViewerChip {
