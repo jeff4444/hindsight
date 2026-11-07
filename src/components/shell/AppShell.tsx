@@ -36,21 +36,19 @@ export interface ViewerChip {
 }
 
 const DESTINATIONS: { href: string; label: string; icon: IconName; match: string[] }[] = [
-  { href: routes.markets(), label: 'Markets', icon: 'candle', match: ['/markets', '/trade'] },
-  { href: routes.portfolio(), label: 'Portfolio', icon: 'wallet', match: ['/portfolio'] },
-  { href: routes.strategies.index, label: 'Strategies', icon: 'bot', match: ['/strategies'] },
-  { href: routes.leaderboard(), label: 'Leaderboard', icon: 'trophy', match: ['/leaderboard'] },
+  { href: routes.play.index, label: 'Play', icon: 'candle', match: ['/play', '/duel'] },
+  { href: routes.schools, label: 'Schools', icon: 'bot', match: ['/schools'] },
 ];
 
 /** Learn sits in the masthead with the sections, and behind the book icon on a phone. */
 const LEARN = { href: routes.learn.index, label: 'Learn', icon: 'book' as IconName, match: ['/learn'] };
 
 /**
- * Routes that render on the full-bleed stage with no shell around them: the trading terminal (a
- * session, or a market being opened). A session's review is a page and keeps the shell.
+ * Routes that render on the full-bleed stage with no shell around them: a round, being dealt or
+ * played (docs/rules.md §23.1).
  */
 export function isStage(pathname: string): boolean {
-  return /^\/trade\/[^/]+\/?$/.test(pathname);
+  return /^\/play\/[^/]+\/?$/.test(pathname);
 }
 
 export function AppShell({
@@ -83,7 +81,7 @@ export function AppShell({
       <header className="bg-surface-0 rule-double sticky top-0 z-30">
         {/* Phone: the name and the account. */}
         <div className="flex h-14 items-center justify-between px-4 md:hidden">
-          <Link href={routes.markets()} aria-label="Hindsight, markets">
+          <Link href={routes.play.index} aria-label="Hindsight, play">
             <Wordmark size="sm" />
           </Link>
           <div className="flex items-center gap-1">
@@ -110,7 +108,7 @@ export function AppShell({
         {/* Tablet and up: the masthead. */}
         <div className="max-w-app mx-auto hidden h-16 items-stretch gap-6 px-8 md:flex lg:gap-10 lg:px-12">
           {/* The mark alone on a tablet, where the sections need the width; the name from lg up. */}
-          <Link href={routes.markets()} aria-label="Hindsight, markets" className="flex shrink-0 items-center">
+          <Link href={routes.play.index} aria-label="Hindsight, play" className="flex shrink-0 items-center">
             <Mark size={26} tone="duo" className="text-ink-max lg:hidden" />
             <span className="hidden lg:contents">
               <Wordmark />
@@ -251,7 +249,6 @@ function AccountMenu({ viewer, compact, active }: { viewer: ViewerChip; compact?
         </div>
       </div>
       <nav className="-mx-2 flex flex-col" aria-label="Account">
-        <MenuLink href={routes.portfolio()} icon="wallet">Portfolio</MenuLink>
         <MenuLink href={routes.profile(viewer.handle)} icon="user">Public profile</MenuLink>
         <MenuLink href={routes.settings} icon="settings">Settings</MenuLink>
         <MenuLink href={routes.learn.index} icon="book">Learn</MenuLink>

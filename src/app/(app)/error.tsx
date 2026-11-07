@@ -30,8 +30,8 @@ export default function AppError({ error, reset }: { error: Error & { digest?: s
             <Button variant="primary" size="lg" onClick={reset}>
               Try again
             </Button>
-            <Button href={routes.markets()} variant="secondary" size="lg">
-              Back to Markets
+            <Button href={routes.play.index} variant="secondary" size="lg">
+              Back to Play
             </Button>
           </div>
         }

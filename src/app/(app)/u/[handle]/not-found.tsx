@@ -9,8 +9,8 @@ export default function ProfileNotFound() {
         title="No trader with that handle"
         body="Handles can be changed, so a link that used to work may point at a name nobody holds now."
         action={
-          <Button href={routes.markets()} variant="primary" size="lg">
-            Back to Markets
+          <Button href={routes.play.index} variant="primary" size="lg">
+            Back to Play
           </Button>
         }
       />

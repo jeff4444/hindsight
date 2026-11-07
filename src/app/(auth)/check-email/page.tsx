@@ -63,8 +63,8 @@ export default async function CheckEmail({
         <Button href={reset ? '/forgot-password' : routes.signIn()} variant="ghost" size="lg">
           Use a different address
         </Button>
-        <Button href={routes.markets()} variant="ghost" size="lg">
-          Keep trading
+        <Button href={routes.play.index} variant="ghost" size="lg">
+          Keep playing
         </Button>
       </div>
     </div>

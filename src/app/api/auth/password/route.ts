@@ -55,6 +55,7 @@ export async function POST(request: Request) {
   const sessionId = await ensureSession();
   const supabase = serviceClient();
   const { data: claim } = await supabase.rpc('claim_session', { p_session: sessionId, p_user: user.id });
+  await supabase.rpc('game_claim_session', { p_session: sessionId, p_user: user.id });
   const row = Array.isArray(claim) ? claim[0] : null;
 
   const { data: profile } = await supabase

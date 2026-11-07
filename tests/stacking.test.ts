@@ -188,13 +188,14 @@ describe('the order lines stay grabbable', () => {
     expect(GUARDED).toHaveLength(5);
   });
 
-  it('the shell steps aside on a session, and only on a session', () => {
+  it('the shell steps aside on a round, and only on a round', () => {
     const shell = readFileSync(join(process.cwd(), 'src/components/shell/AppShell.tsx'), 'utf8');
     expect(shell).toMatch(/if \(isStage\(pathname\)\) return <>\{children\}<\/>;/);
-    expect(isStage('/trade/abc')).toBe(true);
-    expect(isStage('/trade/new')).toBe(true);
-    expect(isStage('/trade/abc/review')).toBe(false);
-    expect(isStage('/markets')).toBe(false);
+    expect(isStage('/play/abc')).toBe(true);
+    expect(isStage('/play/new')).toBe(true);
+    expect(isStage('/play')).toBe(false);
+    expect(isStage('/duel/abc')).toBe(false);
+    expect(isStage('/schools')).toBe(false);
   });
 });
 

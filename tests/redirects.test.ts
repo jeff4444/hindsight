@@ -27,36 +27,36 @@ function resolve(path: string): string | null {
 
 describe('legacy URLs', () => {
   it('renames that predate the platform', () => {
-    expect(resolve('/home')).toBe('/markets');
-    expect(resolve('/stats')).toBe('/portfolio');
+    expect(resolve('/home')).toBe('/play');
+    expect(resolve('/stats')).toBe('/play');
     expect(resolve('/rules')).toBe('/learn/rulebook');
   });
 
-  it('the game’s destinations land on the pages that do their job now', () => {
-    expect(resolve('/today')).toBe('/markets');
-    expect(resolve('/you')).toBe('/portfolio');
-    expect(resolve('/ranks')).toBe('/leaderboard');
-  });
-
-  it('every play mode, at any depth, goes to Markets', () => {
-    for (const path of ['/play', '/play/daily', '/play/ranked', '/play/tape/chop', '/play/manage/the-drop', '/play/duel/abc', '/manage', '/versus', '/versus/abc']) {
-      expect(resolve(path)).toBe('/markets');
+  it('the first game’s destinations land on Play', () => {
+    for (const path of ['/today', '/you', '/ranks', '/manage', '/versus', '/versus/abc', '/tapes', '/tapes/chop', '/tapes/the-drop/cohort']) {
+      expect(resolve(path)).toBe('/play');
     }
   });
 
-  it('a tape opens Markets on the scenario it became', () => {
-    expect(resolve('/tapes/chop')).toBe('/markets?scenario=chop');
-    expect(resolve('/tapes/the-drop/cohort')).toBe('/markets?scenario=the-drop');
-    expect(resolve('/tapes')).toBe('/markets#scenarios');
+  it('the first game’s play modes go to Play, without taking a round’s address', () => {
+    for (const path of ['/play/daily', '/play/ranked', '/play/tape/chop', '/play/manage/the-drop', '/play/duel/abc']) {
+      expect(resolve(path)).toBe('/play');
+    }
+    expect(resolve('/play')).toBeNull();
+    expect(resolve('/play/new')).toBeNull();
+    expect(resolve('/play/0b8f6c1e-2d4a-4e7b-9a51-3f2c1d0e9b8a')).toBeNull();
   });
 
-  it('does not read the old builder and the old tab as tape names', () => {
-    expect(resolve('/tapes/new')).toBe('/markets#scenarios');
-    expect(resolve('/tapes/mine')).toBe('/markets#scenarios');
+  it('the trading platform’s pages go to the game’s (§23.9)', () => {
+    for (const path of ['/markets', '/portfolio', '/leaderboard', '/trade', '/trade/abc', '/trade/abc/review', '/trade/new']) {
+      expect(resolve(path)).toBe('/play');
+    }
+    expect(resolve('/strategies')).toBe('/schools');
+    expect(resolve('/strategies/turtle')).toBe('/schools');
   });
 
-  it('leaves the platform’s own pages alone', () => {
-    for (const path of ['/markets', '/trade', '/trade/abc', '/portfolio', '/strategies', '/leaderboard', '/learn', '/demo']) {
+  it('leaves the game’s own pages alone', () => {
+    for (const path of ['/play', '/duel/abcd2345', '/schools', '/learn', '/demo']) {
       expect(resolve(path)).toBeNull();
     }
   });

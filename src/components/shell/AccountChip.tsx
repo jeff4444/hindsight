@@ -1,49 +1,38 @@
 import Link from 'next/link';
 import { currentViewer } from '@/lib/viewer';
 import { routes } from '@/lib/routes';
-import { getAccount, getOpenSession } from '@/lib/trading/server/queries';
-import { formatPct, formatUsd } from '@/lib/trading/format';
-import { STARTING_BALANCE_USDT } from '@/core/trading/costs';
-import { Skeleton, cx } from '../ui';
+import { getChipState } from '@/lib/game/server/queries';
+import { Skeleton } from '../ui';
 import { Icon } from '../ui/icons';
 
 /**
- * The account, from anywhere in the app: what it is worth, and the one thing to do next.
+ * The record, from anywhere in the app, and the one thing to do next (docs/rules.md §23).
  *
- * Set in the masthead like a paper's price box: the equity and its change as a small ledger
- * readout, then the pen's button — back to the session you have open, or into a market. Streamed
- * rather than awaited in the layout, so the masthead paints before the account query lands.
+ * Set in the masthead like a paper's price box: the average grade and the rounds behind it as a
+ * small ledger readout, then the pen's button — back to a round left half-read, or a fresh tape.
+ * Streamed rather than awaited in the layout, so the masthead paints before the query lands.
  */
 export async function AccountChip() {
   const viewer = await currentViewer();
   const owner = viewer.userId ?? viewer.sessionId;
-  const [account, open] = await Promise.all([getAccount(owner, 'main'), getOpenSession(owner)]);
-  const equity = account?.equity ?? STARTING_BALANCE_USDT;
-  const change = account?.returnPct ?? 0;
+  const { openRoundId, rounds, meanGrade } = await getChipState(owner);
 
   return (
     <div className="flex items-center gap-4">
       <div className="hidden flex-col items-end leading-tight xl:flex">
-        <span className="eyebrow text-ink-dim">Equity</span>
+        <span className="eyebrow text-ink-dim">Average grade</span>
         <span className="flex items-baseline gap-2">
-          <span className="numeral text-ink-max text-sm font-semibold">{formatUsd(equity)}</span>
-          <span
-            className={cx(
-              'numeral text-mini font-medium',
-              change > 0 ? 'text-gain-ink' : change < 0 ? 'text-loss-ink' : 'text-ink-dim',
-            )}
-          >
-            {formatPct(change, { sign: true })}
-          </span>
+          <span className="numeral text-ink-max text-sm font-semibold">{meanGrade ?? '—'}</span>
+          <span className="numeral text-mini text-ink-dim font-medium">{rounds === 1 ? '1 round' : `${rounds} rounds`}</span>
         </span>
       </div>
       <Link
-        href={open ? routes.trade.session(open.id) : routes.trade.open({ kind: 'random' })}
+        href={openRoundId ? routes.play.round(openRoundId) : routes.play.new}
         className="btn-key bg-accent text-on-accent border-rule hover:bg-accent-hover flex h-10 items-center gap-2 rounded-md border px-3.5 text-sm font-semibold whitespace-nowrap"
       >
-        <Icon name={open ? 'play' : 'candle'} size={15} />
-        <span className="hidden xl:inline">{open ? `Resume ${open.symbol.replace(/USDT$/, '/USDT')}` : 'Start trading'}</span>
-        <span className="xl:hidden">{open ? 'Resume' : 'Start trading'}</span>
+        <Icon name={openRoundId ? 'play' : 'candle'} size={15} />
+        <span className="hidden xl:inline">{openRoundId ? 'Back to your tape' : 'Deal a tape'}</span>
+        <span className="xl:hidden">{openRoundId ? 'Resume' : 'Play'}</span>
       </Link>
     </div>
   );

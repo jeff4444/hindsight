@@ -21,8 +21,8 @@ export default function MarketingError({ error, reset }: { error: Error & { dige
             <Button variant="secondary" size="lg" onClick={reset}>
               Try again
             </Button>
-            <Button href={routes.markets()} variant="primary" size="lg">
-              Go to Markets
+            <Button href={routes.play.index} variant="primary" size="lg">
+              Go to Play
             </Button>
           </div>
         }

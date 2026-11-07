@@ -1,21 +1,23 @@
 import Link from 'next/link';
-import { DemoTerminal } from '@/components/trading/DemoTerminal';
+import { DemoRound } from '@/components/game/DemoRound';
+import { Button } from '@/components/ui';
 import { ToastProvider } from '@/components/ui/client';
 import { Icon } from '@/components/ui/icons';
 
-export const metadata = { title: 'Try the terminal' };
+export const metadata = { title: 'Try a round' };
 
 /**
- * The terminal on a synthetic market, open to anyone, with nothing stored.
+ * A training round on a synthetic market, open to anyone, with nothing stored.
  *
- * The same session core the server runs, inside the browser: real order types, fills, fees, margin
- * and the review, on candles that never happened — so nothing here can be looked up, and nothing
- * here counts. The landing page sends visitors here before asking them for anything.
+ * The same round core the server runs, inside the browser: one trade on $500, the tape played, and
+ * a grade against the best and worst the tape allowed — on candles that never happened, so nothing
+ * here can be looked up, and nothing here counts. The landing page sends visitors here before
+ * asking them for anything.
  */
 export default function DemoPage() {
   return (
     <ToastProvider>
-      <DemoTerminal
+      <DemoRound
         exit={
           <Link
             href="/"
@@ -24,6 +26,11 @@ export default function DemoPage() {
           >
             <Icon name="arrow-left" size={18} />
           </Link>
+        }
+        after={
+          <Button href="/play" variant="secondary">
+            Play real tapes
+          </Button>
         }
       />
     </ToastProvider>

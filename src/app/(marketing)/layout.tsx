@@ -7,9 +7,9 @@ import { Wordmark } from '@/components/ui/icons';
 export const dynamic = 'force-dynamic';
 
 /**
- * The front door's frame: a masthead with the mark, three links, and one call to action that
- * changes with who is looking — a returning trader goes straight to Markets, a visitor gets "Start
- * trading" — and a colophon at the foot.
+ * The front door's frame: a masthead with the mark, two links, and one call to action that changes
+ * with who is looking — a returning player goes straight to Play, a visitor gets "Deal a tape" — and
+ * a colophon at the foot.
  */
 export default async function MarketingLayout({ children }: { children: React.ReactNode }) {
   const viewer = await currentViewer();
@@ -26,11 +26,11 @@ export default async function MarketingLayout({ children }: { children: React.Re
             <Link href={routes.learn.index} className="text-ink-lo hover:text-ink-max hidden h-10 items-center px-3 text-sm font-semibold transition-colors sm:inline-flex">
               How it works
             </Link>
-            <Link href={routes.strategies.index} className="text-ink-lo hover:text-ink-max hidden h-10 items-center px-3 text-sm font-semibold transition-colors md:inline-flex">
-              Strategies
+            <Link href={routes.schools} className="text-ink-lo hover:text-ink-max hidden h-10 items-center px-3 text-sm font-semibold transition-colors md:inline-flex">
+              Schools
             </Link>
             {signedIn ? (
-              <Button href={routes.markets()} variant="primary">
+              <Button href={routes.play.index} variant="primary">
                 Open Hindsight
               </Button>
             ) : (
@@ -38,8 +38,8 @@ export default async function MarketingLayout({ children }: { children: React.Re
                 <Button href={routes.signIn()} variant="ghost" className="mr-2">
                   Sign in
                 </Button>
-                <Button href={routes.trade.open({ kind: 'random' })} variant="primary">
-                  Start trading
+                <Button href={routes.play.new} variant="primary">
+                  Deal a tape
                 </Button>
               </>
             )}
@@ -54,16 +54,15 @@ export default async function MarketingLayout({ children }: { children: React.Re
           <div>
             <Wordmark size="md" />
             <p className="text-ink-dim mt-3 max-w-sm text-sm leading-relaxed">
-              Paper trading on replayed market history, at real prices with the dates held back until the close.
+              A trading game on replayed market history, at real prices with the dates held back until your grade.
               No real money changes hands. Not investment advice, and nothing here predicts anything.
             </p>
           </div>
           <nav className="grid grid-cols-2 gap-x-12 gap-y-2 text-sm sm:grid-cols-3" aria-label="Footer">
-            <Link href={routes.markets()} className="text-ink-lo hover:text-ink-hi">Markets</Link>
-            <Link href={routes.strategies.index} className="text-ink-lo hover:text-ink-hi">Strategies</Link>
-            <Link href={routes.leaderboard()} className="text-ink-lo hover:text-ink-hi">Leaderboard</Link>
+            <Link href={routes.play.index} className="text-ink-lo hover:text-ink-hi">Play</Link>
+            <Link href={routes.schools} className="text-ink-lo hover:text-ink-hi">Schools</Link>
+            <Link href="/demo" className="text-ink-lo hover:text-ink-hi">Try a round</Link>
             <Link href={routes.learn.index} className="text-ink-lo hover:text-ink-hi">How it works</Link>
-            <Link href={routes.learn.methods} className="text-ink-lo hover:text-ink-hi">Methods</Link>
             <Link href={routes.learn.rulebook()} className="text-ink-lo hover:text-ink-hi">Rulebook</Link>
           </nav>
         </div>

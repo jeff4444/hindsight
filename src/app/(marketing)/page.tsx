@@ -1,130 +1,103 @@
 import Link from 'next/link';
 import { routes } from '@/lib/routes';
-import { SCHOOLS } from '@/lib/trading/schools';
-import { FEE_SCHEDULE, MARGIN, STARTING_BALANCE_USDT } from '@/core/trading/costs';
+import { DAMAGE_K, DUEL_HEALTH, DUEL_TAPES, MIN_MOVE, ROUND_STAKE_USDT, damage } from '@/core/game';
+import { FEE_SCHEDULE } from '@/core/trading/costs';
 import { formatUsd } from '@/lib/trading/format';
-import { Button, PersonaAvatar, TextLink, cx } from '@/components/ui';
+import { Button, TextLink, cx } from '@/components/ui';
 import { Icon, type IconName } from '@/components/ui/icons';
-import { TerminalPreview } from '@/components/marketing/TerminalPreview';
 
 export const dynamic = 'force-dynamic';
 
 /**
  * The front door, set as a front page.
  *
- * It leads with the terminal, because a trading platform is the pitch and no paragraph about one
- * competes with seeing it. Then, in order: how a session goes, what trading here costs (the
- * schedule itself, read from the constants the simulator charges), the schools trading beside
- * you, the ways into a market, and the promises that keep a replay honest.
+ * It leads with a grade, because the grade is the game (docs/rules.md §23): one trade on a fresh
+ * $500, played over sixty hours of real market, scored against the best and worst that stretch
+ * allowed. Then, in order: how a round goes, what the grade and a duel measure (the damage card
+ * read from the constants the game is scored by), the three ways to play, and the promises that
+ * keep a replay honest.
  *
  * Every section opens under a full-width rule with its name set in the caption italic, the way a
  * paper's sections do; nothing is boxed that a rule can separate instead.
  */
 export default function LandingPage() {
-  const starting = formatUsd(STARTING_BALANCE_USDT, { decimals: 0 });
+  const stake = formatUsd(ROUND_STAKE_USDT, { decimals: 0 });
   return (
     <div className="overflow-hidden">
       {/* Hero */}
-      <section className="mx-auto grid max-w-6xl items-center gap-12 px-5 pt-12 pb-20 md:pt-16 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:gap-16">
+      <section className="mx-auto grid max-w-6xl items-center gap-12 px-5 pt-12 pb-20 md:pt-16 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.95fr)] lg:gap-16">
         <div>
-          <div className="eyebrow text-accent-ink text-base!">Paper trading on real market history</div>
-          <h1 className="font-display text-ink-max mt-3 text-[3.25rem] leading-[0.96] md:text-[4.75rem]">
-            Trade the past like it is live.
-          </h1>
+          <div className="eyebrow text-accent-ink text-base!">A trading game on real market history</div>
+          <h1 className="font-display text-ink-max mt-3 text-[3.25rem] leading-[0.96] md:text-[4.75rem]">One trade. Sixty hours. Graded.</h1>
           <p className="text-ink-lo mt-6 max-w-lg text-lg leading-relaxed md:text-xl">
-            Real Binance markets, replayed minute by minute at real prices. Place market, limit and stop orders from a{' '}
-            {starting} account, go long or short, and find out what your trading is worth in dollars.
+            Read a real market up to a moment in its past. Draw your levels, place one trade on a fresh {stake}, and lock it in.
+            Then the tape plays — and you are graded out of 1000 against the best and the worst trade it allowed.
           </p>
           <div className="mt-9 flex flex-wrap items-center gap-4">
-            <Button href={routes.trade.open({ kind: 'random' })} variant="primary" size="xl">
+            <Button href={routes.play.new} variant="primary" size="xl">
               <Icon name="candle" size={16} />
-              Start trading
+              Deal a tape
             </Button>
             <Button href="/demo" variant="secondary" size="xl">
-              Try the terminal
+              Try a round
             </Button>
           </div>
           <p className="text-ink-dim mt-6 flex flex-wrap gap-x-3 gap-y-1 text-sm">
             <span>No sign-up</span>
             <span aria-hidden>·</span>
-            <span>{starting} of paper money</span>
+            <span>No money</span>
             <span aria-hidden>·</span>
-            <span>About four minutes a market</span>
+            <span>A few minutes a round</span>
           </p>
         </div>
-        <TerminalPreview />
+        <GradePreview />
       </section>
 
-      {/* How a session goes */}
+      {/* How a round goes */}
       <Section label="How it works">
-        <h2 className="font-display text-ink-max max-w-2xl text-4xl leading-tight md:text-5xl">Pick. Trade. Settle. Review.</h2>
+        <h2 className="font-display text-ink-max max-w-2xl text-4xl leading-tight md:text-5xl">Read. Lock in. Watch. Graded.</h2>
         <ol className="divide-line mt-10 grid gap-y-8 md:grid-cols-4 md:divide-x">
-          <Step n={1} icon="candle" title="Pick a market" body="A real pair from the Binance archive, with the history before it. The pair and prices are real; the date stays hidden." />
-          <Step n={2} icon="play" title="Trade the replay" body="Sixty hours of minutes stream in. Play, pause, speed up, step one candle. Order at any moment, with a take-profit and a stop attached." />
-          <Step n={3} icon="wallet" title="Settle like an exchange" body="Fills against the real minute bars, fees on every one, slippage on stops, margin checked on every order, liquidation if it runs out." />
-          <Step n={4} icon="chart-line" title="Review" body="The date, every trade in dollars, what the market offered in hindsight, and what each school did on the same tape." />
+          <Step n={1} icon="candle" title="Read" body="Two weeks of a real pair's history, the date held back. Draw on it, add your studies, take your time." />
+          <Step n={2} icon="lock" title="Lock in" body={`Long or short, up to ${stake}, at the bell or resting on the tape, with a take-profit and a stop. Or sit out.`} />
+          <Step n={3} icon="play" title="Watch" body="The next sixty hours play at the speed you like. Nothing can be changed: you find out what your read was worth." />
+          <Step n={4} icon="oracle" title="Graded" body="Out of 1000, against the best and worst trade the tape allowed — both drawn on the chart where they happened." />
         </ol>
       </Section>
 
-      {/* What it costs */}
-      <Section label="The mechanics">
+      {/* The grade and the duel */}
+      <Section label="The scoring">
         <div className="grid items-start gap-12 lg:grid-cols-2">
           <div>
-            <h2 className="font-display text-ink-max text-4xl leading-tight md:text-5xl">Real orders, real costs.</h2>
+            <h2 className="font-display text-ink-max text-4xl leading-tight md:text-5xl">Graded against what was possible.</h2>
             <p className="text-ink-lo mt-5 text-lg leading-relaxed">
-              Every order fills the way an exchange would fill it against that minute&rsquo;s real candle: limits on touch, stops
-              on the wick with slippage, gaps at the worse price. When a candle could have hit your stop and your target, the
-              stop gets it.
+              Not against luck, and not against a crowd. Once the tape has played, Hindsight finds the best trade it allowed and
+              the worst, as real orders filled and charged like yours, and puts your result between them. A quiet tape and a
+              wild one both run from 0 to 1000.
             </p>
             <p className="text-ink-lo mt-4 text-lg leading-relaxed">
-              Nothing is free. Commission is charged on every fill, and a tight stop pays for it again and again.
+              Sitting out scores a little over 500, because it pays no fees. That is the bar a trade has to clear. In a duel,
+              the lower grade on each tape loses points, and a bigger gap hits a great deal harder.
             </p>
-            <TextLink href={routes.learn.rulebook('22-trading')} className="mt-6 inline-block font-semibold">
+            <TextLink href={routes.learn.rulebook('23-the-game')} className="mt-6 inline-block font-semibold">
               Every rule, written down
             </TextLink>
           </div>
-          <CostSheet />
+          <DamageCard />
         </div>
       </Section>
 
-      {/* The schools */}
-      <Section label="Strategies">
-        <div className="grid gap-10 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-start">
-          <div>
-            <h2 className="font-display text-ink-max text-4xl leading-tight md:text-5xl">Seven schools and a coin, trading beside you.</h2>
-            <p className="text-ink-lo mt-5 text-lg leading-relaxed">
-              Each school of thought runs its published rules on its own {starting} account, on every market in the
-              library, with the same fees and the same fills as you. Beside them, a coin flip. Their equity curves are
-              public, and so is yours on the leaderboard.
-            </p>
-            <TextLink href={routes.strategies.index} className="mt-6 inline-block font-semibold">
-              See how they are doing
-            </TextLink>
-          </div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {SCHOOLS.map(({ persona, spec }) => (
-              <Link
-                key={spec.code}
-                href={routes.strategies.show(spec.code)}
-                className="press lift border-line bg-surface-2 rounded-2xl border p-4"
-              >
-                <PersonaAvatar persona={persona} size={40} />
-                <div className="text-ink-max mt-3 text-sm font-semibold">{persona.name}</div>
-                <div className="text-ink-dim mt-1 line-clamp-3 text-xs leading-relaxed">{persona.style}</div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </Section>
-
-      {/* Ways in */}
-      <Section label="Markets">
-        <h2 className="font-display text-ink-max max-w-2xl text-4xl leading-tight md:text-5xl">One market a day, or any pair you like.</h2>
-        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Way icon="sun" title="Today’s market" body="The same market for everyone, once. Its board opens when you finish." href={routes.trade.open({ kind: 'daily' })} featured />
-          <Way icon="shuffle" title="Random market" body="Any pair, any stretch of its history. The fastest way in." href={routes.trade.open({ kind: 'random' })} />
-          <Way icon="candle" title="Pick a pair" body="BTC, ETH, SOL and the rest, including coins since delisted." href={routes.markets()} />
-          <Way icon="book" title="Practice" body="A second account that may show the dates. It is never ranked." href={routes.portfolio('practice')} />
+      {/* Three ways */}
+      <Section label="Ways to play">
+        <h2 className="font-display text-ink-max max-w-2xl text-4xl leading-tight md:text-5xl">Alone, against a friend, or against a school.</h2>
+        <div className="mt-10 grid gap-4 md:grid-cols-3">
+          <Way icon="candle" title="Training grounds" body="Just you and the tape. Your grade is your score, and your average is your record." href={routes.play.new} featured />
+          <Way
+            icon="swords"
+            title="Duel a friend"
+            body={`Send a link. ${DUEL_TAPES} tapes, ${DUEL_HEALTH} points each, played in your own time. Knock them out, or finish with more.`}
+            href={routes.play.index}
+          />
+          <Way icon="bot" title="Duel a school" body="A school reads every tape under a published playbook, plays its trade live beside yours, then shows you why." href={routes.schools} />
         </div>
       </Section>
 
@@ -133,10 +106,10 @@ export default function LandingPage() {
         <div className="grid gap-10 md:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
           <h2 className="font-display text-ink-max text-4xl leading-tight md:text-5xl">No hindsight, except the kind you earn.</h2>
           <ol className="divide-line divide-y">
-            <Promise n={1} title="The future never reaches your browser early." body="The server keeps the replay clock. Your screen only ever has the minutes that have already printed, so there is nothing to scroll ahead to." />
-            <Promise n={2} title="The date waits for the closing bell." body="You trade the real pair at real prices, but the calendar date appears only when the session ends — so nobody can look up what happens next." />
-            <Promise n={3} title="Real markets, including the ones that failed." body="Coins that were delisted are in the library too, so the markets do not quietly drift upward." />
-            <Promise n={4} title="The coin flip is on the leaderboard." body="Every school trades against it in public. Whether any of them beats it is measured, not claimed." />
+            <Promise n={1} title="The future never reaches your browser early." body="Not one minute of the tape leaves the server until your trade is locked in, and nothing can be changed after it." />
+            <Promise n={2} title="The date waits for your grade." body="The pair, the prices, the weekday and the time are real; the calendar date arrives with your result, so nothing can be looked up." />
+            <Promise n={3} title="Never the same tape twice." body={`You are only dealt tapes you have not played — in a duel, tapes neither of you has — and only ones that moved at least ${MIN_MOVE * 100}%.`} />
+            <Promise n={4} title="Real costs, real fills." body={`Every order fills against that minute's real candle and pays ${FEE_SCHEDULE.takerBps / 100}% a side. When a candle could have hit your stop and your target, the stop gets it.`} />
           </ol>
         </div>
       </Section>
@@ -144,15 +117,15 @@ export default function LandingPage() {
       {/* Final call */}
       <section className="border-rule border-t-2">
         <div className="mx-auto max-w-6xl px-5 py-24 text-center">
-          <h2 className="font-display text-ink-max mx-auto max-w-3xl text-5xl leading-[1.02] md:text-7xl">Your {starting} is waiting.</h2>
-          <p className="text-ink-lo mt-5 text-lg">Paper money, real markets, every trade in dollars.</p>
+          <h2 className="font-display text-ink-max mx-auto max-w-3xl text-5xl leading-[1.02] md:text-7xl">Your first tape is waiting.</h2>
+          <p className="text-ink-lo mt-5 text-lg">One trade, sixty hours, a grade out of 1000.</p>
           <div className="mt-9 flex justify-center">
-            <Button href={routes.trade.open({ kind: 'random' })} variant="primary" size="xl">
+            <Button href={routes.play.new} variant="primary" size="xl">
               <Icon name="candle" size={16} />
-              Start trading
+              Deal a tape
             </Button>
           </div>
-          <p className="text-ink-dim mt-5 text-sm">No account needed. Sign in later and your balance comes with you.</p>
+          <p className="text-ink-dim mt-5 text-sm">No account needed. Sign in later and your rounds come with you.</p>
         </div>
       </section>
     </div>
@@ -168,6 +141,85 @@ function Section({ label, children }: { label: string; children: React.ReactNode
         {children}
       </div>
     </section>
+  );
+}
+
+/** A result card, drawn rather than rendered from a round: what the end of a round looks like. */
+function GradePreview() {
+  const rows = [
+    { label: 'You', note: 'Long at the bell, out at the take-profit', value: '$525.10', tone: 'gain' },
+    { label: 'Best in hindsight', note: 'Long the low, out at the high', value: '$548.40', tone: 'accent' },
+    { label: 'Worst in hindsight', note: 'Short the low, stopped at the high', value: '$451.60', tone: 'loss' },
+  ] as const;
+  return (
+    <div className="border-rule bg-surface-2 shadow-e3 border px-6 pt-5 pb-4" aria-hidden>
+      <div className="rule-double flex items-baseline justify-between pb-3">
+        <span className="font-display text-ink-max text-xl">Graded</span>
+        <span className="text-ink-dim text-xs">BTC/USDT · Tue 14:00</span>
+      </div>
+      <div className="mt-4 flex items-end gap-3">
+        <span className="numeral text-ink-max text-7xl leading-none font-semibold">759</span>
+        <span className="text-ink-dim pb-1.5">/ 1000</span>
+        <span className="numeral text-gain-ink ml-auto pb-1.5 text-xl font-semibold">+$25.10</span>
+      </div>
+      <div className="bg-fill-2 relative mt-5 h-2">
+        <div className="bg-accent h-full" style={{ width: '75.9%' }} />
+        <div className="bg-rule absolute top-[-3px] h-[14px] w-0.5" style={{ left: '51.6%' }} />
+      </div>
+      <div className="text-ink-dim text-mini mt-1.5 flex justify-between">
+        <span>Worst</span>
+        <span>Sitting out: 516</span>
+        <span>Best</span>
+      </div>
+      <dl className="divide-line mt-3 divide-y">
+        {rows.map((row) => (
+          <div key={row.label} className="flex items-baseline justify-between gap-3 py-2.5">
+            <dt>
+              <div className={cx('text-sm font-semibold', row.tone === 'accent' ? 'text-accent-ink' : 'text-ink-hi')}>{row.label}</div>
+              <div className="text-ink-dim text-mini">{row.note}</div>
+            </dt>
+            <dd className={cx('numeral text-sm font-semibold', row.tone === 'loss' ? 'text-loss-ink' : 'text-gain-ink')}>{row.value}</dd>
+          </div>
+        ))}
+      </dl>
+      <div className="border-line mt-1 flex items-center gap-4 border-t pt-3">
+        <span className="text-ink-dim text-mini whitespace-nowrap">Duel, tape 3 of 10</span>
+        <div className="flex flex-1 items-center gap-2">
+          <div className="bg-fill-2 h-2 flex-1">
+            <div className="bg-gain h-full" style={{ width: '100%' }} />
+          </div>
+          <div className="bg-fill-2 h-2 flex-1">
+            <div className="bg-loss h-full" style={{ width: '46%' }} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** What a gap between two grades costs in a duel, as the game scores it — printed like a rate card. */
+function DamageCard() {
+  const gaps = [100, 250, 500, 750, 900];
+  return (
+    <div className="border-rule bg-surface-2 shadow-e3 border px-6 pt-5 pb-3">
+      <div className="rule-double flex items-baseline justify-between pb-3">
+        <span className="font-display text-ink-max text-xl">What a gap costs in a duel</span>
+        <span className="numeral text-ink-dim text-xs">of {DUEL_HEALTH}</span>
+      </div>
+      <dl className="divide-line divide-y">
+        {gaps.map((gap) => (
+          <div key={gap} className="flex flex-wrap items-baseline py-3">
+            {/* Dot leaders, as on a rate card, carry the eye from the gap to its damage. */}
+            <dt className="text-ink-hi flex min-w-0 flex-1 items-baseline gap-3 pr-3 text-sm font-semibold">
+              A gap of {gap}
+              <span aria-hidden className="border-line-strong min-w-4 flex-1 border-b-2 border-dotted" />
+            </dt>
+            <dd className="numeral text-ink-max text-lg font-semibold">−{damage(0, gap, DAMAGE_K)}</dd>
+          </div>
+        ))}
+      </dl>
+      <p className="text-ink-dim pt-2 pb-1 text-xs">Close players play long duels; a mismatch is over in two tapes.</p>
+    </div>
   );
 }
 
@@ -212,40 +264,5 @@ function Promise({ n, title, body }: { n: number; title: string; body: string })
         <p className="text-ink-lo mt-1 text-sm leading-relaxed">{body}</p>
       </div>
     </li>
-  );
-}
-
-/** The fee and margin schedule, as the simulator charges it — printed like a rate card. */
-function CostSheet() {
-  const pct = (bps: number) => `${(bps / 100).toFixed(2)}%`;
-  const rows: { label: string; value: string; note: string }[] = [
-    { label: 'Starting balance', value: formatUsd(STARTING_BALANCE_USDT, { decimals: 0 }), note: 'Paper money, for every account' },
-    { label: 'Maker fee', value: pct(FEE_SCHEDULE.makerBps), note: 'Binance spot, published' },
-    { label: 'Taker fee', value: pct(FEE_SCHEDULE.takerBps), note: 'Binance spot, published' },
-    { label: 'Spread', value: `${FEE_SCHEDULE.halfSpreadBps * 2} bp`, note: 'Market orders cross it' },
-    { label: 'Stop slippage', value: `${FEE_SCHEDULE.stopSlippageBps} bp`, note: 'A stop fills as a market order' },
-    { label: 'Buying power', value: `${MARGIN.maxGrossLeverage}× equity`, note: 'Long or short' },
-    { label: 'Liquidation', value: `${MARGIN.maintenanceRatio * 100}% margin`, note: `Forced close, ${pct(MARGIN.liquidationFeeBps)} fee` },
-  ];
-  return (
-    <div className="border-rule bg-surface-2 shadow-e3 rounded-3xl border px-6 pt-5 pb-3">
-      <div className="rule-double flex items-baseline justify-between pb-3">
-        <span className="font-display text-ink-max text-xl">Fee and margin schedule</span>
-        <span className="numeral text-ink-dim text-xs">{FEE_SCHEDULE.version}</span>
-      </div>
-      <dl className="divide-line divide-y">
-        {rows.map((row) => (
-          <div key={row.label} className="flex flex-wrap items-baseline py-3">
-            {/* Dot leaders, as on a rate card, carry the eye from the item to its price. */}
-            <dt className="text-ink-hi flex min-w-0 flex-1 items-baseline gap-3 pr-3 text-sm font-semibold">
-              {row.label}
-              <span aria-hidden className="border-line-strong min-w-4 flex-1 border-b-2 border-dotted" />
-            </dt>
-            <dd className="numeral text-ink-max text-lg font-semibold">{row.value}</dd>
-            <dd className="text-ink-dim w-full text-xs">{row.note}</dd>
-          </div>
-        ))}
-      </dl>
-    </div>
   );
 }

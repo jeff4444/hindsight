@@ -70,6 +70,8 @@ export const currentViewer = cache(async function currentViewer(): Promise<Viewe
 
   if (!sessionRow || sessionRow.user_id === null) {
     await supabase.rpc('claim_session', { p_session: sessionId, p_user: userId });
+    // The game's rounds and duel seats (docs/rules.md §23) are adopted the same way.
+    await supabase.rpc('game_claim_session', { p_session: sessionId, p_user: userId });
   }
 
   const { data } = await supabase
