@@ -85,6 +85,36 @@ interface ChartRow {
   big_move: number | null;
 }
 
+interface ChartListing {
+  id: string;
+  symbol: string;
+  big_move: number | null;
+}
+
+const CHART_COLUMNS =
+  'id, symbol, decision_at, index_factor, mirrored, volume_base, lead_in_bars, lead_in_extra, reveal_bars, resolution_path, detail_path, big_move';
+
+/** Every row of a query, a page at a time: PostgREST returns at most 1,000 rows a request. */
+async function pages<T>(
+  query: (from: number, to: number) => PromiseLike<{ data: unknown[] | null; error: { message: string } | null }>,
+  size = 1000,
+): Promise<T[]> {
+  const rows: T[] = [];
+  for (let from = 0; ; from += size) {
+    const { data, error } = await query(from, from + size - 1);
+    if (error) throw new Error(error.message);
+    rows.push(...((data ?? []) as T[]));
+    if (!data || data.length < size) return rows;
+  }
+}
+
+/** One chart, whole: its history, its tape and the minutes under both. */
+async function loadChart(supabase: SupabaseClient, id: string): Promise<ChartRow> {
+  const { data, error } = await supabase.from('charts').select(CHART_COLUMNS).eq('id', id).single();
+  if (error || !data) throw new Error(`chart ${id} could not be loaded: ${error?.message ?? 'missing'}`);
+  return data as ChartRow;
+}
+
 function marketFromRow(row: ChartRow): Market {
   return marketFromChart({
     chartId: row.id,
@@ -152,41 +182,41 @@ async function read(args: Args, school: SchoolSpec): Promise<void> {
   const { supabase, local } = supabaseClient();
   if (args.fixture && !local) throw new Error('the fixture reader only ever writes to a local database');
 
-  const { data: done, error: doneError } = await supabase
-    .from('school_reads')
-    .select('chart_id')
-    .eq('school_code', school.code)
-    .eq('school_version', school.version);
-  if (doneError) throw new Error(doneError.message);
-  const already = new Set(((done ?? []) as { chart_id: string }[]).map((row) => row.chart_id));
+  const already = new Set(
+    await pages<{ chart_id: string }>((from, to) =>
+      supabase.from('school_reads').select('chart_id').eq('school_code', school.code).eq('school_version', school.version).order('chart_id').range(from, to),
+    ).then((rows) => rows.map((row) => row.chart_id)),
+  );
 
-  const columns =
-    'id, symbol, decision_at, index_factor, mirrored, volume_base, lead_in_bars, lead_in_extra, reveal_bars, resolution_path, detail_path, big_move';
-  const queue: ChartRow[] = [];
-  for (let from = 0; ; from += 50) {
-    const { data, error } = await supabase.from('charts').select(columns).eq('synthetic', false).order('id').range(from, from + 49);
-    if (error) throw new Error(error.message);
-    for (const row of (data ?? []) as ChartRow[]) {
-      if (already.has(row.id)) continue;
-      if (args.split !== 'all' && heldOut(row.symbol) !== (args.split === 'held-out')) continue;
-      if (row.big_move !== null && row.big_move < MIN_MOVE) continue;
-      queue.push(row);
-    }
-    if (!data || data.length < 50) break;
-  }
+  // The listing is ids and symbols only: a chart's minutes are loaded when, and only when, it is
+  // read. Downloading every chart's paths to choose five would move the whole library.
+  const listing = await pages<ChartListing>((from, to) =>
+    supabase.from('charts').select('id, symbol, big_move').eq('synthetic', false).order('id').range(from, to),
+  );
+  const queue = listing.filter(
+    (row) =>
+      !already.has(row.id) &&
+      (args.split === 'all' || heldOut(row.symbol) === (args.split === 'held-out')) &&
+      (row.big_move === null || row.big_move >= MIN_MOVE),
+  );
 
-  const todo = queue.slice(0, args.limit);
-  console.log(`${school.name} (${school.version}): ${already.size} read, ${todo.length} to read (${args.split})${args.fixture ? ' with the fixture reader' : ` with ${MODEL}`}${args.dryRun ? ', dry run' : ''}`);
+  const target = Math.min(args.limit, queue.length);
+  console.log(`${school.name} (${school.version}): ${already.size} read, ${queue.length} left (${args.split}); reading ${Number.isFinite(args.limit) ? `up to ${target}` : 'all of them'}${args.fixture ? ' with the fixture reader' : ` with ${MODEL}`}${args.dryRun ? ', dry run' : ''}`);
 
   let next = 0;
+  let reading = 0;
   let stored = 0;
   const worker = async () => {
-    while (next < todo.length) {
-      const row = todo[next++];
+    // `--limit` counts tapes read, not tapes looked at: one measured below the minimum is passed over.
+    while (next < queue.length && reading < args.limit) {
+      const listed = queue[next++];
+      const row = await loadChart(supabase, listed.id);
       const market = marketFromRow(row);
       const move = biggestMove(market);
       if (row.big_move === null && !args.dryRun) await supabase.from('charts').update({ big_move: move }).eq('id', row.id);
       if (move < MIN_MOVE) continue;
+      if (reading >= args.limit) break;
+      reading += 1;
 
       const result = args.fixture ? { answer: fixtureAnswer(market), model: 'fixture' } : await readWithModel(school, market);
       if (!result) continue;
@@ -195,7 +225,16 @@ async function read(args: Args, school: SchoolSpec): Promise<void> {
       const line = `${row.symbol.padEnd(12)} ${intent.kind === 'trade' ? `${intent.side} ${intent.type}`.padEnd(12) : 'sits out'.padEnd(12)} grade ${String(settled.grade).padStart(4)}  sitting out ${settled.sitOutGrade}${rejected ? `  (refused: ${rejected})` : ''}`;
       console.log(line);
       if (args.dryRun) {
+        // Everything a player would be shown, so a dry run can be judged on its reasoning.
         console.log(`  ${stored_read.thesis}`);
+        console.log(`  ${stored_read.reasoning.replace(/\n/g, '\n  ')}`);
+        if (stored_read.levels.length > 0) console.log(`  levels: ${stored_read.levels.map((level) => `${level.name} ${level.price}`).join(', ')}`);
+        if (intent.kind === 'trade') {
+          console.log(`  order: ${intent.side} ${intent.type}${intent.price !== undefined ? ` @ ${intent.price}` : ''}, take-profit ${intent.takeProfit}, stop-loss ${intent.stopLoss}, $${intent.size} (indexed prices)`);
+        } else if (stored_read.sitOutReason) {
+          console.log(`  sat out: ${stored_read.sitOutReason}`);
+        }
+        console.log(`  answered by ${result.model}\n`);
         continue;
       }
       const { error } = await supabase.from('school_reads').upsert({
@@ -226,13 +265,16 @@ async function read(args: Args, school: SchoolSpec): Promise<void> {
  */
 async function report(school: SchoolSpec): Promise<void> {
   const { supabase } = supabaseClient();
-  const { data, error } = await supabase
-    .from('school_reads')
-    .select('school_version, intent, grade, sit_out_grade, charts(symbol)')
-    .eq('school_code', school.code);
-  if (error) throw new Error(error.message);
   type Row = { school_version: string; intent: { kind: string }; grade: number; sit_out_grade: number; charts: { symbol: string } | { symbol: string }[] | null };
-  const rows = (data ?? []) as Row[];
+  const rows = await pages<Row>((from, to) =>
+    supabase
+      .from('school_reads')
+      .select('school_version, intent, grade, sit_out_grade, charts(symbol)')
+      .eq('school_code', school.code)
+      .order('chart_id')
+      .order('school_version')
+      .range(from, to),
+  );
   const versions = new Set(rows.map((row) => row.school_version));
   const symbolOf = (row: Row) => (Array.isArray(row.charts) ? row.charts[0]?.symbol : row.charts?.symbol) ?? '';
   const mine = rows.filter((row) => row.school_version === school.version && heldOut(symbolOf(row)));
