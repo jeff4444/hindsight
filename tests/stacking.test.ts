@@ -41,8 +41,8 @@ import { isStage } from '@/components/shell/AppShell';
  */
 
 /**
- * The ancestor chain, in order: everything between `<body>` and the terminal's order-line layer.
- * A session page renders inside the app layout and its template; `AppShell` sits between them too
+ * The ancestor chain, in order: everything between `<body>` and the round screen's order-line
+ * layer. A round page renders inside the app layout and its template; `AppShell` sits between them too
  * but returns its children bare on a stage, which the test below pins rather than scanning the
  * shell's own chrome. The template already declines its entrance fade on a stage for this reason.
  *
@@ -54,8 +54,8 @@ const GUARDED = [
   'src/app/layout.tsx',
   'src/app/(app)/layout.tsx',
   'src/app/(app)/template.tsx',
-  'src/components/trading/LiveTerminal.tsx',
-  'src/components/trading/TerminalShell.tsx',
+  'src/components/game/LiveRound.tsx',
+  'src/components/game/RoundShell.tsx',
 ];
 
 /**
@@ -184,7 +184,7 @@ describe('the order lines stay grabbable', () => {
 
   it('guards every element in the documented ancestor chain', () => {
     // If the chain ever grows an element, this list has to grow with it. Stated as a test so that
-    // adding a wrapper around TerminalShell is a decision rather than an accident.
+    // adding a wrapper around RoundShell is a decision rather than an accident.
     expect(GUARDED).toHaveLength(5);
   });
 
@@ -204,10 +204,10 @@ describe('the in-frame layers stay out of the way of the drag', () => {
    * The other half of the rule. A layer inside the frame may transform freely, but if it lies
    * across the chart *while the order lines are live* and takes pointer events, it cuts a dead
    * stripe through every drag target. So the full-bleed layers that do take the pointer — the
-   * closing card with its buttons and the loading veil — may only exist once there is nothing to
-   * drag: after the bell, or before the tape has loaded.
+   * result card with its buttons and the loading veil — may only exist once there is nothing to
+   * drag: after the tape has played, or before the round has loaded.
    */
-  const shell = readFileSync(join(process.cwd(), 'src/components/trading/TerminalShell.tsx'), 'utf8');
+  const shell = readFileSync(join(process.cwd(), 'src/components/game/RoundShell.tsx'), 'utf8');
   const overlay = readFileSync(join(process.cwd(), 'src/components/trading/OrderLinesOverlay.tsx'), 'utf8');
 
   it('the line layer is the canvas, rectangle for rectangle', () => {
@@ -223,7 +223,7 @@ describe('the in-frame layers stay out of the way of the drag', () => {
     for (const { text, line } of literals(shell)) {
       if (!/(?:^|\s)absolute inset-0 z-\d+/.test(text) || text.includes('pointer-events-none')) continue;
       const guard = lines.slice(Math.max(0, line - 3), line).join('\n');
-      if (!/\{closed && |\{!open && /.test(guard)) offenders.push(`TerminalShell.tsx:${line} — "${text.slice(0, 70)}"`);
+      if (!/\{played && done && |\{!view && /.test(guard)) offenders.push(`RoundShell.tsx:${line} — "${text.slice(0, 70)}"`);
     }
     expect(offenders).toEqual([]);
   });

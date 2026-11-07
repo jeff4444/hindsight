@@ -17,9 +17,9 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         </Link>
 
         <div className="relative">
-          <p className="font-display text-ink-max max-w-md text-6xl leading-[1.0]">Trade the past like it is live.</p>
+          <p className="font-display text-ink-max max-w-md text-6xl leading-[1.0]">One trade. Sixty hours. Graded.</p>
           <p className="text-ink-lo mt-4 max-w-sm text-base leading-relaxed">
-            Real markets replayed minute by minute at real prices — and a $100,000 paper account to trade them with.
+            Real markets at real prices. Read one, place one trade on $500, and find out how it graded against the best and worst it allowed.
           </p>
         </div>
 

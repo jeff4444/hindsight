@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { GLOSSARY } from '@/lib/glossary';
-import { FEE_SCHEDULE, MARGIN, STARTING_BALANCE_USDT } from '@/core/trading/costs';
-import { BOTS } from '@/core/bots/spec';
+import { FEE_SCHEDULE } from '@/core/trading/costs';
+import { DUEL_HEALTH, DUEL_TAPES, MIN_MOVE, ROUND_STAKE_USDT, damage } from '@/core/game';
 
 /**
- * The glossary quotes numbers in prose, because "0.10%" reads better than a template. Prose does
- * not update itself when a constant moves, so this does: change a fee or the leverage and the
- * definitions that state it fail here until they are rewritten to match.
+ * The glossary quotes numbers in prose, because "$500" reads better than a template. Prose does
+ * not update itself when a constant moves, so this does: change the stake, a fee or the damage
+ * curve and the definitions that state it fail here until they are rewritten to match.
  */
-describe('the glossary says what the simulator charges', () => {
+describe('the glossary says what the game is played by', () => {
   const pct = (bps: number) => `${(bps / 100).toFixed(2)}%`;
 
   it('fees', () => {
@@ -16,30 +16,24 @@ describe('the glossary says what the simulator charges', () => {
     expect(GLOSSARY.taker.body).toContain(pct(FEE_SCHEDULE.takerBps));
   });
 
-  it('margin and liquidation', () => {
-    expect(GLOSSARY.buyingPower.body).toContain(`${MARGIN.maxGrossLeverage}×`);
-    expect(GLOSSARY.liquidation.body).toContain(`${MARGIN.maintenanceRatio * 100}%`);
-    expect(GLOSSARY.liquidation.body).toContain(`${MARGIN.liquidationFeeBps / 100}% fee`);
+  it('the stake and the minimum move', () => {
+    expect(GLOSSARY.stake.body).toContain(`$${ROUND_STAKE_USDT}`);
+    expect(GLOSSARY.tape.body).toContain(`${MIN_MOVE * 100}%`);
   });
 
-  it('the starting balance', () => {
-    const balance = `$${STARTING_BALANCE_USDT.toLocaleString('en-US')}`;
-    expect(GLOSSARY.equity.body).toContain(balance);
-    expect(GLOSSARY.schools.body).toContain(balance);
-  });
-
-  it('how many schools there are', () => {
-    // "Seven trading systems … plus a coin flip": every bot but the null.
-    expect(BOTS.filter((bot) => bot.code !== 'ZERO')).toHaveLength(7);
-    expect(GLOSSARY.schools.body).toMatch(/^Seven /);
+  it('a duel and its damage', () => {
+    expect(GLOSSARY.duel.body).toContain(`${DUEL_TAPES} tapes`);
+    expect(GLOSSARY.duel.body).toContain(`${DUEL_HEALTH} points`);
+    expect(GLOSSARY.damage.body).toContain(`a gap of 250 costs ${damage(0, 250)}`);
+    expect(GLOSSARY.damage.body).toContain(`a gap of 750 costs ${damage(0, 750)}`);
   });
 });
 
-describe('the glossary speaks trading, not the game it replaced', () => {
-  it('has no R-multiples, scores, pars or ratings', () => {
+describe('the glossary speaks the game, not the platforms it replaced', () => {
+  it('has no accounts, balances, margin or rankings', () => {
     for (const [id, term] of Object.entries(GLOSSARY)) {
       const text = `${term.label} ${term.body}`;
-      expect(text, id).not.toMatch(/\b\d*(?:\.\d+)?R\b|\bpar\b|\bscore\b|\brating\b|\bdivision\b|\bsit out\b/i);
+      expect(text, id).not.toMatch(/\bequity\b|buying power|\bmargin\b|portfolio|leaderboard|\$100,000|practice account|\b\d*(?:\.\d+)?R\b|\bpar\b|\brating\b|\bdivision\b/i);
     }
   });
 });

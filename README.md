@@ -106,13 +106,11 @@ npm run typecheck && npm run lint && npm test && npm run build
   that a school reads its tape blind. The exchange's are `tests/trading-*.test.ts`: exact integer
   fill goldens, parity with the bracket resolver on 500 paths, deterministic and prefix-causal
   replay.
-- **The leak audit**, `tests/trading-api-leak.test.ts`: no minute past the server clock, no date
-  while a session is open, nothing about how a chart is stored, nothing to a stranger (§22.9).
-- **The SQL smoke test**, `supabase/tests/trading_smoke.sql`, against a fresh scratch database with
-  every migration applied: `psql -v ON_ERROR_STOP=1 -f supabase/tests/trading_smoke.sql`.
-- **End to end** with the preinstalled Playwright: `node e2e/terminal-lab.cjs <baseUrl>` drives the
-  terminal on a synthetic market; `node e2e/trade-live.cjs <baseUrl>` drives a real session through
-  the server, reloads mid-session, and reads the review.
+- **The drag guard**, `tests/stacking.test.ts`: nothing between `<body>` and the round screen's
+  order lines may create a stacking context, or the lines would draw but not drag.
+- **The SQL smoke test** for the trading platform's tables, `supabase/tests/trading_smoke.sql`,
+  against a fresh scratch database with every migration applied:
+  `psql -v ON_ERROR_STOP=1 -f supabase/tests/trading_smoke.sql`.
 
 ## Layout
 
@@ -120,10 +118,10 @@ npm run typecheck && npm run lint && npm test && npm run build
 | --- | --- |
 | `src/core/game/` | The game, pure: a round's sizing and resolution on the exchange, the best and worst a tape allowed, the grade, damage, and the duel fold. |
 | `src/core/trading/` | The exchange, pure: instruments, the order simulator, costs, margin, metrics. Integer ticks, steps and micro-USDT throughout. |
-| `src/core/bots/` | The retired schools as traders, kept for their stored accounts. |
+| `src/core/bots/` | The retired schools as traders, pure, kept so their stored accounts can still be re-derived. |
 | `src/core/` | Everything else pure: bars, ATR, normalisation, the corpus pipeline's logic, the engines (§14), and the retired game's resolver, scoring and rating, kept for the stored results. |
 | `src/lib/game/` | The round core shared by the server and the browser (`round-core.ts`), the wire types, the schools and their reads, and the server's handler and queries. |
-| `src/lib/trading/` | The trading platform's session core, wire types and formatting; the game reuses its views. |
+| `src/lib/trading/` | The exchange's wire types, views and formatting, and the server's chart loader; the game sends its rounds in these shapes. |
 | `src/app/api/game/` | The boundary: deal and lock in a round; start, join and play a duel. |
 | `src/app/(app)/` | Play (`/play`, a round at `/play/[id]`), duels (`/duel/[code]`), Schools, Learn. The platform's pages redirect there. |
 | `src/components/game/` | The round screen, its ticket and result card, and the duel screen. They draw on the terminal's chart and order lines in `src/components/trading/`. |

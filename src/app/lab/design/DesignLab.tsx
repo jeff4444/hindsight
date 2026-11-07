@@ -62,14 +62,14 @@ export function DesignLab() {
 
       <section className="space-y-3">
         <Eyebrow>Type</Eyebrow>
-        <h1 className="font-display text-ink-max text-5xl md:text-6xl">Trade the past like it is live.</h1>
-        <p className="font-display text-ink-hi text-3xl italic">A clean session.</p>
+        <h1 className="font-display text-ink-max text-5xl md:text-6xl">One trade. Sixty hours. Graded.</h1>
+        <p className="font-display text-ink-hi text-3xl italic">A clean round.</p>
         <h2 className="text-ink-max text-2xl font-semibold tracking-tight">Section heading in Fraunces</h2>
         <p className="text-ink max-w-prose text-base">
-          Body copy. Read the market, place the order, watch it fill. Your <Term id="equity" /> is what
-          the account is worth, and <Term id="buyingPower" /> is how much more it can take on.
+          Body copy. Read the market, place the order, watch the tape. Your <Term id="grade" /> is where
+          the result falls between the <Term id="worst" /> and the <Term id="best" /> the tape allowed.
         </p>
-        <p className="numeral text-ink-max text-display">+$2,412.80</p>
+        <p className="numeral text-ink-max text-display">+$24.80</p>
       </section>
 
       <section className="space-y-4">
@@ -86,8 +86,8 @@ export function DesignLab() {
           <Chip>Binance spot</Chip>
           <Chip tone="long" dot>Long</Chip>
           <Chip tone="short" dot>Short</Chip>
-          <Chip tone="info">Practice</Chip>
-          <Chip tone="accent">Ranked</Chip>
+          <Chip tone="info">Training</Chip>
+          <Chip tone="accent">Tape 3 of 10</Chip>
           <Chip tone="info" mono>15m/s</Chip>
         </div>
         <Segmented
@@ -115,8 +115,8 @@ export function DesignLab() {
 
       <section className="grid gap-5 md:grid-cols-3">
         <Panel pad="md" className="flex flex-col items-center justify-center gap-1">
-          <div className="numeral text-long-ink text-3xl font-semibold">+$1,402.16</div>
-          <div className="numeral text-long-ink text-sm">+1.40% on $100,000.00</div>
+          <div className="numeral text-long-ink text-3xl font-semibold">+$24.80</div>
+          <div className="numeral text-long-ink text-sm">+4.96% on $500.00</div>
         </Panel>
         <Panel pad="md" className="space-y-4">
           <Eyebrow>The Panel</Eyebrow>
@@ -134,7 +134,7 @@ export function DesignLab() {
         <Panel pad="md" className="space-y-3">
           <Eyebrow>Terms</Eyebrow>
           <p className="text-ink-lo text-sm leading-relaxed">
-            <Term id="liquidation" />, <Term id="maker" /> and <Term id="taker" />, <Term id="oco" />.
+            <Term id="sitOut" />, <Term id="maker" /> and <Term id="taker" />, <Term id="oco" />.
           </p>
         </Panel>
       </section>

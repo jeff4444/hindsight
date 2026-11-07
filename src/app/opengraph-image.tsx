@@ -119,10 +119,10 @@ export default async function Image() {
           <div style={{ display: 'flex', height: 2, backgroundColor: INK }} />
           <div style={{ display: 'flex', height: 2, marginTop: 3, backgroundColor: INK }} />
           <div style={{ color: INK, fontSize: 76, fontFamily: display, fontWeight: 600, lineHeight: 1.0, letterSpacing: -2, marginTop: 36 }}>
-            Trade the past like it is live.
+            One trade. Sixty hours. Graded.
           </div>
           <div style={{ color: INK_LO, fontSize: 28, lineHeight: 1.4, marginTop: 22, maxWidth: 860 }}>
-            Real markets, replayed minute by minute at real prices, with a $100,000 paper account.
+            Real markets at real prices. One trade on $500, graded against the best and worst the tape allowed.
           </div>
         </div>
 

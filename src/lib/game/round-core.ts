@@ -24,7 +24,7 @@ import {
   type RoundOrder,
   type RoundOutcome,
 } from '@/core/game';
-import { REJECT_TEXT, instrumentView, wireBars } from '@/lib/trading/session-core';
+import { REJECT_TEXT, instrumentView, wireBars } from '@/lib/trading/views';
 import type {
   OpponentRound,
   RoundDuelContext,

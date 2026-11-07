@@ -6,7 +6,7 @@ export default function ProfileNotFound() {
     <div className="mx-auto max-w-lg py-16">
       <EmptyState
         icon="signature"
-        title="No trader with that handle"
+        title="No player with that handle"
         body="Handles can be changed, so a link that used to work may point at a name nobody holds now."
         action={
           <Button href={routes.play.index} variant="primary" size="lg">

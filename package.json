@@ -28,7 +28,6 @@
     "synthesise": "tsx --env-file-if-exists=.env.local scripts/synthesise.ts",
     "manage": "tsx --env-file-if-exists=.env.local scripts/backfill-manage.ts",
     "tape-filters": "tsx --env-file-if-exists=.env.local scripts/backfill-tape-filters.ts",
-    "bots": "tsx --env-file-if-exists=.env.local scripts/bots.ts",
     "school": "tsx --env-file-if-exists=.env.local scripts/school.ts"
   },
   "dependencies": {

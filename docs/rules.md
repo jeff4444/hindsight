@@ -2488,7 +2488,9 @@ reward exactly the guessing the rest of this scoring model exists to discourage.
 ## 22. Trading
 
 > **§23 keeps this section's exchange and retires its accounts.** §23.9 says which rules survive
-> into a round. The platform's pages redirect to the game's and its API is gone.
+> into a round. The platform's pages, its API and the code only they used are gone; its pages
+> redirect to the game's. What follows is kept, as the earlier sections are, because every session
+> stored under it can still be re-derived from its log by `src/core/trading/`.
 
 The platform that replaced the game. A trader gets a $100,000 paper account, a real market from the
 Binance archive replayed minute by minute, and an exchange that fills orders against the real
@@ -2666,8 +2668,8 @@ one "spread" and charged half of it each way — §5.) A market order round trip
 
 ### 22.9 Integrity
 
-Enforced at the API boundary by
-[`tests/trading-api-leak.test.ts`](../tests/trading-api-leak.test.ts):
+Enforced at the API boundary by `tests/trading-api-leak.test.ts`, which was removed with the API
+(§23.9 says what the game keeps of it; `tests/game-views.test.ts` checks the game's version):
 
 - **No minute the server clock has not reached is ever sent.** Every response carries bars only up
   to the revealed minute, and the review of an open session is refused.
